@@ -1,0 +1,26 @@
+{
+  "name": "send-to-telegram",
+  "version": "1.0.0",
+  "description": "A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.",
+  "author": "Rıdvan Aktogan",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ridvan/send-to-telegram.git"
+  },
+  "keywords": [
+    "telegram-bot",
+    "chrome-extension",
+    "send-to-telegram"
+  ],
+  "license": "",
+  "bugs": {
+    "url": "https://github.com/ridvan/send-to-telegram/issues"
+  },
+  "homepage": "https://github.com/ridvan/send-to-telegram#readme",
+  "dependencies": {
+    "@types/chrome": "^0.0.242"
+  }
+}

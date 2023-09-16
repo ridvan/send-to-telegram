@@ -1,0 +1,266 @@
+/*
+
+PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
+
+*/
+
+.form-section {
+    display: none;
+}
+
+#form-user-settings{
+    margin-top: 5px;
+}
+
+.legacy-tab-input {
+    display: none;
+}
+
+.settings-tab-label {
+    display: inline-block;
+    margin: 0 0 -1px;
+    padding: 15px 25px;
+    font-size: 14.5px;
+    font-weight: 600;
+    text-align: center;
+    color: #bbb;
+    border: 1px solid transparent;
+    /* -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none; */
+}
+
+.settings-tab-label[for*='1'] {
+    margin-left: 27px;
+}
+
+.settings-tab-label:hover {
+    color: #888;
+    cursor: pointer;
+}
+
+.legacy-tab-input:checked + .settings-tab-label {
+    color: #000;
+    position: relative;
+}
+
+.legacy-tab-input:checked + .settings-tab-label::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background-color: #0093E9;
+    background-image: linear-gradient(160deg, #0093E9 0%, #80D0C7 100%);
+    animation: borderAnimation 0.5s ease-in-out forwards;
+}
+
+@keyframes borderAnimation {
+    0% {
+        width: 0;
+    }
+
+    50% {
+        width: 100%;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+#settings-tab-selector-1:checked ~ #settings-tab-content-1,
+#settings-tab-selector-2:checked ~ #settings-tab-content-2,
+#settings-tab-selector-3:checked ~ #settings-tab-content-3 {
+    display: block;
+}
+
+.tabs-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.save-settings {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 308px;
+}
+
+.save-settings span {
+    opacity: 50%;
+    transition: .2s ease-in;
+    padding-left: 2px;
+}
+
+.save-settings span:hover {
+    opacity: 100% !important;
+    transition: .2s ease-out;
+}
+
+.form-section fieldset {
+    border-width: 1px;
+    border-radius: 5px;
+    border-color: rgb(39 167 231 / 15%);
+    background: linear-gradient(90deg, aliceblue 0%, rgb(39 167 231 / 3%) 100%);
+    animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
+}
+
+.form-section fieldset:first-of-type {
+    margin-top: -7px;
+}
+
+.form-section fieldset legend {
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    background: white;
+    padding: 0 5px 3px 5px;
+    border-radius: 5px;
+    border-bottom: 1px solid rgb(39 167 231 / 21%);
+}
+
+.form-section fieldset legend select {
+    border: 0px;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    text-align: center;
+    font-weight: 600;
+    color: #5264AE;
+    background-color: transparent;
+}
+
+/* Accessibility Issue when removing outline */
+/* .form-section fieldset legend select:focus-visible {
+  outline: none;
+
+} */
+
+.form-section fieldset label {
+    font-size: 13px;
+    vertical-align: 2px;
+}
+
+.form-section fieldset hr {
+    border: 0.5px dashed gray;
+    margin-block: 4px;
+}
+
+#image-message-options {
+    display: none;
+}
+
+#image-message-options input[type="radio"] {
+    margin-left: 4px;
+}
+
+#image-message-options input[type="radio"] span {
+    font-style: italic;
+}
+
+label[for="send-as-image"] span, label[for="send-as-document"] span {
+    font-weight: 500;
+}
+
+
+#settings-tab-content-2 fieldset div[id*="message-options"] {
+    margin-top: 1px;
+}
+
+#settings-tab-content-3 {
+    margin-top: 21px !important;
+}
+
+.options-field:not(:last-child) {
+    margin-bottom: 1px;
+}
+
+/* The switch - the box around the slider */
+.logs-switch {
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 15px;
+    vertical-align: text-bottom !important;
+    margin-left: 3px;
+}
+
+/* Hide default HTML checkbox */
+.logs-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider */
+.logs-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.logs-slider:before {
+    position: absolute;
+    content: "";
+    height: 11px;
+    width: 11px;
+    left: 3px;
+    bottom: 2px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .logs-slider {
+    background-color: #2196F3;
+}
+
+input:focus + .logs-slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .logs-slider:before {
+    -webkit-transform: translateX(13px);
+    -ms-transform: translateX(13px);
+    transform: translateX(13px);
+}
+
+#logging-options {
+    transition: .4s;
+}
+
+#logging-options span {
+    font-size: 13px;
+}
+
+#logging-options input[type="radio"] {
+    vertical-align: -2px;
+}
+
+#logging-options label {
+    vertical-align: bottom;
+}
+
+.disabled-log-field {
+    color: gray !important;
+}
+
+.disabled-log-field input[type="radio"] {
+    accent-color: gray;
+}
+
+#settings-tab-content-1 fieldset {
+    margin-top: -6px;
+}

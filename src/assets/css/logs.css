@@ -1,0 +1,92 @@
+.logs-section {
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    margin: 20px 20px 20px 20px;
+}
+
+.log-single-cell {
+    display: inline-flex;
+    align-items: center;
+
+}
+
+.log-single {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    border: 1px solid #00000017;
+    border-radius: 5px;
+    background: linear-gradient(90deg, aliceblue 0%, rgb(39 167 231 / 3%) 100%);
+    animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
+}
+
+.log-single:not(:last-child) {
+    margin-bottom: 12px;
+}
+
+.log-single-icon {
+    padding: 4px 12px 0px 10px;
+}
+
+.log-single-cell:last-child {
+    width: 43px;
+    justify-content: center;
+}
+
+.message-type-text {
+    font-weight: 600;
+    width: 50px;
+    display: inline-block;
+}
+
+.message-date-text {
+    width: 95px;
+    display: inline-block;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: -5px;
+    margin-bottom: 15px;
+}
+
+.pagination a {
+    color: black;
+    float: left;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+.pagination a.active {
+    background: linear-gradient(75deg, rgb(39 167 231 / 14%) 0%, rgb(34 158 217 / 43%) 100%);
+    animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
+    color: #000;
+    border-radius: 5px;
+}
+
+.pagination a:hover:not(.active) {
+    background-color: #ddd;
+    border-radius: 5px;
+}
+
+.pagination a:first-child {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.pagination a:last-child {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.pagination-disabled-button {
+    color: #00000052 !important;
+    cursor: default;
+}
+
+.pagination-disabled-button:hover {
+    background-color: transparent !important;
+}

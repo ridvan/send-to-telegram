@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Send to Telegram | Dashboard</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+
+
+</head>
+<body>
+<header>
+    <h1><span class="logo-small"></span> <span>Send to Telegram</span></h1>
+    <!-- <a id="get-ext-href" href="#" target="_blank">.</a> -->
+</header>
+<main>
+    <p class="connection-status"><span class="green-dot"></span> Connection established</p>
+    <section class="home-statistics">
+        <div class="split">
+            <div class="messages-sent">
+                <p><span id="total-message-count">144</span><br> messages<br> sent.</p>
+            </div>
+            <div class="vertical-line"></div>
+            <div class="last-messages">
+                <div>
+                    <p class="last-message-header">Last <span class="successful-text-underline">successful</span> message:</p>
+                    <p>&bull; "Lorem..." at 21 May 16:51</p>
+                </div>
+                <div class="horizontal-line"></div>
+                <div>
+                    <p class="last-message-header">Last <span class="failed-text-underline">failed</span> message:</p>
+                    <p>&bull; "Ipsum..." at 18 May 11:16</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<footer>
+    <div class="footer-navigation">
+        <div class="nav-user tooltip">
+            <img src="../assets/icons/phospor-icons/house-ph.svg" height="25" width="25">
+            <span class="tooltiptext">Home</span>
+        </div>
+        <!--        <div class="nav-send tooltip">-->
+        <!--            <img src="assets/icons/telegram-ph.svg" height="25" width="25">-->
+        <!--            <span class="tooltiptext">Manual Sender</span>-->
+        <!--        </div>-->
+        <div class="nav-settings tooltip">
+            <a href="settings.html">
+                <img src="../assets/icons/phospor-icons/gear-ph.svg" height="25" width="25">
+                <span class="tooltiptext">Settings</span>
+            </a>
+        </div>
+        <div class="logs tooltip">
+            <a href="logs.html">
+                <img src="../assets/icons/phospor-icons/list-ph.svg" height="25" width="25">
+                <span class="tooltiptext">Logs</span>
+            </a>
+        </div>
+    </div>
+</footer>
+</body>
+<script src="js/home.js"></script>
+<script src="../../dist/getUpdates.js"></script>
+</html>

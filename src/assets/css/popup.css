@@ -1,0 +1,205 @@
+@font-face {
+    font-family: 'Inter';
+    src: local('Inter'), url('assets/font/Inter/Inter-VariableFont_slnt\,wght.ttf') format('truetype');
+}
+
+  /* Use the font in your CSS */
+  body * {
+    font-family: 'Inter', sans-serif;
+  }
+
+body {
+    width: 350px;
+    margin: 0;
+}
+header {
+    height: 50px;
+    background: aliceblue;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+header h1 {
+    display: flex;
+    gap: 8px;
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+}
+main {
+    padding-bottom: 50px;
+}
+section {
+    margin: 12px 20px 15px 20px;
+}
+/* .split {
+    display: flex;
+    justify-content: space-evenly;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background-clip: content-box;
+    background: rgb(42,171,238);
+    background: linear-gradient(90deg, rgba(42,171,238,0.6069021358543417) 0%, rgba(34,158,217,0.53687412464986) 100%);
+} */
+.split {
+    display: flex;
+    justify-content: space-evenly;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    background-clip: content-box;
+    background: linear-gradient(90deg, aliceblue 0%, rgb(39 167 231 / 14%) 100%);
+    animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
+    background-size: 400% 400%;
+}
+
+@keyframes gradient {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
+.connection-status {
+    text-align: center;
+}
+.green-dot {
+    height: 8px;
+    width: 8px;
+    background-color: seagreen;
+    border-radius: 50%;
+    display: inline-block;
+}
+.red-dot {
+    height: 8px;
+    width: 8px;
+    background-color: darkred;
+    border-radius: 50%;
+    display: inline-block;
+}
+.connection-status {
+    margin-block-end: 0;
+}
+#total-message-count {
+    font-weight: 600;
+    font-size: 26px;
+}
+.messages-sent {
+    display: flex;
+    align-items: center;
+}
+.last-messages {
+    display: flex;
+    flex-direction: column;
+}
+.last-messages p {
+    margin-block-start: 5px;
+    margin-block-end: 5px;
+}
+.last-message-header {
+    font-weight: 600;
+}
+.successful-text-underline {
+    text-shadow: 2px 2px 5px green;
+}
+
+.log-info-text {
+    text-shadow: -1px 1px 5px green;
+    font-size: unset !important;
+}
+
+.failed-text-underline {
+    text-shadow: 2px 2px 5px red;
+}
+.vertical-line {
+    border-left: 1px dashed slategray;
+    margin-top: 7px;
+    margin-bottom: 7px;
+}
+.horizontal-line {
+    border-top: 1px dashed slategray;
+}
+.logo-small {
+    display: inline-block;
+    background: url("64.png");
+    background-size: cover;
+    height: 20px;
+    width: 20px;
+}
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+.footer-navigation {
+    height: 50px;
+    background: aliceblue;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+}
+.footer-navigation img {
+    padding: 12px 12px 12px 12px;
+}
+.footer-navigation div {
+    height: 50px;
+    width: 50px;
+}
+.footer-navigation div:hover{
+    -o-transition:.3s;
+    -ms-transition:.3s;
+    -moz-transition:.3s;
+    -webkit-transition:.3s;
+    transition:.3s;
+    box-shadow: inset 0 0 0 30px rgba(165, 165, 165, 0.38);
+}
+
+/* Tooltip container */
+.tooltip {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* Tooltip text */
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 65px;
+    background-color: #7b7b7bc4;
+    color: #fff;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+
+    /* Position the tooltip text */
+    position: absolute;
+    z-index: 1;
+    bottom: 115%;
+    left: 50%;
+    margin-left: -33px;
+
+    /* Fade in tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* Tooltip arrow */
+  .tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #7b7b7bc4 transparent transparent transparent;
+  }
+
+  /* Show the tooltip text when you mouse over the tooltip container */
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }

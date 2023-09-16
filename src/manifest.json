@@ -1,0 +1,26 @@
+{
+  "name": "Send to Telegram",
+  "version": "1.0.0",
+  "description": "Send selected contents to Telegram via Bot API.",
+  "permissions": ["activeTab","contextMenus", "scripting", "storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "./background.js"
+  },
+  "icons": {
+    "16": "./assets/logo/16.png",
+    "32": "./assets/logo/32.png",
+    "48": "./assets/logo/64.png",
+    "128": "./assets/logo/128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "./assets/logo/tg-logo.png",
+      "24": "./assets/logo/tg-logo.png",
+      "32": "./assets/logo/tg-logo.png"
+    },
+    "default_title": "Send to Telegram",
+    "default_popup": "./pages/home.html"
+  },
+  "manifest_version": 3
+}
