@@ -1,5 +1,8 @@
+import { defaultSettings } from "./options.js";
+
 //on installation of Chrome extension: create contextMenuItem
 chrome.runtime.onInstalled.addListener(() => {
+    //Create context menu items
     ['selection', 'image', 'link', 'page'].map(type =>
         chrome.contextMenus.create({
             id: `stt-send${type[0].toUpperCase() + type.slice(1)}`,
@@ -7,6 +10,17 @@ chrome.runtime.onInstalled.addListener(() => {
             contexts: [type]
         })
     );
+    //Set default settings if not set
+    chrome.storage.local.get('settings', (data) => {
+        if (!data.options) {
+            chrome.storage.local.set({ settings: defaultSettings })
+                .then(() => {
+                    console.log('Default settings set');
+                }).catch((err) => {
+                    console.log(err);
+                });
+        }
+    });
 });
 
 const getCurrentTab = async () => await chrome.tabs.query({active: true, currentWindow: true});

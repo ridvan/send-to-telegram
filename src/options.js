@@ -1,37 +1,31 @@
-// LOGS ??
-
-const options = {
+export const defaultSettings= {
     connections: {
         use: 0,
-        0: {
-            name: 'Messenger',
-            key: 'BOT_TOKEN',
-            chatId: 'CHAT_ID'
+        setup: {
+            0: {
+                name: 'Default',
+                key: '',
+                chatId: ''
+            }
         },
     },
     actions: {
         sendMessage: {
-            silent: true,
+            disableNotificationSound: true,
             disablePreview: true,
-            buttons: {
-                active: true,
-                list: {
-                    source: true,
-                    waybackMachine: false
-                }
-            }
+            addSourceLink: true
         },
         sendImage: {
-            silent: true,
+            disableNotificationSound: true,
             disablePreview: false,
-            buttons: {
-                active: true,
-                list: {
-                    source: true,
-                    weserv: false
-                    // prefetch weserv url?
-                }
-            }
+            sendAs: 'image', // or 'document' - 'link'?
+            addSourceLink: true,
+            useWeservProxy: false
+            // prefetch weserv url?
         }
+    },
+    logs: {
+        active: true,
+        type: 'everything' // or 'timestamp'
     }
 }

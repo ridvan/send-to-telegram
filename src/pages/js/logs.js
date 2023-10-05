@@ -16,22 +16,22 @@ const getLogTypeIcon = function(type) {
     if(!['text', 'image'].includes(type)) return false;
 
     const iconMap = {
-        'text': 'article-ph.svg',
-        'image': 'image-ph.svg'
+        'text': 'article',
+        'image': 'image'
     };
 
-    return `assets/icons/${iconMap[type]}`;
+    return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
 }
 
 const getStatusIcon = function(status) {
     if(!['success', 'fail'].includes(status)) return false;
 
     const iconMap = {
-        'success': 'checks-ph.svg',
-        'fail': 'x-ph.svg'
+        'success': 'checks',
+        'fail': 'x'
     };
 
-    return `assets/icons/${iconMap[status]}`;
+    return `../../assets/icons/phospor-icons/${iconMap[status]}-ph.svg`;
 }
 
 const logsArray = [

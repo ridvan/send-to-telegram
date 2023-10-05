@@ -29,13 +29,13 @@
 </header>
 <main>
 
-    <input class="legacy-tab-input" id="settings-tab-selector-1" type="radio" name="tabs" checked>
+    <input class="legacy-tab-input" id="settings-tab-selector-1" data-target-id="1" type="radio" name="tabs" checked>
     <label for="settings-tab-selector-1" class="settings-tab-label">User</label>
 
-    <input class="legacy-tab-input" id="settings-tab-selector-2" type="radio" name="tabs">
+    <input class="legacy-tab-input" id="settings-tab-selector-2" data-target-id="2" type="radio" name="tabs">
     <label for="settings-tab-selector-2" class="settings-tab-label">Messages</label>
 
-    <input class="legacy-tab-input" id="settings-tab-selector-3" type="radio" name="tabs">
+    <input class="legacy-tab-input" id="settings-tab-selector-3" data-target-id="3" type="radio" name="tabs">
     <label for="settings-tab-selector-3" class="settings-tab-label">Logs</label>
 
     <section id="settings-tab-content-1" class="form-section settings-main">
@@ -67,29 +67,30 @@
 
         <fieldset>
             <legend>
-                <span>Message Type:</span>
+                <span></span>
+                <label for="message-type-selector">Message Type:</label>
                 <select name="message-type-selector" id="message-type-selector">
-                    <option value="text">Text</option>
-                    <option value="image">Image</option>
+                    <option value="text">📝 Text</option>
+                    <option value="image">🏞️ Image</option>
                 </select>
             </legend>
             <div id="text-message-options">
                 <div class="options-field">
-                    <input type="checkbox" id="opt-text-silent-message" name="opt-text-silent-message" id="opt-text-silent-message" checked>
+                    <input type="checkbox" id="opt-text-silent-message" name="opt-text-silent-message" checked>
                     <label for="opt-text-silent-message">Disable message notification sound</label>
                 </div>
                 <div class="options-field">
-                    <input type="checkbox" id="opt-text-disable-preview" name="opt-text-disable-preview" id="opt-text-disable-preview">
+                    <input type="checkbox" id="opt-text-disable-preview" name="opt-text-disable-preview">
                     <label for="opt-text-disable-preview">Disable link preview</label>
                 </div>
                 <div class="options-field">
-                    <input type="checkbox" id="opt-text-add-source-link" name="opt-text-add-source-link" id="opt-text-add-source-link">
+                    <input type="checkbox" id="opt-text-add-source-link" name="opt-text-add-source-link">
                     <label for="opt-text-add-source-link">Add source link as a button</label>
                 </div>
             </div>
             <div id="image-message-options">
                 <div class="options-field">
-                    <input type="checkbox" id="opt-image-silent-message" name="opt-image-silent-message" id="opt-image-silent-message" checked>
+                    <input type="checkbox" id="opt-image-silent-message" name="opt-image-silent-message" checked>
                     <label for="opt-image-silent-message">Disable message notification sound</label>
                 </div>
 
@@ -98,8 +99,13 @@
                   <label for="opt-image-disable-preview">Send as attachment (No compression)</label>
                 </div> -->
                 <div class="options-field">
-                    <input type="checkbox" id="opt-image-add-source-link" name="opt-image-add-source-link" id="opt-image-add-source-link">
+                    <input type="checkbox" id="opt-image-add-source-link" name="opt-image-add-source-link">
                     <label for="opt-image-add-source-link">Add source link to the message</label>
+                </div>
+
+                <div class="options-field">
+                    <input type="checkbox" id="opt-image-use-weserv-proxy" name="opt-image-use-weserv-proxy">
+                    <label for="opt-image-use-weserv-proxy">Use weserv.nl cache while uploading</label>
                 </div>
 
                 <hr>
@@ -112,6 +118,11 @@
                 <div class="options-field">
                     <input type="radio" id="send-as-document" name="image-message-type" value="document">
                     <label for="send-as-document">Send as document <span>(Not Compressed)</span></label>
+                </div>
+
+                <div class="options-field">
+                    <input type="radio" id="send-as-link" name="image-message-type" value="link">
+                    <label for="send-as-link">Send as link <span>(Don't upload)</span></label>
                 </div>
 
 

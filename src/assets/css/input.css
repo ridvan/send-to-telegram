@@ -181,7 +181,7 @@ section {
 }
 
 .eyes-open {
-    background: no-repeat url('eye-light.svg');
+    background: no-repeat url('../icons/phospor-icons/eye-light-ph.svg');
     background-size: 100% 100%;
     height: 24px;
     width: 24px;
@@ -192,7 +192,7 @@ section {
 }
 
 .eyes-wide-shut {
-    background: no-repeat url('eye-closed-light.svg');
+    background: no-repeat url('../icons/phospor-icons/eye-closed-light-ph.svg');
     background-size: 100% 100%;
     height: 24px;
     width: 24px;
@@ -210,4 +210,12 @@ section {
     -webkit-transition:.2s;
     transition:.2s;
     background-color: transparent;
+    padding-right: 30px;
+}
+
+.invalid-input {
+    border-bottom: 1px solid red !important;
+    transition:0.2s ease all;
+    -moz-transition:0.2s ease all;
+    -webkit-transition:0.2s ease all;
 }
