@@ -162,7 +162,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     font-style: italic;
 }
 
-label[for="send-as-image"] span, label[for="send-as-document"] span, label[for="send-as-link"] span {
+label[for^="opt-image-send-as"] span {
     font-weight: 500;
 }
 

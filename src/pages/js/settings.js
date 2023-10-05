@@ -212,3 +212,32 @@ const removeInvalidInputClass = function() {
 
 tokenInput.addEventListener('click', removeInvalidInputClass);
 chatIdInput.addEventListener('click', removeInvalidInputClass);
+
+const populateSettings = async function() {
+    const { options } = await getSettings();
+    const { connections, actions, logs } = options;
+    const { setup } = connections;
+    const { sendMessage, sendImage } = actions;
+    const { active, type } = logs;
+
+    // Connections
+    const [connection] = Object.values(setup);
+    tokenInput.value = connection.key;
+    chatIdInput.value = connection.chatId;
+
+    selectById('opt-text-silent-message').checked = sendMessage.disableNotificationSound;
+    selectById('opt-text-disable-preview').checked = sendMessage.disablePreview;
+    selectById('opt-text-add-source-link').checked = sendMessage.addSourceLink;
+
+    selectById('opt-image-silent-message').checked = sendImage.disableNotificationSound;
+    selectById('opt-image-add-source-link').checked = sendImage.addSourceLink;
+    selectById('opt-image-use-weserv-proxy').checked = sendImage.useWeservProxy;
+    selectById(`opt-image-send-as-${sendImage.sendAs}`).checked = true;
+
+    // Logs
+    selectById('logs-switch-checkbox').checked = active;
+    selectById(`log-${type === 'everything' ? 'everything' : 'timestamp-only'}`).checked = true;
+    toggleActivityLogStatus();
+}
+
+document.addEventListener('DOMContentLoaded', populateSettings);
