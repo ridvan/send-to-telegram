@@ -31,7 +31,12 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 }
 
 .settings-tab-label[for*='1'] {
-    margin-left: 27px;
+    margin-left: 23px;
+}
+
+.settings-tab-label[for*='2'] {
+    margin-left: 2px;
+    margin-right: 1px;
 }
 
 .settings-tab-label:hover {
