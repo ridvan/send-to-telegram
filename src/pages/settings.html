@@ -44,7 +44,7 @@
             <legend>Connection Settings</legend>
             <div id="form-user-settings">
                 <div class="group">
-                    <input name="botToken" id="tokenInput" type="password" value="sth" required>
+                    <input name="botToken" id="tokenInput" type="password" required>
                     <i id="token-eye" class="eyes-open"></i>
                     <span class="highlight"></span>
                     <span class="bar"></span>
@@ -71,12 +71,12 @@
                 <label for="message-type-selector">Message Type:</label>
                 <select name="message-type-selector" id="message-type-selector">
                     <option value="text">📝 Text</option>
-                    <option value="image">🏞️ Image</option>
+                    <option value="photo">🏞️ Photo</option>
                 </select>
             </legend>
             <div id="text-message-options">
                 <div class="options-field">
-                    <input type="checkbox" id="opt-text-silent-message" name="opt-text-silent-message" checked>
+                    <input type="checkbox" id="opt-text-silent-message" name="opt-text-silent-message">
                     <label for="opt-text-silent-message">Disable message notification sound</label>
                 </div>
                 <div class="options-field">
@@ -90,7 +90,7 @@
             </div>
             <div id="image-message-options">
                 <div class="options-field">
-                    <input type="checkbox" id="opt-image-silent-message" name="opt-image-silent-message" checked>
+                    <input type="checkbox" id="opt-image-silent-message" name="opt-image-silent-message">
                     <label for="opt-image-silent-message">Disable message notification sound</label>
                 </div>
 
@@ -111,8 +111,8 @@
                 <hr>
 
                 <div class="options-field">
-                    <input type="radio" id="opt-image-send-as-image" name="image-message-type" value="image" checked>
-                    <label for="opt-image-send-as-image">Send as native image <span>(Compressed)</span></label>
+                    <input type="radio" id="opt-image-send-as-photo" name="image-message-type" value="photo">
+                    <label for="opt-image-send-as-photo">Send as photo <span>(Compressed)</span></label>
                 </div>
 
                 <div class="options-field">
@@ -202,6 +202,6 @@
         </div>
     </div>
 </footer>
-<script src="js/settings.js"></script>
+<script src="./js/settings.js" type="module"></script>
 </body>
 </html>

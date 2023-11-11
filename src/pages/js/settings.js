@@ -1,3 +1,5 @@
+import { defaultSettings } from "../../options.js";
+
 const selectById = (id) => document.getElementById(id);
 const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);
 
@@ -28,7 +30,7 @@ const handleMessageSettingsChange = () => {
         textMessageOptionsContainer.style.display = "block";
     }
 
-    if (messageType === 'image') {
+    if (messageType === 'photo') {
         textMessageOptionsContainer.style.display = "none";
         imageMessageOptionsContainer.style.display = "block";
     }
@@ -114,8 +116,10 @@ const getActiveTabId = () => {
     return Number(document.querySelector('.legacy-tab-input:checked').dataset.targetId);
 }
 
-const getSettings = async() => {
-    return await chrome.storage.local.get('options');
+const getUserSettings = async() => {
+  let options = await chrome.storage.local.get('options');
+  if (Object.keys(options).length === 0) await chrome.storage.local.set({ options: defaultSettings });
+  return await chrome.storage.local.get('options');
 }
 
 const validateConnectionSettings = () => {
@@ -133,7 +137,7 @@ const validateActionSettings = () => {
     for (const type in actions) {
         for (const option in actions[type]) {
             const value = actions[type][option];
-            if (!(typeof value === 'boolean' || (typeof value === 'string' && ['image', 'document', 'link'].includes(value)))) {
+            if (!(typeof value === 'boolean' || (typeof value === 'string' && ['photo', 'document', 'link'].includes(value)))) {
                 return false;
             }
         }
@@ -166,13 +170,13 @@ const validateByTabId = (tabId) => {
 }
 
 const saveSettings = async function(data) {
-    [type, settings] = [Object.keys(data)[0], Object.values(data)[0]];
+    const [type, settings] = Object.entries(data)[0];
     if (!['connections', 'actions', 'logs'].includes(type)) return false;
-    const { options } = await getSettings();
+    const { options } = await getUserSettings();
     if (!validateByTabId(getActiveTabId())) return false;
     options[type] = settings;
     try {
-        await chrome.storage.local.set({ options });
+        await chrome.storage.local.set({ options: options });
         return { success: true };
     } catch (err) {
         return { success: false, message: err };
@@ -203,7 +207,6 @@ saveButtonSelector.addEventListener('click', async (event) => {
     showSaveOperationStatus(
         await saveSettings(getSelectedOptions(getActiveTabId()))
     )
-    console.log(await getSettings());
 });
 
 const removeInvalidInputClass = function() {
@@ -214,11 +217,7 @@ tokenInput.addEventListener('click', removeInvalidInputClass);
 chatIdInput.addEventListener('click', removeInvalidInputClass);
 
 const populateSettings = async function() {
-    const { options } = await getSettings();
-    const { connections, actions, logs } = options;
-    const { setup } = connections;
-    const { sendMessage, sendImage } = actions;
-    const { active, type } = logs;
+    const { options: { connections: { setup }, actions: { sendMessage, sendImage }, logs: { active, type } } } = await getUserSettings();
 
     // Connections
     const [connection] = Object.values(setup);

@@ -18,7 +18,7 @@ export const defaultSettings= {
         sendImage: {
             disableNotificationSound: true,
             disablePreview: false,
-            sendAs: 'image', // or 'document' - 'link'?
+            sendAs: 'photo', // or 'document' - 'link'?
             addSourceLink: true,
             useWeservProxy: false
             // prefetch weserv url?

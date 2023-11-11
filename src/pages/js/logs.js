@@ -1,4 +1,3 @@
-//written by GPT-3.5
 const timestampToReadableDate = function(unixTimestamp) {
     const date = new Date(unixTimestamp * 1000);
     const monthNames = [
@@ -32,6 +31,15 @@ const getStatusIcon = function(status) {
     };
 
     return `../../assets/icons/phospor-icons/${iconMap[status]}-ph.svg`;
+}
+
+const getLogsFromStorage = async function() {
+    let { messageLogs: logs } = chrome.storage.local.get('messageLogs');
+    if (!logs) {
+        await chrome.storage.local.set({'messageLogs': []})
+        logs = [];
+    }
+    return logs;
 }
 
 const logsArray = [
@@ -139,6 +147,7 @@ const displayLogItems = function(page) {
 
 }
 
+//generatePagination function was written by GPT-3.5
 const generatePagination = function() {
     const totalPages = Math.ceil(logsArray.length / itemsPerPage);
     const paginationContainer = document.querySelector('.pagination');
