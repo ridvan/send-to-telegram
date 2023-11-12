@@ -230,7 +230,7 @@ const populateSettings = async function() {
 
     selectById('opt-image-silent-message').checked = sendImage.disableNotificationSound;
     selectById('opt-image-add-source-link').checked = sendImage.addSourceLink;
-    selectById('opt-image-use-weserv-proxy').checked = sendImage.useWeservProxy;
+    // selectById('opt-image-use-weserv-proxy').checked = sendImage.useWeservProxy;
     selectById(`opt-image-send-as-${sendImage.sendAs}`).checked = true;
 
     // Logs
