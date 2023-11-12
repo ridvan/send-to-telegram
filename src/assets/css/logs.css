@@ -90,3 +90,13 @@
 .pagination-disabled-button:hover {
     background-color: transparent !important;
 }
+
+.logs-list-empty {
+    display: flex;
+    align-self: center;
+    gap: 1rem;
+}
+
+.failed-message-item {
+    background: linear-gradient(90deg, #ff00001a 0%, rgb(39 167 231 / 3%) 100%);
+}

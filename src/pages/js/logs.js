@@ -1,5 +1,6 @@
+// timestampToReadableDate function was written by GPT-3.5
 const timestampToReadableDate = function(unixTimestamp) {
-    const date = new Date(unixTimestamp * 1000);
+    const date = new Date(unixTimestamp);
     const monthNames = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -12,11 +13,14 @@ const timestampToReadableDate = function(unixTimestamp) {
 }
 
 const getLogTypeIcon = function(type) {
-    if(!['text', 'image'].includes(type)) return false;
+    if(!['text', 'photo', 'page', 'link', 'noLogs'].includes(type)) return false;
 
     const iconMap = {
-        'text': 'article',
-        'image': 'image'
+        'text': 'text-aa',
+        'photo': 'image',
+        'page': 'article',
+        'link': 'link-simple',
+        'noLogs': 'paper-plane-tilt-duotone'
     };
 
     return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
@@ -34,76 +38,14 @@ const getStatusIcon = function(status) {
 }
 
 const getLogsFromStorage = async function() {
-    let { messageLogs: logs } = chrome.storage.local.get('messageLogs');
+    let { messageLogs: logs } = await chrome.storage.local.get('messageLogs');
     if (!logs) {
         await chrome.storage.local.set({'messageLogs': []})
         logs = [];
     }
     return logs;
 }
-
-const logsArray = [
-    {
-        type: 'text',
-        content: 'Lorem ipsum dolor sit amet',
-        timestamp: '1692523410',
-        status: 'success'
-    },
-    {
-        type: 'image',
-        content: 'https://picsum.photos/200',
-        timestamp: '1692522410',
-        status: 'fail'
-    },
-    {
-        type: 'text',
-        content: 'Lorem ipsum dolor sit amet',
-        timestamp: '1692521410',
-        status: 'success'
-    },
-    {
-        type: 'image',
-        content: 'https://picsum.photos/200',
-        timestamp: '1692520410',
-        status: 'fail'
-    },
-    {
-        type: 'text',
-        content: 'Lorem ipsum dolor sit amet',
-        timestamp: '1692513410',
-        status: 'success'
-    },
-    {
-        type: 'image',
-        content: 'https://picsum.photos/200',
-        timestamp: '1692503410',
-        status: 'fail'
-    },
-    {
-        type: 'text',
-        content: 'Lorem ipsum dolor sit amet',
-        timestamp: '1692423410',
-        status: 'success'
-    },
-    {
-        type: 'image',
-        content: 'https://picsum.photos/200',
-        timestamp: '1692323410',
-        status: 'fail'
-    },
-    {
-        type: 'text',
-        content: 'Lorem ipsum dolor sit amet',
-        timestamp: '1692223410',
-        status: 'success'
-    },
-    {
-        type: 'image',
-        content: 'https://picsum.photos/200',
-        timestamp: '1692043410',
-        status: 'fail'
-    }
-];
+const logs = await getLogsFromStorage();
 
 const itemsPerPage = 5;
 let currentPage = 1;
@@ -115,10 +57,17 @@ const displayLogItems = function(page) {
     const logsContainer = document.querySelector('.logs-section');
     let logsHTML = '';
 
-    for (let i = startIndex; i < endIndex && i < logsArray.length; i++) {
-        const { type, content, timestamp, status} = logsArray[i];
-        console.log(status);
-        logsHTML += `<div class="log-single">
+    if (logs.length === 0) {
+        return logsContainer.innerHTML = `<div class="logs-list-empty">
+            <img src="${getLogTypeIcon('noLogs')}" width="40">
+            <p>Logs will appear here,<br> as you start sending messages!</p>
+            </div>`;
+    }
+
+    for (let i = startIndex; i < endIndex && i < logs.length; i++) {
+        const { type, content, timestamp, status} = logs[i];
+
+        logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
         <div class="log-single-cell">
             <div class="log-single-icon">
                 <img src="${getLogTypeIcon(type)}" width="25">
@@ -149,10 +98,13 @@ const displayLogItems = function(page) {
 
 //generatePagination function was written by GPT-3.5
 const generatePagination = function() {
-    const totalPages = Math.ceil(logsArray.length / itemsPerPage);
+    if (logs.length === 0) {
+        return document.querySelector('.pagination').style.display = 'none';
+    }
+
+    const totalPages = Math.ceil(logs.length / itemsPerPage);
     const paginationContainer = document.querySelector('.pagination');
     paginationContainer.innerHTML = "";
-
 
     const prevButton = document.createElement("a");
     prevButton.textContent = "«";
@@ -167,7 +119,11 @@ const generatePagination = function() {
     });
     paginationContainer.appendChild(prevButton);
 
-    for (let i = 1; i <= totalPages; i++) {
+    // Calculate the range of visible page numbers (limit to 5)
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(startPage + 4, totalPages);
+
+    for (let i = startPage; i <= endPage; i++) {
         const paginationLink = document.createElement("a");
         paginationLink.href = "#";
         paginationLink.textContent = i;

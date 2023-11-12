@@ -184,7 +184,7 @@ const registerLog = async function (content, response, type) {
         await chrome.storage.local.set({'messageLogs': []})
         logs = [];
     }
-    logs.push(buildLogObject(content, response, type));
+    logs.unshift(buildLogObject(content, response, type));
     await chrome.storage.local.set({'messageLogs': logs});
 }
 
