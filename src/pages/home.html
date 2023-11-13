@@ -20,18 +20,18 @@
     <section class="home-statistics">
         <div class="split">
             <div class="messages-sent">
-                <p><span id="total-message-count">144</span><br> messages<br> sent.</p>
+                <p><span id="total-message-count"></span><br> <span id="message-word">messages</span><br> sent.</p>
             </div>
             <div class="vertical-line"></div>
             <div class="last-messages">
                 <div>
                     <p class="last-message-header">Last <span class="successful-text-underline">successful</span> message:</p>
-                    <p>&bull; "Lorem..." at 21 May 16:51</p>
+                    <p id="last-success-message"></p>
                 </div>
                 <div class="horizontal-line"></div>
                 <div>
                     <p class="last-message-header">Last <span class="failed-text-underline">failed</span> message:</p>
-                    <p>&bull; "Ipsum..." at 18 May 11:16</p>
+                    <p id="last-fail-message"></p>
                 </div>
             </div>
         </div>
@@ -62,5 +62,5 @@
     </div>
 </footer>
 </body>
-<script src="./js/home.js"></script>
+<script src="./js/home.js" type="module"></script>
 </html>

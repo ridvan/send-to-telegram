@@ -180,12 +180,18 @@ const handleAPIResponse = async function (data) {
 
 const registerLog = async function (content, response, type) {
     let {messageLogs: logs} = await chrome.storage.local.get('messageLogs');
+    let {totalMessageCount: total } = await chrome.storage.local.get('totalMessageCount');
     if (!logs) {
-        await chrome.storage.local.set({'messageLogs': []})
+        await chrome.storage.local.set({ 'messageLogs': [] });
         logs = [];
     }
+    if (!total) {
+        await chrome.storage.local.set({ 'totalMessageCount': 0 });
+        total = 0;
+    }
     logs.unshift(buildLogObject(content, response, type));
-    await chrome.storage.local.set({'messageLogs': logs});
+    await chrome.storage.local.set({ 'messageLogs': logs });
+    await chrome.storage.local.set({ 'totalMessageCount': total + 1 });
 }
 
 const buildLogObject = function (content, response, type) {
