@@ -38,6 +38,29 @@ const logs = await getLogsFromStorage();
 const itemsPerPage = 5;
 let currentPage = 1;
 
+const toggleAfterDelay = (type, element, delay) => {
+    if (!['display-none', 'log-single-active'].includes(type)) return;
+    setTimeout(() => {
+        element.classList.toggle(type);
+        if (type === 'display-none') element.removeAttribute('style');
+    }, delay);
+};
+
+const toggleExpandByIndex = (index) => {
+    [...document.querySelectorAll('.log-single')].forEach((element, indexOnArray) => {
+        if (indexOnArray === index) {
+            element.classList.toggle('show-single-row');
+            toggleAfterDelay('log-single-active', element, 900);
+        } else {
+            toggleAfterDelay('display-none', element, 700);
+            element.classList.toggle('hide-single-row');
+            if (element.classList.contains('hide-single-row')) {
+                element.style.transition = `transform 700ms ease-out 0ms`;
+            }
+        }
+    })
+};
+
 const displayLogItems = function(page) {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -55,7 +78,7 @@ const displayLogItems = function(page) {
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
         const { type, content, timestamp, status} = logs[i];
 
-        logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
+        logsHTML += `<div data-log-index="${i - ((page - 1) * itemsPerPage)}" class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
         <div class="log-single-cell">
             <div class="log-single-icon">
                 <img src="${getLogTypeIcon(type)}" width="25">
@@ -82,6 +105,12 @@ const displayLogItems = function(page) {
 
     logsContainer.innerHTML = logsHTML;
 
+    document.querySelectorAll('.log-single').forEach(singleRow => {
+        singleRow.addEventListener('click', () => {
+            const elementIndex = Number(singleRow.dataset.logIndex);
+            toggleExpandByIndex(elementIndex);
+        });
+    });
 }
 
 //generatePagination function was written by GPT-3.5

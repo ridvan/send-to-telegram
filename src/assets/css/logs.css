@@ -1,6 +1,6 @@
 .logs-section {
     display: flex;
-    flex-direction: column;
+    flex-flow: column;
     font-size: 13px;
     margin: 20px 20px 20px 20px;
 }
@@ -20,6 +20,11 @@
     border-radius: 5px;
     background: linear-gradient(90deg, aliceblue 0%, rgb(39 167 231 / 3%) 100%);
     animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
+    transition: height 950ms ease 50ms;
+}
+
+.log-single.log-single-active {
+    /* will be updated */
 }
 
 .log-single:not(:last-child) {
@@ -99,4 +104,22 @@
 
 .failed-message-item {
     background: linear-gradient(90deg, #ff00001a 0%, rgb(39 167 231 / 3%) 100%);
+}
+
+.hide-single-row {
+    transform: scaleY(0);
+    /*transition: transform 500ms ease 0ms;*/
+}
+
+.show-single-row {
+    transform: scaleY(1);
+    height: 245px;
+}
+
+.display-none {
+    display: none;
+}
+
+.log-single-active {
+    /* will be updated */
 }
