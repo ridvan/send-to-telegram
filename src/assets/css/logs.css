@@ -1,6 +1,14 @@
+body::-webkit-scrollbar {
+    display: none; /* Chrome */
+}
+
+body {
+    scrollbar-width: none;  /* Firefox */
+}
+
 .logs-section {
     display: flex;
-    flex-flow: column;
+    flex-direction: column;
     font-size: 13px;
     margin: 20px 20px 20px 20px;
 }
