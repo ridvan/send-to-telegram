@@ -85,7 +85,7 @@ const getSelectedOptions = activeTab => {
                     sendImage: {
                         disableNotificationSound: selectById('opt-image-silent-message').checked,
                         addSourceLink: selectById('opt-image-add-source-link').checked,
-                        useWeservProxy: selectById('opt-image-use-weserv-proxy').checked,
+                        // useWeservProxy: selectById('opt-image-use-weserv-proxy').checked,
                         sendAs: selectCheckedRadioByName('image-message-type').value
                     }
                 }
