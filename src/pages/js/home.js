@@ -48,3 +48,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     await handleStatistics();
     await handleMessageError();
 });
+
+const removeBlinkerAfterDelay = delay => {
+    setTimeout(() => {
+        [...document.querySelectorAll('.dot')].forEach((element, index) => {
+            if (index !== 0) element.remove();
+            element.classList.remove('blink-one');
+        });
+    }, delay);
+};
+
+const updateStatusAfterDelay = (status, delay) => {
+    removeBlinkerAfterDelay(delay);
+    setTimeout(() => {
+        document.querySelector('.dot').classList.remove('gray-dot');
+        document.querySelector('.dot').classList.add(status ? 'green-dot' : 'red-dot');
+        document.getElementById('connection-message').innerText = `Connection${status ? '' : ' not'} established`;
+    }, delay);
+};
+
+await chrome.runtime.sendMessage({
+    message: "getConnectionStatus"
+});
+
+chrome.runtime.onMessage.addListener(function (request) {
+    if (request.message === "returnConnectionStatus") {
+        updateStatusAfterDelay(request?.data?.ok, 600);
+    }
+});

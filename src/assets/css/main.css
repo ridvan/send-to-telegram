@@ -67,19 +67,21 @@ section {
 .connection-status {
     text-align: center;
 }
-.green-dot {
-    height: 8px;
-    width: 8px;
-    background-color: seagreen;
+.dot {
+    height: 10px;
+    width: 10px;
     border-radius: 50%;
     display: inline-block;
+    vertical-align: -1px;
+}
+.green-dot {
+    background-color: seagreen;
 }
 .red-dot {
-    height: 8px;
-    width: 8px;
     background-color: darkred;
-    border-radius: 50%;
-    display: inline-block;
+}
+.gray-dot {
+    background-color: darkgray;
 }
 .connection-status {
     margin-block-end: 0;
@@ -202,4 +204,18 @@ footer {
 .tooltip:hover .tooltiptext {
     visibility: visible;
     opacity: 1;
+}
+
+.blink-one {
+    animation: blinker 1s linear 200ms infinite;
+}
+.blink-two {
+    animation: blinker 1s linear 300ms infinite;
+}
+.blink-three {
+    animation: blinker 1s linear 400ms infinite;
+}
+
+@keyframes blinker {
+    50% { opacity: 0; }
 }

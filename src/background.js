@@ -42,7 +42,18 @@ chrome.contextMenus.onClicked.addListener(async function(clickData){
         const options = await getStorageDataByKey('options');
         await sendMessage(selectedContent, options.actions.sendImage.sendAs);
     }
-})
+});
+
+chrome.runtime.onMessage.addListener(async request => {
+    if (request.message === 'getConnectionStatus') {
+        const options = await getStorageDataByKey('options');
+        const getMe = await fetchAPI(buildRequestURL('me', options), buildPostData('me', {}, options));
+        await chrome.runtime.sendMessage({
+            message: "returnConnectionStatus",
+            data: await getMe.json(),
+        });
+    }
+});
 
 //to get a string which supports line breaks, use script execution on the page
 const getSelectedText = async function () {
