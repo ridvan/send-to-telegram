@@ -1,4 +1,4 @@
-import { getStorageDataByKey } from '../../handlers/storage.js';
+import { getStorageData } from '../../handlers/storage.js';
 import { timestampToReadableDate } from '../../utils.js';
 
 const removeExtensionBadge = async () => {
@@ -26,7 +26,7 @@ const uppercaseFirstLetter = (str) => {
 }
 
 const getLastMessageByStatus = async status => {
-    const logs = await getStorageDataByKey('messageLogs');
+    const logs = await getStorageData('messageLogs');
     const firstOfType = logs.find(log => log.status === status);
     if (firstOfType) {
         return `&bull; ${uppercaseFirstLetter(firstOfType.type)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
@@ -36,7 +36,7 @@ const getLastMessageByStatus = async status => {
 }
 
 const handleStatistics = async () => {
-    const totalSent = await getStorageDataByKey('totalMessageCount');
+    const totalSent = await getStorageData('totalMessageCount');
     if (totalSent === 1) document.getElementById('message-word').innerText = 'message';
     document.getElementById('total-message-count').innerText = totalSent || 0;
     ['success', 'fail'].map(

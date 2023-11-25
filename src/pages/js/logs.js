@@ -1,6 +1,7 @@
 import { timestampToReadableDate } from '../../utils.js';
+import { getStorageData } from '../../handlers/storage.js';
 
-const getLogTypeIcon = function(type) {
+const getLogTypeIcon = function (type) {
     if(!['text', 'photo', 'page', 'link', 'noLogs'].includes(type)) return false;
 
     const iconMap = {
@@ -14,7 +15,7 @@ const getLogTypeIcon = function(type) {
     return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
 }
 
-const getStatusIcon = function(status) {
+const getStatusIcon = function (status) {
     if(!['success', 'fail'].includes(status)) return false;
 
     const iconMap = {
@@ -25,10 +26,10 @@ const getStatusIcon = function(status) {
     return `../../assets/icons/phospor-icons/${iconMap[status]}-ph.svg`;
 }
 
-const getLogsFromStorage = async function() {
-    let { messageLogs: logs } = await chrome.storage.local.get('messageLogs');
+const getLogsFromStorage = async function () {
+    let logs = getStorageData('messageLogs');
     if (!logs) {
-        await chrome.storage.local.set({'messageLogs': []})
+        await getStorageData('messageLogs', []);
         logs = [];
     }
     return logs;
@@ -61,7 +62,7 @@ const toggleExpandByIndex = (index) => {
     })
 };
 
-const displayLogItems = function(page) {
+const displayLogItems = function (page) {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
 
@@ -79,26 +80,31 @@ const displayLogItems = function(page) {
         const { type, content, timestamp, status} = logs[i];
 
         logsHTML += `<div data-log-index="${i - ((page - 1) * itemsPerPage)}" class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
-        <div class="log-single-cell">
-            <div class="log-single-icon">
-                <img src="${getLogTypeIcon(type)}" width="25">
+        <div class="log-single-heading">
+            <div class="log-single-cell">
+                <div class="log-single-icon">
+                    <img src="${getLogTypeIcon(type)}" width="25">
+                </div>
+                <div class="message-info">
+                    <span class="message-type-text">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                </div>
             </div>
-            <div class="message-info">
-                <span class="message-type-text">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+            <div class="log-single-cell">
+                <div class="log-single-icon">
+                    <img src="../../assets/icons/phospor-icons/calendar-blank-ph.svg" width="21">
+                </div>
+                <div class="message-date">
+                    <span class="message-date-text">${timestampToReadableDate(timestamp)}</span>
+                </div>
             </div>
+            <div class="log-single-cell">
+                <div class="log-single-icon message-status">
+                    <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}">
+                </div>
+            </div> 
         </div>
-        <div class="log-single-cell">
-            <div class="log-single-icon">
-                <img src="../../assets/icons/phospor-icons/calendar-blank-ph.svg" width="21">
-            </div>
-            <div class="message-date">
-                <span class="message-date-text">${timestampToReadableDate(timestamp)}</span>
-            </div>
-        </div>
-        <div class="log-single-cell">
-            <div class="log-single-icon message-status">
-                <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}">
-            </div>
+        <div class="log-single-details display-none">
+            <span>Some message details with long text and message data, or error details.</span>
         </div>
     </div>`;
     }
@@ -114,7 +120,7 @@ const displayLogItems = function(page) {
 }
 
 //generatePagination function was written by GPT-3.5
-const generatePagination = function() {
+const generatePagination = function () {
     if (logs.length === 0) {
         return document.querySelector('.pagination').style.display = 'none';
     }
@@ -127,7 +133,7 @@ const generatePagination = function() {
     prevButton.textContent = "«";
     prevButton.href = "#";
     if (currentPage === 1) prevButton.className = 'pagination-disabled-button';
-    prevButton.addEventListener("click", function() {
+    prevButton.addEventListener("click", function () {
         if (currentPage > 1) {
             currentPage--;
             displayLogItems(currentPage);
@@ -146,7 +152,7 @@ const generatePagination = function() {
         paginationLink.textContent = i;
         paginationLink.classList.toggle("active", i === currentPage);
 
-        paginationLink.addEventListener("click", function() {
+        paginationLink.addEventListener("click", function () {
             currentPage = i;
             displayLogItems(currentPage);
             generatePagination();
@@ -159,7 +165,7 @@ const generatePagination = function() {
     nextButton.textContent = "»";
     nextButton.href = "#";
     if (currentPage === totalPages) nextButton.className = 'pagination-disabled-button';
-    nextButton.addEventListener("click", function() {
+    nextButton.addEventListener("click", function () {
         if (currentPage < totalPages) {
             currentPage++;
             displayLogItems(currentPage);

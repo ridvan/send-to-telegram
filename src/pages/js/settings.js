@@ -1,4 +1,5 @@
-import { defaultSettings } from "../../options.js";
+import { defaultSettings } from '../../options.js';
+import { getStorageData, setStorageData } from '../../handlers/storage.js';
 
 const selectById = (id) => document.getElementById(id);
 const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);
@@ -116,10 +117,10 @@ const getActiveTabId = () => {
     return Number(document.querySelector('.legacy-tab-input:checked').dataset.targetId);
 }
 
-const getUserSettings = async() => {
-  let options = await chrome.storage.local.get('options');
-  if (Object.keys(options).length === 0) await chrome.storage.local.set({ options: defaultSettings });
-  return await chrome.storage.local.get('options');
+const getUserSettings = async () => {
+  let options = await getStorageData('options');
+  if (Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
+  return await getStorageData('options');
 }
 
 const validateConnectionSettings = () => {
@@ -169,21 +170,21 @@ const validateByTabId = (tabId) => {
     }
 }
 
-const saveSettings = async function(data) {
+const saveSettings = async function (data) {
     const [type, settings] = Object.entries(data)[0];
     if (!['connections', 'actions', 'logs'].includes(type)) return false;
-    const { options } = await getUserSettings();
+    const options = await getUserSettings();
     if (!validateByTabId(getActiveTabId())) return false;
     options[type] = settings;
     try {
-        await chrome.storage.local.set({ options: options });
+        await setStorageData('options', options);
         return { success: true };
     } catch (err) {
         return { success: false, message: err };
     }
 }
 
-const updateSaveButton = function(content, disabled, reset) {
+const updateSaveButton = function (content, disabled, reset) {
     saveButtonSelector.innerHTML = content;
     saveButtonSelector.disabled = disabled;
 
@@ -194,7 +195,7 @@ const updateSaveButton = function(content, disabled, reset) {
     }
 }
 
-const showSaveOperationStatus = function(status) {
+const showSaveOperationStatus = function (status) {
     updateSaveButton('<span class="loader no-button-hover"></span>', true, false);
     const iconUrl = `../assets/icons/phospor-icons/${status.success ? 'check-bold' : 'x'}-ph.svg`;
     setTimeout(function () {
@@ -209,15 +210,15 @@ saveButtonSelector.addEventListener('click', async (event) => {
     )
 });
 
-const removeInvalidInputClass = function() {
+const removeInvalidInputClass = function () {
     this.classList.contains('invalid-input') && this.classList.remove('invalid-input');
 }
 
 tokenInput.addEventListener('click', removeInvalidInputClass);
 chatIdInput.addEventListener('click', removeInvalidInputClass);
 
-const populateSettings = async function() {
-    const { options: { connections: { setup }, actions: { sendMessage, sendImage }, logs: { active, type } } } = await getUserSettings();
+const populateSettings = async function () {
+    const { connections: { setup }, actions: { sendMessage, sendImage }, logs: { active, type } } = await getUserSettings();
 
     // Connections
     const [connection] = Object.values(setup);

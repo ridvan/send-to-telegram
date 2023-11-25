@@ -1,4 +1,5 @@
 import { defaultSettings } from "./options.js";
+import { getStorageData, setStorageData } from "./handlers/storage.js";
 
 //on installation of Chrome extension: create contextMenuItem
 chrome.runtime.onInstalled.addListener(async () => {
@@ -11,9 +12,8 @@ chrome.runtime.onInstalled.addListener(async () => {
         })
     );
     //Set default settings if not set
-    const options = await chrome.storage.local.get('options');
-    if (Object.keys(options).length === 0) await chrome.storage.local.set({ options: defaultSettings });
-    console.log('onInstalled');
+    const options = await getStorageData('options');
+    if (Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
 });
 
 const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
@@ -21,7 +21,7 @@ const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
 const getCurrentTab = async () => await chrome.tabs.query({active: true, currentWindow: true});
 
 //add listener for click on self defined menu item
-chrome.contextMenus.onClicked.addListener(async function(clickData){
+chrome.contextMenus.onClicked.addListener(async function (clickData){
     if (clickData.menuItemId === "stt-sendSelection" && clickData.selectionText) {
         const selectedContent = await getSelectedText();
         await sendMessage(selectedContent, 'text');
@@ -39,14 +39,14 @@ chrome.contextMenus.onClicked.addListener(async function(clickData){
     if (clickData.menuItemId === "stt-sendImage" && clickData.mediaType === 'image' && clickData.srcUrl) {
         const [currentTab] = await getCurrentTab();
         const selectedContent = {srcUrl: clickData.srcUrl, tabUrl: currentTab.url};
-        const options = await getStorageDataByKey('options');
+        const options = await getStorageData('options');
         await sendMessage(selectedContent, options.actions.sendImage.sendAs);
     }
 });
 
 chrome.runtime.onMessage.addListener(async request => {
     if (request.message === 'getConnectionStatus') {
-        const options = await getStorageDataByKey('options');
+        const options = await getStorageData('options');
         const getMe = await fetchAPI(buildRequestURL('me', options), buildPostData('me', {}, options));
         await chrome.runtime.sendMessage({
             message: "returnConnectionStatus",
@@ -75,15 +75,6 @@ const getSelectedText = async function () {
     return { text: result, tabUrl: currentTab.url };
 }
 
-async function getAllStorageData(key) {
-    return await chrome.storage.local.get();
-}
-
-const getStorageDataByKey = async function(key) {
-    const value = await chrome.storage.local.get([key]);
-    return { ...value.options };
-}
-
 //Function to check if given URL is valid
 //Author @Pavlo https://stackoverflow.com/a/43467144
 const isValidURL = function (string) {
@@ -97,7 +88,7 @@ const isValidURL = function (string) {
 }
 
 // See if this scalable
-const getMessageType = function(type) {
+const getMessageType = function (type) {
     switch (type) {
         case 'text':
         case 'link':
@@ -137,7 +128,7 @@ const buildContentByType = function (type, content) {
 
 }
 
-const buildPostData = function(type, content, options) {
+const buildPostData = function (type, content, options) {
 
     if (!['text', 'photo', 'document', 'link', 'page', 'me'].includes(type)) return false;
 
@@ -164,7 +155,7 @@ const buildPostData = function(type, content, options) {
     return parameters;
 }
 
-const fetchAPI = async function(url, postData) {
+const fetchAPI = async function (url, postData) {
     const options = {
         method: 'POST',
         headers: {
@@ -177,7 +168,7 @@ const fetchAPI = async function(url, postData) {
 }
 
 const handleAPIResponse = async function (data) {
-    await chrome.storage.local.set({'lastAPIResponse': data});
+    await setStorageData('lastAPIResponse', data);
     if (data.ok) return true;
     else {
         throw({
@@ -190,19 +181,19 @@ const handleAPIResponse = async function (data) {
 }
 
 const registerLog = async function (content, response, type) {
-    let {messageLogs: logs} = await chrome.storage.local.get('messageLogs');
-    let {totalMessageCount: total } = await chrome.storage.local.get('totalMessageCount');
+    let logs = await getStorageData('messageLogs');
+    let total = await getStorageData('totalMessageCount');
     if (!logs) {
-        await chrome.storage.local.set({ 'messageLogs': [] });
+        await setStorageData('messageLogs', []);
         logs = [];
     }
     if (!total) {
-        await chrome.storage.local.set({ 'totalMessageCount': 0 });
+        await setStorageData('totalMessageCount', 0);
         total = 0;
     }
     logs.unshift(buildLogObject(content, response, type));
-    await chrome.storage.local.set({ 'messageLogs': logs });
-    await chrome.storage.local.set({ 'totalMessageCount': total + 1 });
+    await setStorageData('messageLogs', logs);
+    await setStorageData('totalMessageCount', total + 1);
 }
 
 const buildLogObject = function (content, response, type) {
@@ -238,7 +229,7 @@ const sendMessage = async function (content, type) {
             throw new Error('sendMessage parameters are not valid!');
         }
         // Build the request parameters and message object
-        const options = await getStorageDataByKey('options');
+        const options = await getStorageData('options');
         const requestURL = buildRequestURL(type, options);
         const requestParameters = buildPostData(type, content, options);
         // Send the request to Telegram Bot API
@@ -250,13 +241,10 @@ const sendMessage = async function (content, type) {
         console.error('Error while sending the message: ', error);
     } finally {
         // Read the API response and then clear its value
-        const { lastAPIResponse: apiResponse } = await chrome.storage.local.get('lastAPIResponse');
-        await chrome.storage.local.set({'lastAPIResponse': ''});
+        const apiResponse = await getStorageData('lastAPIResponse');
+        await setStorageData('lastAPIResponse', {});
         // Show status badge on the extension's icon and register the message log
         await handleBadgeText(apiResponse.ok);
         await registerLog(content, apiResponse, type);
     }
 }
-
-// const getBotStatus = await fetchAPI(buildRequestURL('me', options), {});
-// console.log(getBotStatus);

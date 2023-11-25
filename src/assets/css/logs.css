@@ -22,13 +22,29 @@ body {
 .log-single {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    height: 40px;
+    justify-content: flex-start;
+    flex-direction: column;
+    padding-top: 3px;
+    height: 35px;
     border: 1px solid #00000017;
     border-radius: 5px;
     background: linear-gradient(90deg, aliceblue 0%, rgb(39 167 231 / 3%) 100%);
     animation: gradient 5s cubic-bezier(0.4, 0, 1, 1) infinite;
     transition: height 950ms ease 50ms;
+}
+
+.log-single-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.log-single-details {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 20px 0px 25px;
+    border-top: 1px solid lightgray;
 }
 
 .log-single.log-single-active {
