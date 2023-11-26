@@ -144,7 +144,7 @@ const generatePagination = function () {
 
     // Calculate the range of visible page numbers (limit to 5)
     let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(startPage + 4, totalPages);
+    let endPage = Math.min(startPage + (totalPages - currentPage > 2 ? 3 : 4), totalPages);
 
     for (let i = startPage; i <= endPage; i++) {
         const paginationLink = document.createElement("a");
@@ -159,6 +159,24 @@ const generatePagination = function () {
         });
 
         paginationContainer.appendChild(paginationLink);
+    }
+
+    // Add "..." and last page button if necessary
+    if (endPage < totalPages && totalPages - currentPage > 2) {
+        const ellipsis = document.createElement("a");
+        ellipsis.href = "#";
+        ellipsis.textContent = "..";
+        paginationContainer.appendChild(ellipsis);
+
+        const lastPageButton = document.createElement("a");
+        lastPageButton.href = "#";
+        lastPageButton.textContent = totalPages;
+        lastPageButton.addEventListener("click", function () {
+            currentPage = totalPages;
+            displayLogItems(currentPage);
+            generatePagination();
+        });
+        paginationContainer.appendChild(lastPageButton);
     }
 
     const nextButton = document.createElement("a");
