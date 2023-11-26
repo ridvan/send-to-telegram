@@ -27,11 +27,11 @@ const uppercaseFirstLetter = (str) => {
 
 const getLastMessageByStatus = async status => {
     const logs = await getStorageData('messageLogs');
-    const firstOfType = logs.find(log => log.status === status);
+    const firstOfType = logs && logs.find(log => log.status === status);
     if (firstOfType) {
         return `&bull; ${uppercaseFirstLetter(firstOfType.type)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
     } else {
-        return `&bull; none yet 👀`;
+        return `&bull; no messages yet 🕰️`;
     }
 }
 

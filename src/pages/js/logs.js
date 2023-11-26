@@ -1,5 +1,5 @@
 import { timestampToReadableDate } from '../../utils.js';
-import { getStorageData } from '../../handlers/storage.js';
+import { getStorageData, setStorageData } from '../../handlers/storage.js';
 
 const getLogTypeIcon = function (type) {
     if(!['text', 'photo', 'page', 'link', 'noLogs'].includes(type)) return false;
@@ -27,9 +27,9 @@ const getStatusIcon = function (status) {
 }
 
 const getLogsFromStorage = async function () {
-    let logs = getStorageData('messageLogs');
+    let logs = await getStorageData('messageLogs');
     if (!logs) {
-        await getStorageData('messageLogs', []);
+        await setStorageData('messageLogs', []);
         logs = [];
     }
     return logs;

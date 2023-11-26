@@ -13,7 +13,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     );
     //Set default settings if not set
     const options = await getStorageData('options');
-    if (Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
+    if (!options || Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
 });
 
 const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
