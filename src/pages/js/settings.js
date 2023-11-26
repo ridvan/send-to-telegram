@@ -199,7 +199,7 @@ const showSaveOperationStatus = function (status) {
     updateSaveButton('<span class="loader no-button-hover"></span>', true, false);
     const iconUrl = `../assets/icons/phospor-icons/${status.success ? 'check-bold' : 'x'}-ph.svg`;
     setTimeout(function () {
-        updateSaveButton(`<img class="no-button-hover" src="${iconUrl}" height="26" width="26">`, true, 500);
+        updateSaveButton(`<img class="no-button-hover" src="${iconUrl}" height="26" width="26" role="status" alt="Settings are ${status.success ? 'saved' : 'not saved'}">`, true, 500);
     }, 500);
 }
 
@@ -241,3 +241,19 @@ const populateSettings = async function () {
 }
 
 document.addEventListener('DOMContentLoaded', populateSettings);
+
+const handleActiveTab = function () {
+    const activeTabId = getActiveTabId();
+    const otherTabIds = [...document.querySelectorAll('[data-target-id]')]
+        .map(element => Number(element.dataset.targetId))
+        .filter(id => id !== activeTabId);
+    document.querySelector(`#settings-tab-content-${activeTabId}`).style.display = 'block';
+    otherTabIds.forEach(tab => document.querySelector(`#settings-tab-content-${tab}`).style.display = 'none');
+};
+
+[...document.querySelectorAll('.settings-tab-label')].forEach(element => {
+   element.addEventListener('click', function () {
+       document.querySelector(`#settings-tab-selector-${this.dataset.btnId}`).checked = true;
+       handleActiveTab();
+   });
+});

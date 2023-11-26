@@ -4,7 +4,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 
 */
 
-.form-section {
+.form-section:not(:first-child) {
     display: none;
 }
 
@@ -30,11 +30,11 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     user-select: none; */
 }
 
-.settings-tab-label[for*='1'] {
+.settings-tab-label[data-btn-id="1"] {
     margin-left: 23px;
 }
 
-.settings-tab-label[for*='2'] {
+.settings-tab-label[data-btn-id="2"] {
     margin-left: 2px;
     margin-right: 1px;
 }
@@ -42,6 +42,10 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 .settings-tab-label:hover {
     color: #888;
     cursor: pointer;
+}
+
+.tab-buttons button {
+    background: transparent;
 }
 
 .legacy-tab-input:checked + .settings-tab-label {
@@ -74,12 +78,6 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     100% {
         width: 100%;
     }
-}
-
-#settings-tab-selector-1:checked ~ #settings-tab-content-1,
-#settings-tab-selector-2:checked ~ #settings-tab-content-2,
-#settings-tab-selector-3:checked ~ #settings-tab-content-3 {
-    display: block;
 }
 
 .tabs-container {
