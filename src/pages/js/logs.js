@@ -1,5 +1,6 @@
 import { timestampToReadableDate } from '../../utils.js';
 import { getStorageData, setStorageData } from '../../handlers/storage.js';
+import { messageTypes } from "../../options.js";
 
 const getLogTypeIcon = function (type) {
     if(!['text', 'photo', 'page', 'link', 'noLogs'].includes(type)) return false;
@@ -40,7 +41,7 @@ const itemsPerPage = 5;
 let currentPage = 1;
 
 const toggleAfterDelay = (type, element, delay) => {
-    if (!['display-none', 'log-single-active'].includes(type)) return;
+    if (!['display-none', 'log-single-active', 'log-single-details'].includes(type)) return;
     setTimeout(() => {
         element.classList.toggle(type);
         if (type === 'display-none') element.removeAttribute('style');
@@ -62,6 +63,46 @@ const toggleExpandByIndex = (index) => {
     })
 };
 
+const getTextContentByType = (type, content) => {
+    switch (type) {
+        case 'text':
+            return content.text;
+        case 'link':
+            return content.linkUrl;
+        case 'page':
+            return content.pageUrl;
+        default:
+            return false;
+    }
+}
+
+const getLogDetailsByType = function (log, type, content) {
+    if (!messageTypes.includes(type)) return;
+    let html = '';
+    switch (type) {
+        case 'text':
+            html += `<textarea class="details-container" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
+            break;
+        case 'page':
+        case 'link':
+            html += `<div class="details-container">
+                        <div class="details-link-container">
+                            <span>Link: </span><a target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
+                        </div>`;
+            if (type === 'link') {
+                html += `<div class="details-link-container">
+                            <span>Source: </span><a target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
+                        </div>`;
+            }
+            html += `</div>`;
+            break;
+        case 'photo':
+            html += `<img loading="lazy" class="details-container" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}">`;
+            break;
+    }
+    return html;
+}
+
 const displayLogItems = function (page) {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -79,7 +120,7 @@ const displayLogItems = function (page) {
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
         const { type, content, timestamp, status} = logs[i];
 
-        logsHTML += `<div data-log-index="${i - ((page - 1) * itemsPerPage)}" class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
+        logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
         <div class="log-single-heading">
             <div class="log-single-cell">
                 <div class="log-single-icon">
@@ -101,19 +142,27 @@ const displayLogItems = function (page) {
                 <div class="log-single-icon message-status">
                     <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}">
                 </div>
+            </div>
+            <div class="log-single-cell">
+                <div class="log-single-icon">
+                    <i id="token-eye" class="expand-logs eyes-open" data-log-index="${i - ((page - 1) * itemsPerPage)}" data-log-type="${type}" data-expand="false"></i>
+                </div>
             </div> 
         </div>
-        <div class="log-single-details display-none">
-            <span>Some message details with long text and message data, or error details.</span>
+        <div class="log-single-details display-none" data-details-index="${i - ((page - 1) * itemsPerPage)}">
+            ${getLogDetailsByType(logs[i], type, content)}
         </div>
     </div>`;
     }
 
     logsContainer.innerHTML = logsHTML;
 
-    document.querySelectorAll('.log-single').forEach(singleRow => {
-        singleRow.addEventListener('click', () => {
+    document.querySelectorAll('.expand-logs').forEach(singleRow => {
+        singleRow.addEventListener('click', async () => {
             const elementIndex = Number(singleRow.dataset.logIndex);
+            const detailsContainer = document.querySelector(`[data-details-index="${elementIndex}"]`);
+            singleRow.classList.toggle('eyes-wide-shut');
+            toggleAfterDelay('display-none', detailsContainer, 350);
             toggleExpandByIndex(elementIndex);
         });
     });
