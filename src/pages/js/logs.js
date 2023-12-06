@@ -81,17 +81,17 @@ const getLogDetailsByType = function (log, type, content) {
     let html = '';
     switch (type) {
         case 'text':
-            html += `<textarea class="details-container" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
+            html += `<textarea aria-label="The text that was sent to Telegram" class="details-container" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
             break;
         case 'page':
         case 'link':
             html += `<div class="details-container">
                         <div class="details-link-container">
-                            <span>Link: </span><a target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
+                            <span>Link: </span><a aria-label="The link that was sent to Telegram" target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
                         </div>`;
             if (type === 'link') {
                 html += `<div class="details-link-container">
-                            <span>Source: </span><a target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
+                            <span>Source: </span><a aria-label="Source of the link" target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
                         </div>`;
             }
             html += `</div>`;
@@ -122,30 +122,30 @@ const displayLogItems = function (page) {
 
         logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
         <div class="log-single-heading">
-            <div class="log-single-cell">
+            <div class="log-single-cell" aria-label="Message type">
                 <div class="log-single-icon">
-                    <img src="${getLogTypeIcon(type)}" width="25">
+                    <img src="${getLogTypeIcon(type)}" width="25" alt="${type + ' icon'}" tabindex="0">
                 </div>
                 <div class="message-info">
-                    <span class="message-type-text">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    <span class="message-type-text" tabindex="0">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
                 </div>
             </div>
-            <div class="log-single-cell">
+            <div class="log-single-cell" aria-label="Message date">
                 <div class="log-single-icon">
-                    <img src="../../assets/icons/phospor-icons/calendar-blank-ph.svg" width="21">
+                    <img src="../../assets/icons/phospor-icons/calendar-blank-ph.svg" width="21" alt="Calendar icon">
                 </div>
                 <div class="message-date">
-                    <span class="message-date-text">${timestampToReadableDate(timestamp)}</span>
+                    <span class="message-date-text" tabindex="0">${timestampToReadableDate(timestamp)}</span>
                 </div>
             </div>
-            <div class="log-single-cell">
+            <div class="log-single-cell" aria-label="Message status">
                 <div class="log-single-icon message-status">
-                    <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}">
+                    <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}" alt="${status}" tabindex="0">
                 </div>
             </div>
             <div class="log-single-cell">
                 <div class="log-single-icon">
-                    <i id="token-eye" class="expand-logs eyes-open" data-log-index="${i - ((page - 1) * itemsPerPage)}" data-log-type="${type}" data-expand="false"></i>
+                    <i id="token-eye" class="expand-logs eyes-open" data-log-index="${i - ((page - 1) * itemsPerPage)}" data-log-type="${type}" data-expand="false" role="button" aria-label="Open log details" tabindex="0"></i>
                 </div>
             </div> 
         </div>
@@ -164,6 +164,18 @@ const displayLogItems = function (page) {
             singleRow.classList.toggle('eyes-wide-shut');
             toggleAfterDelay('display-none', detailsContainer, 350);
             toggleExpandByIndex(elementIndex);
+            if (singleRow.getAttribute('aria-label') === 'Open log details') {
+                singleRow.setAttribute('aria-label', 'Return to logs page');
+            } else {
+                singleRow.setAttribute('aria-label', 'Open log details');
+            }
+        });
+        singleRow.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                // Trigger a click event on the icon
+                console.log(event);
+                singleRow.click();
+            }
         });
     });
 }
@@ -176,13 +188,9 @@ const generatePagination = function () {
 
     const totalPages = Math.ceil(logs.length / itemsPerPage);
     const paginationContainer = document.querySelector('.pagination');
-    paginationContainer.innerHTML = "";
+    paginationContainer.innerHTML = '';
 
-    const prevButton = document.createElement("a");
-    prevButton.textContent = "«";
-    prevButton.href = "#";
-    if (currentPage === 1) prevButton.className = 'pagination-disabled-button';
-    prevButton.addEventListener("click", function () {
+    const prevButton = createPaginationButton('«', currentPage > 1, function () {
         if (currentPage > 1) {
             currentPage--;
             displayLogItems(currentPage);
@@ -196,31 +204,25 @@ const generatePagination = function () {
     let endPage = Math.min(startPage + (totalPages - currentPage > 2 ? 3 : 4), totalPages);
 
     for (let i = startPage; i <= endPage; i++) {
-        const paginationLink = document.createElement("a");
-        paginationLink.href = "#";
-        paginationLink.textContent = i;
-        paginationLink.classList.toggle("active", i === currentPage);
-
-        paginationLink.addEventListener("click", function () {
+        const paginationLink = createPaginationButton(i, i !== currentPage, function () {
             currentPage = i;
             displayLogItems(currentPage);
             generatePagination();
         });
+
+        if (i === currentPage) {
+            paginationLink.setAttribute('aria-current', 'page');
+            paginationLink.classList.toggle("active", i === currentPage);
+        }
 
         paginationContainer.appendChild(paginationLink);
     }
 
     // Add "..." and last page button if necessary
     if (endPage < totalPages && totalPages - currentPage > 2) {
-        const ellipsis = document.createElement("a");
-        ellipsis.href = "#";
-        ellipsis.textContent = "..";
-        paginationContainer.appendChild(ellipsis);
+        paginationContainer.appendChild(createPaginationEllipsis());
 
-        const lastPageButton = document.createElement("a");
-        lastPageButton.href = "#";
-        lastPageButton.textContent = totalPages;
-        lastPageButton.addEventListener("click", function () {
+        const lastPageButton = createPaginationButton(totalPages, true, function () {
             currentPage = totalPages;
             displayLogItems(currentPage);
             generatePagination();
@@ -228,11 +230,7 @@ const generatePagination = function () {
         paginationContainer.appendChild(lastPageButton);
     }
 
-    const nextButton = document.createElement("a");
-    nextButton.textContent = "»";
-    nextButton.href = "#";
-    if (currentPage === totalPages) nextButton.className = 'pagination-disabled-button';
-    nextButton.addEventListener("click", function () {
+    const nextButton = createPaginationButton('»', currentPage < totalPages, function () {
         if (currentPage < totalPages) {
             currentPage++;
             displayLogItems(currentPage);
@@ -240,6 +238,33 @@ const generatePagination = function () {
         }
     });
     paginationContainer.appendChild(nextButton);
+}
+
+const createPaginationButton = function (label, isEnabled, clickHandler) {
+    const button = document.createElement('a');
+    button.href = '#';
+    button.textContent = label;
+    button.setAttribute('role', 'button');
+    const symbolMap = { '«': 'previous', '»': 'next' };
+    const modifiedLabel = Object.keys(symbolMap).includes(label) ? symbolMap[label] : `${label}.`;
+    button.setAttribute('aria-label', `${isEnabled ? 'Go to' : ''} ${modifiedLabel} page`);
+    button.setAttribute('aria-disabled', `${!isEnabled}`);
+    button.className = isEnabled ? '' : 'pagination-disabled-button';
+    button.addEventListener('click', clickHandler);
+    if (isEnabled) {
+        button.addEventListener('click', function () {
+            document.querySelector('[aria-label="Message type"]:nth-child(1)').focus();
+        });
+    }
+    return button;
+}
+
+const createPaginationEllipsis = function () {
+    const ellipsis = document.createElement('a');
+    ellipsis.href = '#';
+    ellipsis.textContent = '..';
+    ellipsis.setAttribute('aria-hidden', 'true');
+    return ellipsis;
 }
 
 displayLogItems(currentPage);

@@ -249,3 +249,11 @@ img.details-container {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.5) rgba(255, 255, 255, 0);
 }
+
+nav.pagination {
+    margin: 12px 20px 15px 20px;
+}
+
+.pagination-disabled-button[aria-current="page"] {
+    color: black !important;
+}
