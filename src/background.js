@@ -183,30 +183,39 @@ const handleAPIResponse = async function (data) {
 const registerLog = async function (content, response, type) {
     let logs = await getStorageData('messageLogs');
     let total = await getStorageData('totalMessageCount');
-    if (!logs) {
-        await setStorageData('messageLogs', []);
-        logs = [];
+    const options = await getStorageData('options');
+    if (options.logs.active) {
+        if (!logs) {
+            await setStorageData('messageLogs', []);
+            logs = [];
+        }
+        if (!total) {
+            await setStorageData('totalMessageCount', 0);
+            total = 0;
+        }
+        logs.unshift(buildLogObject(content, response, type, options));
+        await setStorageData('messageLogs', logs);
     }
-    if (!total) {
-        await setStorageData('totalMessageCount', 0);
-        total = 0;
-    }
-    logs.unshift(buildLogObject(content, response, type));
-    await setStorageData('messageLogs', logs);
     await setStorageData('totalMessageCount', total + 1);
 }
 
-const buildLogObject = function (content, response, type) {
-    console.log(response);
+const buildLogObject = function (content, response, type, options) {
     if (!response.ok) {
         return { type: type, content: content, timestamp: Date.now(), status: 'fail' };
-    } else {
+    }
+    else if (options.logs.type === 'timestamp') {
+        return {type: type, content: false, timestamp: Date.now(), status: 'success'};
+    }
+    else if (options.logs.type === 'everything') {
         const contentObject = ['photo', 'document'].includes(type) ? {
             ...content,
             fileID: response.result[type][0]['file_id'],
             uniqueID: response.result[type][0]['file_unique_id']
         } : content;
         return {type: type, content: contentObject, timestamp: Date.now(), status: 'success'};
+    }
+    else {
+        return false;
     }
 }
 
