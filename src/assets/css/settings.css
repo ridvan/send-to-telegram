@@ -23,7 +23,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     font-size: 14.5px;
     font-weight: 600;
     text-align: center;
-    color: #bbb;
+    color: #757575;
     border: 1px solid transparent;
     /* -webkit-user-select: none;
     -ms-user-select: none;
@@ -40,7 +40,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 }
 
 .settings-tab-label:hover {
-    color: #888;
+    color: #3c3c3c;
     cursor: pointer;
 }
 

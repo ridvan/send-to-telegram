@@ -6,8 +6,8 @@ const removeExtensionBadge = async () => {
 }
 
 const highlightLogsButton = () => {
-    const logsButton = document.querySelector('.logs.tooltip');
-    const logsTooltipText = document.querySelector('.logs .tooltiptext');
+    const logsButton = document.querySelector('.nav-logs-btn.tooltip');
+    const logsTooltipText = document.querySelector('.nav-logs-btn .tooltiptext');
     logsButton.style.backgroundColor = '#8b000024';
     logsTooltipText.style.visibility = 'visible';
     logsTooltipText.style.opacity = '1';
