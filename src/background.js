@@ -1,47 +1,46 @@
-import { defaultSettings } from "./options.js";
+import { defaultSettings, messageTypes } from "./options.js";
 import { getStorageData, setStorageData } from "./handlers/storage.js";
 
-//on installation of Chrome extension: create contextMenuItem
+//Add context menu items and set default settings on install
+const contextTypes = ['text', 'link', 'page', 'image'];
 chrome.runtime.onInstalled.addListener(async () => {
-  //Create context menu items
-    ['selection', 'image', 'link', 'page'].map(type =>
+    contextTypes.forEach(type =>
         chrome.contextMenus.create({
-            id: `stt-send${type[0].toUpperCase() + type.slice(1)}`,
-            title: `Send this ${type === 'selection' ? 'text' : type} to Telegram`,
-            contexts: [type]
+            id: type,
+            title: `Send this ${type} to Telegram`,
+            contexts: [type === 'text' ? 'selection' : type]
         })
     );
     //Set default settings if not set
     const options = await getStorageData('options');
     if (!options || Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
 });
-
-const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
-
 const getCurrentTab = async () => await chrome.tabs.query({active: true, currentWindow: true});
 
+const contextMenuHandler = async (click) => {
+    const [{ url: tabUrl }] = await getCurrentTab();
+    switch (click.menuItemId) {
+        case 'text':
+            return await getSelectedText();
+        case 'link':
+            return { linkUrl: click.linkUrl, tabUrl };
+        case 'page':
+            return { pageUrl: tabUrl, tabUrl };
+        case 'image':
+            return { srcUrl: click.srcUrl, tabUrl };
+        default:
+            return false;
+    }
+}
+
 //add listener for click on self defined menu item
-chrome.contextMenus.onClicked.addListener(async function (clickData){
-    if (clickData.menuItemId === "stt-sendSelection" && clickData.selectionText) {
-        const selectedContent = await getSelectedText();
-        await sendMessage(selectedContent, 'text');
-    }
-    if (clickData.menuItemId === "stt-sendLink" && clickData.linkUrl) {
-        const [currentTab] = await getCurrentTab();
-        const selectedContent = {linkUrl: clickData.linkUrl, tabUrl: currentTab.url};
-        await sendMessage(selectedContent, 'link');
-    }
-    if (clickData.menuItemId === "stt-sendPage") {
-        const [currentTab] = await getCurrentTab();
-        const selectedContent = {pageUrl: currentTab.url, tabUrl: currentTab.url};
-        await sendMessage(selectedContent, 'page');
-    }
-    if (clickData.menuItemId === "stt-sendImage" && clickData.mediaType === 'image' && clickData.srcUrl) {
-        const [currentTab] = await getCurrentTab();
-        const selectedContent = {srcUrl: clickData.srcUrl, tabUrl: currentTab.url};
-        const options = await getStorageData('options');
-        await sendMessage(selectedContent, options.actions.sendImage.sendAs);
-    }
+chrome.contextMenus.onClicked.addListener(async click => {
+    if (!contextTypes.includes(click.menuItemId)) return false;
+
+    const options = await getStorageData('options');
+    const messageType = click.menuItemId !== 'image' ? click.menuItemId : options.actions.sendImage.sendAs;
+    const messageData = await contextMenuHandler(click);
+    await sendMessage(messageData, messageType);
 });
 
 chrome.runtime.onMessage.addListener(async request => {
@@ -130,7 +129,7 @@ const buildContentByType = function (type, content) {
 
 const buildPostData = function (type, content, options) {
 
-    if (!['text', 'photo', 'document', 'link', 'page', 'me'].includes(type)) return false;
+    if (!messageTypes.includes(type)) return false;
 
     if (type === 'me') return {};
 
@@ -164,7 +163,6 @@ const fetchAPI = async function (url, postData) {
         body: postData ? JSON.stringify(postData) : undefined
     };
     return await fetch(url, options);
-    // return await responseData.json();
 }
 
 const handleAPIResponse = async function (data) {
@@ -177,7 +175,6 @@ const handleAPIResponse = async function (data) {
             stackTrace: new Error()
         });
     }
-    // last failed message?
 }
 
 const registerLog = async function (content, response, type) {
@@ -196,10 +193,13 @@ const registerLog = async function (content, response, type) {
         logs.unshift(buildLogObject(content, response, type, options));
         await setStorageData('messageLogs', logs);
     }
-    await setStorageData('totalMessageCount', total + 1);
+    if (response.ok) {
+        await setStorageData('totalMessageCount', total + 1);
+    }
 }
 
 const buildLogObject = function (content, response, type, options) {
+    console.log(response);
     if (!response.ok) {
         return { type: type, content: content, timestamp: Date.now(), status: 'fail' };
     }
