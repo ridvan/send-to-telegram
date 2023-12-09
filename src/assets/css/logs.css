@@ -54,6 +54,15 @@ body {
     width: 94%;
     height: 100%;
     max-height: 200px;
+    align-items: center;
+}
+
+.log-single-details:has(textarea) {
+    align-items: flex-start !important;
+}
+
+.log-single-details:has(textarea) .details-container {
+    height: 100% !important;
 }
 
 .log-single.log-single-active {
@@ -185,7 +194,7 @@ body {
 .log-single-details .details-container {
     resize: none;
     background: transparent;
-    height: 100%;
+    height: auto;
     max-height: 173px;
     padding: 5px 5px 5px 5px;
     border-radius: 5px;

@@ -3,11 +3,12 @@ import { getStorageData, setStorageData } from '../../handlers/storage.js';
 import { messageTypes } from "../../options.js";
 
 const getLogTypeIcon = function (type) {
-    if(!['text', 'photo', 'page', 'link', 'noLogs'].includes(type)) return false;
+    if(!['text', 'photo', 'document', 'page', 'link', 'noLogs'].includes(type)) return false;
 
     const iconMap = {
         'text': 'text-aa',
         'photo': 'image',
+        'document': 'image',
         'page': 'article',
         'link': 'link-simple',
         'noLogs': 'paper-plane-tilt-duotone'
@@ -120,6 +121,7 @@ const displayLogItems = function (page) {
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
         const { type, content, timestamp, status} = logs[i];
 
+        const modifiedType = type === 'document' ? 'photo' : type;
         logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
         <div class="log-single-heading">
             <div class="log-single-cell" aria-label="Message type">
@@ -127,7 +129,7 @@ const displayLogItems = function (page) {
                     <img src="${getLogTypeIcon(type)}" width="25" alt="${type + ' icon'}" tabindex="0">
                 </div>
                 <div class="message-info">
-                    <span class="message-type-text" tabindex="0">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    <span class="message-type-text" tabindex="0">${modifiedType.charAt(0).toUpperCase() + modifiedType.slice(1)}</span>
                 </div>
             </div>
             <div class="log-single-cell" aria-label="Message date">
