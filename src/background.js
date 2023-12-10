@@ -57,7 +57,6 @@ chrome.runtime.onMessage.addListener(async request => {
 //to get a string which supports line breaks, use script execution on the page
 const getSelectedText = async function () {
     const [currentTab] = await getCurrentTab();
-    console.log(currentTab);
     let result;
     try {
         [{result}] = await chrome.scripting.executeScript({
@@ -130,20 +129,21 @@ const buildContentByType = function (type, content) {
 const buildPostData = function (type, content, options) {
 
     if (!messageTypes.includes(type)) return false;
-
     if (type === 'me') return {};
 
     const parameters = {
         chat_id: options.connections.setup[options.connections.use].chatId,
-        disable_notification: true,
-        disable_web_page_preview: true
-        // markdown + spoiler
     };
+
+    const typeKey = `send${['photo', 'document'].includes(type) ? 'Image' : 'Message'}`;
+    parameters.disable_notification = options.actions[typeKey].disableNotificationSound;
+    parameters.disable_web_page_preview = options.actions[typeKey].disablePreview;
+    const addSourceLink = options.actions[typeKey].addSourceLink;
 
     const userContent = buildContentByType(type, content);
     parameters[userContent['type']] = userContent['content'];
 
-    if (isValidURL(content.tabUrl) && type !== 'page') {
+    if (addSourceLink && isValidURL(content.tabUrl) && type !== 'page') {
         parameters.reply_markup = {
             inline_keyboard: [
                 [{ text: 'Source', url: content.tabUrl }]
@@ -204,15 +204,15 @@ const buildLogObject = function (content, response, type, options) {
         return { type: type, content: content, timestamp: Date.now(), status: 'fail' };
     }
     else if (options.logs.type === 'timestamp') {
-        return {type: type, content: false, timestamp: Date.now(), status: 'success'};
+        return { type: type, content: false, timestamp: Date.now(), status: 'success' };
     }
     else if (options.logs.type === 'everything') {
         const contentObject = ['photo', 'document'].includes(type) ? {
             ...content,
-            fileID: response.result[type][0]['file_id'],
-            uniqueID: response.result[type][0]['file_unique_id']
+            fileID: type === 'photo' ? response.result[type][0]['file_id'] : response.result[type]['file_id'],
+            uniqueID: type === 'photo' ? response.result[type][0]['file_unique_id'] : response.result[type]['file_unique_id']
         } : content;
-        return {type: type, content: contentObject, timestamp: Date.now(), status: 'success'};
+        return { type: type, content: contentObject, timestamp: Date.now(), status: 'success' };
     }
     else {
         return false;
