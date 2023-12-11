@@ -18,10 +18,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 const getCurrentTab = async () => await chrome.tabs.query({active: true, currentWindow: true});
 
 const contextMenuHandler = async (click) => {
-    const [{ url: tabUrl }] = await getCurrentTab();
+    const [{ url: tabUrl, id: tabId }] = await getCurrentTab();
     switch (click.menuItemId) {
         case 'text':
-            return await getSelectedText();
+            return await getSelectedText(click, tabId, tabUrl);
         case 'link':
             return { linkUrl: click.linkUrl, tabUrl };
         case 'page':
@@ -54,23 +54,19 @@ chrome.runtime.onMessage.addListener(async request => {
     }
 });
 
-//to get a string which supports line breaks, use script execution on the page
-const getSelectedText = async function () {
-    const [currentTab] = await getCurrentTab();
+//Get selected text from the page, including iframes
+const getSelectedText = async function (contextEvent, tabId, tabUrl) {
     let result;
     try {
         [{result}] = await chrome.scripting.executeScript({
-            target: {tabId: currentTab.id},
+            target: { tabId, frameIds: [contextEvent?.frameId] },
             function: () => getSelection().toString()
-            // validating the string can be vital
-            // calculate the length (consider the reply markups)
         });
     } catch (e) {
         console.log(e);
         return; // ignoring an unsupported page like chrome://extensions
     }
-    //document.body.append('Selection: ' + result);
-    return { text: result, tabUrl: currentTab.url };
+    return { text: result, tabUrl };
 }
 
 //Function to check if given URL is valid
@@ -199,7 +195,6 @@ const registerLog = async function (content, response, type) {
 }
 
 const buildLogObject = function (content, response, type, options) {
-    console.log(response);
     if (!response.ok) {
         return { type: type, content: content, timestamp: Date.now(), status: 'fail' };
     }
