@@ -80,6 +80,14 @@ const getTextContentByType = (type, content) => {
 const getLogDetailsByType = function (log, type, content) {
     if (!messageTypes.includes(type)) return;
     let html = '';
+    if (log?.errorLog?.ok === false) {
+        html += `<div class="details-container">
+                    <div class="details-link-container">
+                        <span>Error: </span><span>${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
+                    </div>
+                </div>`;
+        return html;
+    }
     switch (type) {
         case 'text':
             html += `<textarea aria-label="The text that was sent to Telegram" class="details-container" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
@@ -98,6 +106,7 @@ const getLogDetailsByType = function (log, type, content) {
             html += `</div>`;
             break;
         case 'photo':
+        case 'document':
             html += `<img loading="lazy" class="details-container" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}">`;
             break;
     }
