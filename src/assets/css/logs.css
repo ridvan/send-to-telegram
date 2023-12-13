@@ -9,6 +9,7 @@ body {
 .logs-section {
     display: flex;
     flex-direction: column;
+    gap: 12px;
     font-size: 13px;
     margin: 20px 20px 20px 20px;
 }
@@ -21,10 +22,6 @@ body {
 .log-single-cell:last-child {
     margin-right: 7px;
 }
-
-/*.log-single-cell:first-child {*/
-/*    margin-left: 5px;*/
-/*}*/
 
 .log-single {
     display: flex;
@@ -49,6 +46,7 @@ body {
 .log-single-details {
     display: inline-flex;
     align-items: flex-start;
+    flex-direction: column;
     justify-content: center;
     padding: 10px 40px 10px 40px;
     width: 94%;
@@ -63,14 +61,6 @@ body {
 
 .log-single-details:has(textarea) .details-container {
     height: 100% !important;
-}
-
-.log-single.log-single-active {
-    /* will be updated */
-}
-
-.log-single:not(:last-child) {
-    margin-bottom: 12px;
 }
 
 .log-single-icon {
@@ -158,6 +148,14 @@ body {
     height: 245px;
 }
 
+.show-single-row:has(img) {
+    height: 255px;
+}
+
+img.details-container {
+    margin-top: 5px;
+}
+
 .display-none {
     display: none;
 }
@@ -199,7 +197,8 @@ body {
     padding: 5px 5px 5px 5px;
     border-radius: 5px;
     border: 1px solid #00000017;
-    max-width: 275px;
+    max-width: 271px;
+    margin-left: 3px;
 }
 
 textarea.details-container {
@@ -221,7 +220,7 @@ img.details-container {
     font-weight: 500;
 }
 
-.details-container a {
+.details-container a, .details-footer a {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -265,4 +264,18 @@ nav.pagination {
 
 .pagination-disabled-button[aria-current="page"] {
     color: black !important;
+}
+
+.details-footer {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 0px 8px 0px;
+}
+
+.details-source-link, .details-delete-log {
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }

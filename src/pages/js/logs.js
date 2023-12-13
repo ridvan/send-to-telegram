@@ -3,7 +3,7 @@ import { getStorageData, setStorageData } from '../../handlers/storage.js';
 import { messageTypes } from "../../options.js";
 
 const getLogTypeIcon = function (type) {
-    if(!['text', 'photo', 'document', 'page', 'link', 'noLogs'].includes(type)) return false;
+    if(!['text', 'photo', 'document', 'page', 'link', 'noLogs', 'tabUrl', 'deleteLog'].includes(type)) return false;
 
     const iconMap = {
         'text': 'text-aa',
@@ -11,7 +11,9 @@ const getLogTypeIcon = function (type) {
         'document': 'image',
         'page': 'article',
         'link': 'link-simple',
-        'noLogs': 'paper-plane-tilt-duotone'
+        'noLogs': 'paper-plane-tilt-duotone',
+        'tabUrl': 'arrow-up-right-light',
+        'deleteLog': 'trash-light'
     };
 
     return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
@@ -40,6 +42,7 @@ const logs = await getLogsFromStorage();
 
 const itemsPerPage = 5;
 let currentPage = 1;
+let endPage;
 
 const toggleAfterDelay = (type, element, delay) => {
     if (!['display-none', 'log-single-active', 'log-single-details'].includes(type)) return;
@@ -49,11 +52,19 @@ const toggleAfterDelay = (type, element, delay) => {
     }, delay);
 };
 
+const focusAfterDelay = (element, delay) => {
+    setTimeout(() => {
+        element.focus();
+    }, delay);
+}
+
 const toggleExpandByIndex = (index) => {
     [...document.querySelectorAll('.log-single')].forEach((element, indexOnArray) => {
         if (indexOnArray === index) {
             element.classList.toggle('show-single-row');
+            const detailsContainer = document.querySelector(`[data-details-index="${indexOnArray}"] .details-container`);
             toggleAfterDelay('log-single-active', element, 900);
+            focusAfterDelay(detailsContainer, 500);
         } else {
             toggleAfterDelay('display-none', element, 700);
             element.classList.toggle('hide-single-row');
@@ -107,10 +118,23 @@ const getLogDetailsByType = function (log, type, content) {
             break;
         case 'photo':
         case 'document':
-            html += `<img loading="lazy" class="details-container" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}">`;
+            html += `<img loading="lazy" class="details-container sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}">`;
             break;
     }
     return html;
+}
+
+const getLogDetailsFooter = function (tabUrl, logIndex) {
+    return `<div class="details-footer">
+                <div class="details-source-link">
+                    <img src="${getLogTypeIcon('tabUrl')}" width="20" alt="Link icon" tabindex="0">
+                    <a aria-label="Source of the link" target="_blank" href="${tabUrl}">Source link</a>
+                </div>
+                <div class="details-delete-log">
+                    <img src="${getLogTypeIcon('deleteLog')}" width="16" alt="Trash icon" tabindex="0">
+                    <a id="delete-log" data-log-index="${logIndex}" aria-label="Delete log" role="button" href="#" tabindex="0">Delete log</a>
+                </div>
+            </div>`;
 }
 
 const displayLogItems = function (page) {
@@ -162,6 +186,7 @@ const displayLogItems = function (page) {
         </div>
         <div class="log-single-details display-none" data-details-index="${i - ((page - 1) * itemsPerPage)}">
             ${getLogDetailsByType(logs[i], type, content)}
+            ${getLogDetailsFooter(content.tabUrl, i)}
         </div>
     </div>`;
     }
@@ -172,8 +197,10 @@ const displayLogItems = function (page) {
         singleRow.addEventListener('click', async () => {
             const elementIndex = Number(singleRow.dataset.logIndex);
             const detailsContainer = document.querySelector(`[data-details-index="${elementIndex}"]`);
+            const imgContainer = detailsContainer.querySelector('.sent-image');
             singleRow.classList.toggle('eyes-wide-shut');
             toggleAfterDelay('display-none', detailsContainer, 350);
+            if (imgContainer) toggleAfterDelay('display-none', imgContainer, 150);
             toggleExpandByIndex(elementIndex);
             if (singleRow.getAttribute('aria-label') === 'Open log details') {
                 singleRow.setAttribute('aria-label', 'Return to logs page');
@@ -183,9 +210,25 @@ const displayLogItems = function (page) {
         });
         singleRow.addEventListener('keydown', function (event) {
             if (event.key === 'Enter' || event.keyCode === 13) {
-                // Trigger a click event on the icon
-                console.log(event);
                 singleRow.click();
+            }
+        });
+    });
+    document.querySelectorAll('#delete-log').forEach(deleteLogButton => {
+        deleteLogButton.addEventListener('click', async () => {
+            const logIndex = Number(deleteLogButton.dataset.logIndex);
+            logs.splice(logIndex, 1);
+            await setStorageData('messageLogs', logs);
+            await setStorageData('totalMessageCount', logs.length);
+            const logContainersCount = document.querySelectorAll('.log-single').length;
+            const newPageIndex  = currentPage === endPage && logContainersCount === 1 ? currentPage - 1 : currentPage;
+            currentPage = newPageIndex;
+            displayLogItems(newPageIndex);
+            generatePagination();
+        });
+        deleteLogButton.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                deleteLogButton.click();
             }
         });
     });
@@ -212,7 +255,7 @@ const generatePagination = function () {
 
     // Calculate the range of visible page numbers (limit to 5)
     let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(startPage + (totalPages - currentPage > 2 ? 3 : 4), totalPages);
+    endPage = Math.min(startPage + (totalPages - currentPage > 2 ? 3 : 4), totalPages);
 
     for (let i = startPage; i <= endPage; i++) {
         const paginationLink = createPaginationButton(i, i !== currentPage, function () {
@@ -257,7 +300,19 @@ const createPaginationButton = function (label, isEnabled, clickHandler) {
     button.textContent = label;
     button.setAttribute('role', 'button');
     const symbolMap = { '«': 'previous', '»': 'next' };
-    const modifiedLabel = Object.keys(symbolMap).includes(label) ? symbolMap[label] : `${label}.`;
+    const enOrdinalRules = new Intl.PluralRules("en-US", { type: "ordinal" });
+    const suffixes = new Map([
+        ["one", "st"],
+        ["two", "nd"],
+        ["few", "rd"],
+        ["other", "th"],
+    ]);
+    const formatOrdinals = (n) => {
+        const rule = enOrdinalRules.select(n);
+        const suffix = suffixes.get(rule);
+        return `${n}${suffix}`;
+    };
+    const modifiedLabel = Object.keys(symbolMap).includes(label) ? symbolMap[label] : `${formatOrdinals(label)}`;
     button.setAttribute('aria-label', `${isEnabled ? 'Go to' : ''} ${modifiedLabel} page`);
     button.setAttribute('aria-disabled', `${!isEnabled}`);
     button.className = isEnabled ? '' : 'pagination-disabled-button';
@@ -275,6 +330,8 @@ const createPaginationEllipsis = function () {
     ellipsis.href = '#';
     ellipsis.textContent = '..';
     ellipsis.setAttribute('aria-hidden', 'true');
+    ellipsis.setAttribute('aria-disabled', 'true');
+    ellipsis.setAttribute('aria-label', 'two dots');
     return ellipsis;
 }
 
