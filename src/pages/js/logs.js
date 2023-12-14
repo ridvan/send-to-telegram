@@ -62,9 +62,13 @@ const toggleExpandByIndex = (index) => {
     [...document.querySelectorAll('.log-single')].forEach((element, indexOnArray) => {
         if (indexOnArray === index) {
             element.classList.toggle('show-single-row');
-            const detailsContainer = document.querySelector(`[data-details-index="${indexOnArray}"] .details-container`);
+            const currentWrapper = document.querySelector(`[data-details-index="${indexOnArray}"]`);
+            const detailsText =  currentWrapper.querySelector('textarea.details-container');
+            const detailsImage = currentWrapper.querySelector('img.details-container');
+            const detailsLink = currentWrapper.querySelector('.details-link-container a');
+            const detailsSpan = currentWrapper.querySelector('.details-link-container span');
             toggleAfterDelay('log-single-active', element, 900);
-            focusAfterDelay(detailsContainer, 500);
+            focusAfterDelay(detailsText || detailsImage || detailsLink || detailsSpan, 900);
         } else {
             toggleAfterDelay('display-none', element, 700);
             element.classList.toggle('hide-single-row');
@@ -94,7 +98,7 @@ const getLogDetailsByType = function (log, type, content) {
     if (log?.errorLog?.ok === false) {
         html += `<div class="details-container">
                     <div class="details-link-container">
-                        <span>Error: </span><span>${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
+                        <span tabindex="0">Error: </span><span tabindex="0">${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
                     </div>
                 </div>`;
         return html;
@@ -118,7 +122,7 @@ const getLogDetailsByType = function (log, type, content) {
             break;
         case 'photo':
         case 'document':
-            html += `<img loading="lazy" class="details-container sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}">`;
+            html += `<img loading="lazy" class="details-container sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}" tabindex="0">`;
             break;
     }
     return html;
@@ -127,11 +131,11 @@ const getLogDetailsByType = function (log, type, content) {
 const getLogDetailsFooter = function (tabUrl, logIndex) {
     return `<div class="details-footer">
                 <div class="details-source-link">
-                    <img src="${getLogTypeIcon('tabUrl')}" width="20" alt="Link icon" tabindex="0">
+                    <img src="${getLogTypeIcon('tabUrl')}" width="20" alt="Link icon">
                     <a aria-label="Source of the link" target="_blank" href="${tabUrl}">Source link</a>
                 </div>
                 <div class="details-delete-log">
-                    <img src="${getLogTypeIcon('deleteLog')}" width="16" alt="Trash icon" tabindex="0">
+                    <img src="${getLogTypeIcon('deleteLog')}" width="16" alt="Trash icon">
                     <a id="delete-log" data-log-index="${logIndex}" aria-label="Delete log" role="button" href="#" tabindex="0">Delete log</a>
                 </div>
             </div>`;

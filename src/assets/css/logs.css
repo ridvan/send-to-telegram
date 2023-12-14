@@ -279,3 +279,7 @@ nav.pagination {
     align-items: center;
     gap: 5px;
 }
+
+.details-container:focus {
+    outline: 1px solid lightblue;
+}
