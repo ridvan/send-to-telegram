@@ -1,5 +1,5 @@
-import { defaultSettings } from '../../options.js';
-import { getStorageData, setStorageData } from '../../handlers/storage.js';
+import { defaultSettings } from '../../utils/constants.js';
+import { getStorageData, setStorageData } from '../../utils/storage.js';
 
 const selectById = (id) => document.getElementById(id);
 const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);

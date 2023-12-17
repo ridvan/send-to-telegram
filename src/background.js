@@ -1,5 +1,5 @@
-import { defaultSettings, messageTypes } from './options.js';
-import { getStorageData, setStorageData } from './handlers/storage.js';
+import { defaultSettings, messageTypes } from './utils/constants.js';
+import { getStorageData, setStorageData } from './utils/storage.js';
 
 //Add context menu items and set default settings on install
 const contextTypes = ['text', 'link', 'page', 'image'];

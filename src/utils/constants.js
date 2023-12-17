@@ -32,4 +32,6 @@ export const defaultSettings= {
 
 export const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
 
+export const iconTypes = [...messageTypes, 'noLogs', 'tabUrl', 'deleteLog', 'success', 'fail'];
+
 export const apiBaseUrl = 'https://api.telegram.org';

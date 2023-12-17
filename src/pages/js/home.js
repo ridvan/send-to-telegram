@@ -1,5 +1,5 @@
-import { getStorageData } from '../../handlers/storage.js';
-import { timestampToReadableDate } from '../../utils.js';
+import { getStorageData } from '../../utils/storage.js';
+import { timestampToReadableDate } from '../../utils/date.js';
 
 const removeExtensionBadge = async () => {
     await chrome.action.setBadgeText({ text: '' })
