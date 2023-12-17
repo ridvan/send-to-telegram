@@ -33,15 +33,7 @@ main {
 section {
     margin: 12px 20px 15px 20px;
 }
-/* .split {
-    display: flex;
-    justify-content: space-evenly;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    background-clip: content-box;
-    background: rgb(42,171,238);
-    background: linear-gradient(90deg, rgba(42,171,238,0.6069021358543417) 0%, rgba(34,158,217,0.53687412464986) 100%);
-} */
+
 .split {
     display: flex;
     justify-content: space-evenly;

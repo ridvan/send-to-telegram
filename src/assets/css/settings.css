@@ -25,9 +25,6 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     text-align: center;
     color: #757575;
     border: 1px solid transparent;
-    /* -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none; */
 }
 
 .settings-tab-label[data-btn-id="1"] {
@@ -136,12 +133,6 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     color: #5264AE;
     background-color: transparent;
 }
-
-/* Accessibility Issue when removing outline */
-/* .form-section fieldset legend select:focus-visible {
-  outline: none;
-
-} */
 
 .form-section fieldset label:not([for="message-type-selector"]) {
     font-size: 13px;
