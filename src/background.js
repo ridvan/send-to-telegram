@@ -1,5 +1,5 @@
-import { defaultSettings, messageTypes } from "./options.js";
-import { getStorageData, setStorageData } from "./handlers/storage.js";
+import { defaultSettings, messageTypes } from './options.js';
+import { getStorageData, setStorageData } from './handlers/storage.js';
 
 //Add context menu items and set default settings on install
 const contextTypes = ['text', 'link', 'page', 'image'];
@@ -13,10 +13,17 @@ chrome.runtime.onInstalled.addListener(async () => {
     );
     //Set default settings if not set
     const options = await getStorageData('options');
-    if (!options || Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
+    if (!options || Object.keys(options).length === 0) {
+        await setStorageData('options', defaultSettings)
+    }
 });
-const getCurrentTab = async () => await chrome.tabs.query({active: true, currentWindow: true});
 
+// Get the active browser tab details
+const getCurrentTab = async () => {
+    return chrome.tabs.query({ active: true, currentWindow: true });
+};
+
+// Handle extension option clicks in the context menu by content type
 const contextMenuHandler = async (click) => {
     const [{ url: tabUrl, id: tabId }] = await getCurrentTab();
     switch (click.menuItemId) {
@@ -31,9 +38,9 @@ const contextMenuHandler = async (click) => {
         default:
             return false;
     }
-}
+};
 
-//add listener for click on self defined menu item
+// Listen for content from context menu and trigger sendMessage function
 chrome.contextMenus.onClicked.addListener(async click => {
     if (!contextTypes.includes(click.menuItemId)) return false;
 
@@ -43,22 +50,25 @@ chrome.contextMenus.onClicked.addListener(async click => {
     await sendMessage(messageData, messageType);
 });
 
+// Listen for connection status information request from homepage
 chrome.runtime.onMessage.addListener(async request => {
     if (request.message === 'getConnectionStatus') {
         const options = await getStorageData('options');
-        const getMe = await fetchAPI(buildRequestURL('me', options), buildPostData('me', {}, options));
+        const requestURL = buildRequestURL('me', options);
+        const requestParameters = buildPostData('me', {}, options);
+        const getMe = await fetchAPI(requestURL, requestParameters);
         await chrome.runtime.sendMessage({
-            message: "returnConnectionStatus",
+            message: 'returnConnectionStatus',
             data: await getMe.json(),
         });
     }
 });
 
-//Get selected text from the page, including iframes
+//Get selected text from the browser, including iframes
 const getSelectedText = async function (contextEvent, tabId, tabUrl) {
     let result;
     try {
-        [{result}] = await chrome.scripting.executeScript({
+        [{ result }] = await chrome.scripting.executeScript({
             target: { tabId, frameIds: [contextEvent?.frameId] },
             function: () => getSelection().toString()
         });
@@ -78,10 +88,10 @@ const isValidURL = function (string) {
     } catch (_) {
         return false;
     }
-    return url.protocol === "http:" || url.protocol === "https:";
+    return url.protocol === 'http:' || url.protocol === 'https:';
 }
 
-// See if this scalable
+// Get the Telegram Bot API method name by message type
 const getMessageType = function (type) {
     switch (type) {
         case 'text':
@@ -99,29 +109,30 @@ const getMessageType = function (type) {
     }
 }
 
+// Build the Telegram Bot API request URL by message type and active account
 const buildRequestURL = function (type, options) {
     return 'https://api.telegram.org/bot' + options.connections.setup[options.connections.use].key + getMessageType(type);
 }
 
+// Build the message content object by message type
 const buildContentByType = function (type, content) {
-
     switch (type) {
         case 'text':
-            return {type: 'text', content: content.text};
+            return { type: 'text', content: content.text };
         case 'link':
-            return {type: 'text', content: content.linkUrl};
+            return { type: 'text', content: content.linkUrl };
         case 'page':
-            return {type: 'text', content: content.pageUrl};
+            return { type: 'text', content: content.pageUrl };
         case 'photo':
-            return {type: 'photo', content: content.srcUrl};
+            return { type: 'photo', content: content.srcUrl };
         case 'document':
-            return {type: 'document', content: content.srcUrl};
+            return { type: 'document', content: content.srcUrl };
         default:
             return false;
     }
-
 }
 
+// Build the request parameters object by message type and user settings
 const buildPostData = function (type, content, options) {
 
     if (!messageTypes.includes(type)) return false;
@@ -150,17 +161,20 @@ const buildPostData = function (type, content, options) {
     return parameters;
 }
 
+// Make HTTP requests using Fetch API
 const fetchAPI = async function (url, postData) {
     const options = {
         method: 'POST',
         headers: {
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         },
         body: postData ? JSON.stringify(postData) : undefined
     };
     return await fetch(url, options);
 }
 
+// Register the API response to the extension storage to use it later,
+// and throw error with api response and stack trace if response is not ok
 const handleAPIResponse = async function (data) {
     await setStorageData('lastAPIResponse', data);
     if (data.ok) return true;
@@ -173,6 +187,8 @@ const handleAPIResponse = async function (data) {
     }
 }
 
+// Register the message log to the extension storage to use it later,
+// and increase the total message count if the message is sent successfully
 const registerLog = async function (content, response, type) {
     let logs = await getStorageData('messageLogs');
     let total = await getStorageData('totalMessageCount');
@@ -194,6 +210,7 @@ const registerLog = async function (content, response, type) {
     }
 }
 
+// Build the log object by message type and user settings
 const buildLogObject = function (content, response, type, options) {
     if (!response.ok) {
         return { type: type, content: content, errorLog: response, timestamp: Date.now(), status: 'fail' };
@@ -214,8 +231,10 @@ const buildLogObject = function (content, response, type, options) {
     }
 }
 
+// Show status badge on the extension's icon,
+// and clear it after 1.5 seconds if the message is sent successfully
 const handleBadgeText = async function (success) {
-    if (typeof success !== "boolean") return false;
+    if (typeof success !== 'boolean') return false;
 
     await chrome.action.setBadgeText({ text: success ? 'Sent' : 'Fail' });
     await chrome.action.setBadgeBackgroundColor({ color: success ? '#008000bd' : '#880024' });
@@ -227,6 +246,7 @@ const handleBadgeText = async function (success) {
     }
 }
 
+// Send the message to Telegram Bot API and handle the response
 const sendMessage = async function (content, type) {
     try {
         if (typeof content === 'undefined' || !messageTypes.includes(type)) {
@@ -239,10 +259,11 @@ const sendMessage = async function (content, type) {
         // Send the request to Telegram Bot API
         const sendRequest = await fetchAPI(requestURL, requestParameters);
         const response = await sendRequest.json();
-        // Register the API response to the browser storage to use it later
+        // Register the API response to the extension storage to use it later
         return await handleAPIResponse(response);
     } catch (error) {
         console.error('Error while sending the message: ', error);
+        // TODO: Handle pre-message errors
     } finally {
         // Read the API response and then clear its value
         const apiResponse = await getStorageData('lastAPIResponse');
