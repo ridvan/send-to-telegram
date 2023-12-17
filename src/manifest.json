@@ -16,9 +16,8 @@
   },
   "action": {
     "default_icon": {
-      "16": "./assets/logo/tg-logo.png",
-      "24": "./assets/logo/tg-logo.png",
-      "32": "./assets/logo/tg-logo.png"
+      "16": "./assets/logo/16.png",
+      "32": "./assets/logo/32.png"
     },
     "default_title": "Send to Telegram",
     "default_popup": "./pages/home.html"

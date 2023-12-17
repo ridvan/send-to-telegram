@@ -21,7 +21,8 @@ header {
 }
 header h1 {
     display: flex;
-    gap: 8px;
+    gap: 7px;
+    align-items: center;
     font-size: 16px;
     margin: 0;
     font-weight: 600;
@@ -127,10 +128,10 @@ section {
 }
 .logo-small {
     display: inline-block;
-    background: url("../logo/64.png");
+    background: url("../logo/128.png");
     background-size: cover;
-    height: 20px;
-    width: 20px;
+    height: 23px;
+    width: 23px;
 }
 footer {
     position: fixed;
