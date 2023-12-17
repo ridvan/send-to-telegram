@@ -1,9 +1,9 @@
-import { timestampToReadableDate } from '../../utils.js';
-import { getStorageData, setStorageData } from '../../handlers/storage.js';
-import { messageTypes } from "../../options.js";
+import { timestampToReadableDate } from '../../utils/date.js';
+import { getStorageData, setStorageData } from '../../utils/storage.js';
+import { iconTypes, messageTypes } from '../../utils/constants.js';
 
-const getLogTypeIcon = function (type) {
-    if(!['text', 'photo', 'document', 'page', 'link', 'noLogs', 'tabUrl', 'deleteLog'].includes(type)) return false;
+const getIconByType = function (type) {
+    if(!iconTypes.includes(type)) return false;
 
     const iconMap = {
         'text': 'text-aa',
@@ -13,21 +13,12 @@ const getLogTypeIcon = function (type) {
         'link': 'link-simple',
         'noLogs': 'paper-plane-tilt-duotone',
         'tabUrl': 'arrow-up-right-light',
-        'deleteLog': 'trash-light'
-    };
-
-    return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
-}
-
-const getStatusIcon = function (status) {
-    if(!['success', 'fail'].includes(status)) return false;
-
-    const iconMap = {
+        'deleteLog': 'trash-light',
         'success': 'checks',
         'fail': 'x'
     };
 
-    return `../../assets/icons/phospor-icons/${iconMap[status]}-ph.svg`;
+    return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
 }
 
 const getLogsFromStorage = async function () {
@@ -38,6 +29,7 @@ const getLogsFromStorage = async function () {
     }
     return logs;
 }
+
 const logs = await getLogsFromStorage();
 
 const itemsPerPage = 5;
@@ -62,13 +54,9 @@ const toggleExpandByIndex = (index) => {
     [...document.querySelectorAll('.log-single')].forEach((element, indexOnArray) => {
         if (indexOnArray === index) {
             element.classList.toggle('show-single-row');
-            const currentWrapper = document.querySelector(`[data-details-index="${indexOnArray}"]`);
-            const detailsText =  currentWrapper.querySelector('textarea.details-container');
-            const detailsImage = currentWrapper.querySelector('img.details-container');
-            const detailsLink = currentWrapper.querySelector('.details-link-container a');
-            const detailsSpan = currentWrapper.querySelector('.details-link-container span');
+            const activeLogView = document.querySelector(`[data-details-index="${indexOnArray}"] .active-log-view`);
             toggleAfterDelay('log-single-active', element, 900);
-            focusAfterDelay(detailsText || detailsImage || detailsLink || detailsSpan, 900);
+            focusAfterDelay(activeLogView, 900);
         } else {
             toggleAfterDelay('display-none', element, 700);
             element.classList.toggle('hide-single-row');
@@ -98,31 +86,34 @@ const getLogDetailsByType = function (log, type, content) {
     if (log?.errorLog?.ok === false) {
         html += `<div class="details-container">
                     <div class="details-link-container">
-                        <span tabindex="0">Error: </span><span tabindex="0">${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
+                        <span class="active-log-view" tabindex="0" aria-label="error log details">Error: </span>
+                        <span tabindex="0">${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
                     </div>
                 </div>`;
         return html;
     }
     switch (type) {
         case 'text':
-            html += `<textarea aria-label="The text that was sent to Telegram" class="details-container" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
+            html += `<textarea aria-label="The text that was sent to Telegram" class="details-container active-log-view" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
             break;
         case 'page':
         case 'link':
             html += `<div class="details-container">
                         <div class="details-link-container">
-                            <span>Link: </span><a aria-label="The link that was sent to Telegram" target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
+                            <span>Link: </span>
+                            <a class="active-log-view" aria-label="The link that was sent to Telegram" target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
                         </div>`;
             if (type === 'link') {
                 html += `<div class="details-link-container">
-                            <span>Source: </span><a aria-label="Source of the link" target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
+                            <span>Source: </span>
+                            <a class="active-log-view" aria-label="Source of the link" target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
                         </div>`;
             }
             html += `</div>`;
             break;
         case 'photo':
         case 'document':
-            html += `<img loading="lazy" class="details-container sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}" tabindex="0">`;
+            html += `<img loading="lazy" class="details-container active-log-view sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}" tabindex="0">`;
             break;
     }
     return html;
@@ -131,11 +122,11 @@ const getLogDetailsByType = function (log, type, content) {
 const getLogDetailsFooter = function (tabUrl, logIndex) {
     return `<div class="details-footer">
                 <div class="details-source-link">
-                    <img src="${getLogTypeIcon('tabUrl')}" width="20" alt="Link icon">
+                    <img src="${getIconByType('tabUrl')}" width="20" alt="Link icon">
                     <a aria-label="Source of the link" target="_blank" href="${tabUrl}">Source link</a>
                 </div>
                 <div class="details-delete-log">
-                    <img src="${getLogTypeIcon('deleteLog')}" width="16" alt="Trash icon">
+                    <img src="${getIconByType('deleteLog')}" width="16" alt="Trash icon">
                     <a id="delete-log" data-log-index="${logIndex}" aria-label="Delete log" role="button" href="#" tabindex="0">Delete log</a>
                 </div>
             </div>`;
@@ -150,8 +141,8 @@ const displayLogItems = function (page) {
 
     if (logs.length === 0) {
         return logsContainer.innerHTML = `<div class="logs-list-empty">
-            <img src="${getLogTypeIcon('noLogs')}" width="40">
-            <p>Logs will appear here,<br> as you start sending messages!</p>
+            <img src="${getIconByType('noLogs')}" width="40">
+            <p tabindex="0">Logs will appear here,<br> as you start sending messages!</p>
             </div>`;
     }
 
@@ -163,7 +154,7 @@ const displayLogItems = function (page) {
         <div class="log-single-heading">
             <div class="log-single-cell" aria-label="Message type">
                 <div class="log-single-icon">
-                    <img src="${getLogTypeIcon(type)}" width="25" alt="${type + ' icon'}" tabindex="0">
+                    <img src="${getIconByType(type)}" width="25" alt="${type + ' icon'}" tabindex="0">
                 </div>
                 <div class="message-info">
                     <span class="message-type-text" tabindex="0">${modifiedType.charAt(0).toUpperCase() + modifiedType.slice(1)}</span>
@@ -179,7 +170,7 @@ const displayLogItems = function (page) {
             </div>
             <div class="log-single-cell" aria-label="Message status">
                 <div class="log-single-icon message-status">
-                    <img src="${getStatusIcon(status)}" width="${status === 'fail' ? 18 : 21}" alt="${status}" tabindex="0">
+                    <img src="${getIconByType(status)}" width="${status === 'fail' ? 18 : 21}" alt="${status}" tabindex="0">
                 </div>
             </div>
             <div class="log-single-cell">
