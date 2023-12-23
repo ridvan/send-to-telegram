@@ -64,7 +64,7 @@ body {
 }
 
 .log-single-icon {
-    padding: 4px 12px 0px 10px;
+    padding: 4px 12px 0 10px;
 }
 
 .log-single-cell:nth-child(3) {
@@ -140,7 +140,6 @@ body {
 
 .hide-single-row {
     transform: scaleY(0);
-    /*transition: transform 500ms ease 0ms;*/
 }
 
 .show-single-row {
@@ -168,10 +167,6 @@ img.details-container {
     cursor: pointer;
     margin-top: -9px;
     margin-left: -8px;
-    -o-transition:.4s;
-    -ms-transition:.4s;
-    -moz-transition:.4s;
-    -webkit-transition:.4s;
     transition:.4s;
     background-color: transparent;
 }

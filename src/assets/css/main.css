@@ -3,7 +3,6 @@
     src: local('Inter'), url('../font/Inter/Inter-VariableFont_slnt,wght.ttf') format('truetype');
 }
 
-/* Use the font in your CSS */
 body * {
     font-family: 'Inter', sans-serif;
 }
@@ -19,6 +18,7 @@ header {
     justify-content: center;
     align-items: center;
 }
+
 header h1 {
     display: flex;
     gap: 7px;
@@ -27,9 +27,11 @@ header h1 {
     margin: 0;
     font-weight: 600;
 }
+
 main {
     padding-bottom: 50px;
 }
+
 section {
     margin: 12px 20px 15px 20px;
 }
@@ -60,6 +62,7 @@ section {
 .connection-status {
     text-align: center;
 }
+
 .dot {
     height: 10px;
     width: 10px;
@@ -67,37 +70,47 @@ section {
     display: inline-block;
     vertical-align: -1px;
 }
+
 .green-dot {
     background-color: seagreen;
 }
+
 .red-dot {
     background-color: darkred;
 }
+
 .gray-dot {
     background-color: darkgray;
 }
+
 .connection-status {
     margin-block-end: 0;
 }
+
 #total-message-count {
     font-weight: 600;
     font-size: 26px;
 }
+
 .messages-sent {
     display: flex;
     align-items: center;
 }
+
 .last-messages {
     display: flex;
     flex-direction: column;
 }
+
 .last-messages p {
     margin-block-start: 5px;
     margin-block-end: 5px;
 }
+
 .last-message-header {
     font-weight: 600;
 }
+
 .successful-text-underline {
     text-shadow: 2px 2px 5px #0080009c;
 }
@@ -110,26 +123,30 @@ section {
 .failed-text-underline {
     text-shadow: 2px 2px 5px #ff00008a;
 }
+
 .vertical-line {
     border-left: 1px solid rgb(165 165 165 / 33%);
     margin-top: 7px;
     margin-bottom: 7px;
 }
+
 .horizontal-line {
     border-top: 1px solid rgb(165 165 165 / 33%);
 }
+
 .logo-small {
     display: inline-block;
-    background: url("../logo/128.png");
-    background-size: cover;
+    background: url('../logo/128.png') center/100%;
     height: 23px;
     width: 23px;
 }
+
 footer {
     position: fixed;
     bottom: 0;
     width: 100%;
 }
+
 .footer-navigation {
     height: 50px;
     background: aliceblue;
@@ -137,13 +154,16 @@ footer {
     justify-content: space-evenly;
     align-items: center;
 }
+
 .footer-navigation img {
     padding: 12px 12px 12px 12px;
 }
+
 .footer-navigation div {
     height: 50px;
     width: 50px;
 }
+
 .footer-navigation div:hover{
     -o-transition:.3s;
     -ms-transition:.3s;
@@ -153,13 +173,11 @@ footer {
     box-shadow: inset 0 0 0 30px rgba(165, 165, 165, 0.38);
 }
 
-/* Tooltip container */
 .tooltip {
     position: relative;
     display: inline-block;
 }
 
-/* Tooltip text */
 .tooltip .tooltiptext {
     visibility: hidden;
     width: 65px;
@@ -168,22 +186,17 @@ footer {
     text-align: center;
     padding: 5px 0;
     border-radius: 6px;
-
-    /* Position the tooltip text */
     position: absolute;
     z-index: 1;
     bottom: 115%;
     left: 50%;
     margin-left: -33px;
-
-    /* Fade in tooltip */
     opacity: 0;
     transition: opacity 0.3s;
 }
 
-/* Tooltip arrow */
 .tooltip .tooltiptext::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 100%;
     left: 50%;
@@ -193,7 +206,6 @@ footer {
     border-color: #7b7b7bc4 transparent transparent transparent;
 }
 
-/* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
     visibility: visible;
     opacity: 1;

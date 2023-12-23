@@ -1,41 +1,38 @@
 /*
-
 The input design is originated from: https://uiverse.io/G4b413l/mean-stingray-9
-
 License:
-
 Copyright - 2023 G4b413l (Gabriel)
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 */
 
 section {
     margin: 20px 20px 15px 20px;
 }
 
-.settings-main * { box-sizing:border-box; }
+.settings-main * {
+    box-sizing:border-box;
+}
 
-/* form starting stylings ------------------------------- */
 .settings-main .group {
-    position:relative;
-    margin-bottom:15px;
+    position: relative;
+    margin-bottom: 15px;
 }
-.settings-main input {
-    font-size:14px;
-    padding:15px 10px 10px 5px;
-    display:block;
-    width:280px;
-    border:none;
-    border-bottom:1px solid #757575;
-}
-.settings-main input:focus     { outline:none; }
 
-/* LABEL ======================================= */
+.settings-main input {
+    font-size: 14px;
+    padding: 15px 10px 10px 5px;
+    display: block;
+    width: 280px;
+    border: none;
+    border-bottom: 1px solid #757575;
+}
+
+.settings-main input:focus {
+    outline:none;
+}
+
 .settings-main label {
     display: inline-block;
     margin: 0 0 -1px;
@@ -51,73 +48,63 @@ section {
     left:-26px;
     top:-5px;
     transition:0.2s ease all;
-    -moz-transition:0.2s ease all;
-    -webkit-transition:0.2s ease all;
 }
 
-/* active state */
 .settings-main input:focus ~ label[class="input-label"], input:valid ~ label[class="input-label"] {
-    top:-22px;
+    top: -22px;
     margin-bottom: 3px;
-    font-size:13px;
-    color:#000000;
+    font-size: 13px;
+    color: #000000;
 }
 
-/* BOTTOM BARS ================================= */
 .settings-main .bar  { position:relative; display:block; width:280px; }
 .settings-main .bar:before, .settings-main .bar:after   {
-    content:'';
-    height:2px;
-    width:0;
-    bottom:1px;
-    position:absolute;
+    content: '';
+    height: 2px;
+    width: 0;
+    bottom: 1px;
+    position: absolute;
     background-color: #0093E9;
-    transition:0.2s ease all;
-    -moz-transition:0.2s ease all;
-    -webkit-transition:0.2s ease all;
+    transition: 0.2s ease all;
 }
 .settings-main .bar:before {
-    left:50%;
+    left: 50%;
 }
 .settings-main .bar:after {
-    right:50%;
+    right: 50%;
 }
 
-/* active state */
 .settings-main input:focus ~ .bar:before, .settings-main input:focus ~ .bar:after {
-    width:50%;
+    width: 50%;
 }
 
-/* HIGHLIGHTER ================================== */
 .settings-main .highlight {
-    position:absolute;
-    height:60%;
-    width:280px;
-    top:25%;
-    left:0;
-    pointer-events:none;
-    opacity:0.5;
+    position: absolute;
+    height: 60%;
+    width: 280px;
+    top: 25%;
+    left: 0;
+    pointer-events: none;
+    opacity: 0.5;
 }
 
-/* active state */
 .settings-main input:focus ~ .highlight {
-    -webkit-animation:inputHighlighter 0.3s ease;
-    -moz-animation:inputHighlighter 0.3s ease;
-    animation:inputHighlighter 0.3s ease;
+    -webkit-animation: inputHighlighter 0.3s ease;
+    -moz-animation: inputHighlighter 0.3s ease;
+    animation: inputHighlighter 0.3s ease;
 }
 
-/* ANIMATIONS ================ */
 @-webkit-keyframes inputHighlighter {
-    from { background:#5264AE; }
-    to  { width:0; background:transparent; }
+    from { background: #5264AE; }
+    to  { width: 0; background: transparent; }
 }
 @-moz-keyframes inputHighlighter {
-    from { background:#5264AE; }
-    to  { width:0; background:transparent; }
+    from { background: #5264AE; }
+    to  { width: 0; background: transparent; }
 }
 @keyframes inputHighlighter {
-    from { background:#5264AE; }
-    to  { width:0; background:transparent; }
+    from { background: #5264AE; }
+    to  { width: 0; background: transparent; }
 }
 
 .save-button {
@@ -137,9 +124,7 @@ section {
     color: #fff;
 }
 
-.eyes-open {
-    background: no-repeat url('../icons/phospor-icons/eye-light-ph.svg');
-    background-size: 100% 100%;
+.eyes-open, .eyes-wide-shut {
     height: 24px;
     width: 24px;
     position: absolute;
@@ -148,23 +133,16 @@ section {
     cursor: pointer;
 }
 
+.eyes-open {
+    background: no-repeat url('../icons/phospor-icons/eye-light-ph.svg') center/70%;
+}
+
 .eyes-wide-shut {
-    background: no-repeat url('../icons/phospor-icons/eye-closed-light-ph.svg');
-    background-size: 100% 100%;
-    height: 24px;
-    width: 24px;
-    position: absolute;
-    top: 28%;
-    right: 5px;
-    cursor: pointer;
+    background: no-repeat url('../icons/phospor-icons/eye-closed-light-ph.svg') center/70%;
     z-index: 1;
 }
 
 .eyes-open, .eyes-wide-shut, #tokenInput, #chatIdInput {
-    -o-transition:.2s;
-    -ms-transition:.2s;
-    -moz-transition:.2s;
-    -webkit-transition:.2s;
     transition:.2s;
     background-color: transparent;
     padding-right: 30px;
@@ -173,6 +151,4 @@ section {
 .invalid-input {
     border-bottom: 1px solid red !important;
     transition:0.2s ease all;
-    -moz-transition:0.2s ease all;
-    -webkit-transition:0.2s ease all;
 }
