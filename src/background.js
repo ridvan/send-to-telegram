@@ -40,12 +40,28 @@ const contextMenuHandler = async (click) => {
     }
 };
 
+// Get the file extension from the given URL string
+const getFileExtension = function (url) {
+    const path = new URL(url).pathname;
+    if (!path.includes('.')) return false;
+    return path.substring(path.lastIndexOf('.') + 1, path.length);
+}
+
+// Override the message type for certain file extensions to reach better results
+const overrideMessageType = function (content, options) {
+    const fileExtension = getFileExtension(content);
+    if (['webp', 'gif'].includes(fileExtension)) {
+        return 'document';
+    }
+    return options.actions.sendImage.sendAs;
+}
+
 // Listen for content from context menu and trigger sendMessage function
 chrome.contextMenus.onClicked.addListener(async click => {
     if (!contextTypes.includes(click.menuItemId)) return false;
 
     const options = await getStorageData('options');
-    const messageType = click.menuItemId !== 'image' ? click.menuItemId : options.actions.sendImage.sendAs;
+    const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
     const messageData = await contextMenuHandler(click);
     await sendMessage(messageData, messageType);
 });
@@ -146,8 +162,12 @@ const buildPostData = function (type, content, options) {
     parameters.disable_notification = options.actions[typeKey].disableNotificationSound;
     parameters.disable_web_page_preview = options.actions[typeKey].disablePreview;
     const addSourceLink = options.actions[typeKey].addSourceLink;
-
     const userContent = buildContentByType(type, content);
+
+    if (['photo', 'document'].includes(type)) {
+        userContent['type'] = overrideMessageType(userContent['content'], options);
+    }
+
     parameters[userContent['type']] = userContent['content'];
 
     if (addSourceLink && isValidURL(content.tabUrl) && type !== 'page') {
@@ -210,6 +230,15 @@ const registerLog = async function (content, response, type) {
     }
 }
 
+const getFileIDsFromResponse = function (response) {
+    let type = '';
+    ['photo', 'document', 'sticker'].forEach(key => response.result[key] ? type = key : null);
+    return {
+        fileID: response.result[type]['file_id'],
+        uniqueID: response.result[type]['file_unique_id']
+    };
+}
+
 // Build the log object by message type and user settings
 const buildLogObject = function (content, response, type, options) {
     if (!response.ok) {
@@ -221,8 +250,7 @@ const buildLogObject = function (content, response, type, options) {
     else if (options.logs.type === 'everything') {
         const contentObject = ['photo', 'document'].includes(type) ? {
             ...content,
-            fileID: type === 'photo' ? response.result[type][0]['file_id'] : response.result[type]['file_id'],
-            uniqueID: type === 'photo' ? response.result[type][0]['file_unique_id'] : response.result[type]['file_unique_id']
+            ...getFileIDsFromResponse(response)
         } : content;
         return { type: type, content: contentObject, timestamp: Date.now(), status: 'success' };
     }
