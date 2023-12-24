@@ -17,16 +17,13 @@
 <div class="tab-buttons" role="tablist">
     <input class="legacy-tab-input" id="settings-tab-selector-1" data-target-id="1" aria-label="User Settings" type="radio" name="tabs" checked>
     <button class="settings-tab-label" data-btn-id="1" role="tab" aria-controls="settings-tab-content-1" tabindex="0" aria-label="User Settings">User</button>
-
     <input class="legacy-tab-input" id="settings-tab-selector-2" data-target-id="2" aria-label="Message Settings" type="radio" name="tabs">
     <button class="settings-tab-label" data-btn-id="2" role="tab" aria-controls="settings-tab-content-2" tabindex="0" aria-label="Message Settings">Messages</button>
-
     <input class="legacy-tab-input" id="settings-tab-selector-3" data-target-id="3" aria-label="Log Settings" type="radio" name="tabs">
     <button class="settings-tab-label" data-btn-id="3" role="tab" aria-controls="settings-tab-content-3" tabindex="0" aria-label="Log Settings">Logs</button>
 </div>
 <div class="tab-contents">
     <section id="settings-tab-content-1" class="form-section settings-main" role="tabpanel">
-
         <fieldset>
             <legend>Connection Settings</legend>
             <div id="form-user-settings">
@@ -37,7 +34,6 @@
                     <span class="bar"></span>
                     <label class="input-label">Bot Token</label>
                 </div>
-
                 <div class="group">
                     <input name="chatId"id="chatIdInput" type="password" aria-label="Telegram chat id" required>
                     <i id="chat-id-eye" class="eyes-open"></i>
@@ -46,12 +42,9 @@
                     <label class="input-label">Chat ID</label>
                 </div>
             </div>
-
         </fieldset>
     </section>
-
     <section id="settings-tab-content-2" class="form-section" role="tabpanel">
-
         <fieldset>
             <legend>
                 <span></span>
@@ -80,46 +73,31 @@
                     <input type="checkbox" id="opt-image-silent-message" name="opt-image-silent-message">
                     <label for="opt-image-silent-message">Disable message notification sound</label>
                 </div>
-
-                <!-- <div>
-                  <input type="checkbox" id="opt-image-disable-preview" name="opt-image-disable-preview" id="opt-image-disable-preview">
-                  <label for="opt-image-disable-preview">Send as attachment (No compression)</label>
-                </div> -->
                 <div class="options-field">
                     <input type="checkbox" id="opt-image-add-source-link" name="opt-image-add-source-link">
                     <label for="opt-image-add-source-link">Add source link to the message</label>
                 </div>
-
 <!--                <div class="options-field">-->
 <!--                    <input type="checkbox" id="opt-image-use-weserv-proxy" name="opt-image-use-weserv-proxy">-->
 <!--                    <label for="opt-image-use-weserv-proxy">Use weserv.nl cache while uploading</label>-->
 <!--                </div>-->
-
                 <hr>
-
                 <div class="options-field">
                     <input type="radio" id="opt-image-send-as-photo" name="image-message-type" value="photo">
                     <label for="opt-image-send-as-photo">Send as photo <span>(Compressed)</span></label>
                 </div>
-
                 <div class="options-field">
                     <input type="radio" id="opt-image-send-as-document" name="image-message-type" value="document">
                     <label for="opt-image-send-as-document">Send as document <span>(Not Compressed)</span></label>
                 </div>
-
                 <div class="options-field">
                     <input type="radio" id="opt-image-send-as-link" name="image-message-type" value="link">
                     <label for="opt-image-send-as-link">Send as link <span>(Don't upload)</span></label>
                 </div>
-
-
             </div>
         </fieldset>
-
     </section>
-
     <section id="settings-tab-content-3" class="form-section" role="tabpanel">
-
         <fieldset>
             <legend>
                 <span>Activity Logs</span>
@@ -147,7 +125,6 @@
     <section class="save-settings">
         <span>Having troubles?<br> Check the <a href="javascript:void();" tabindex="-1">documentation</a></span>
         <button id="save-all-settings" class="save-button">Save</button>
-        <!--https://uiverse.io/Mhyar-nsi/tiny-wasp-99-->
     </section>
 </main>
 <footer role="contentinfo">
