@@ -83,11 +83,17 @@ const getTextContentByType = (type, content) => {
 const getLogDetailsByType = function (log, type, content) {
     if (!messageTypes.includes(type)) return;
     let html = '';
-    if (log?.errorLog?.ok === false) {
-        html += `<div class="details-container">
+    let errorMsg = '';
+    if (log?.errorLog?.ok === false || (log.errorLog && Object.keys(log.errorLog).length === 0)) {
+        if (!log.errorLog.description) {
+            errorMsg = 'Unknown error';
+        } else {
+            errorMsg = log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description;
+        }
+            html += `<div class="details-container">
                     <div class="details-link-container">
                         <span class="active-log-view" tabindex="0" aria-label="error log details">Error: </span>
-                        <span tabindex="0">${log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description}</span>
+                        <span tabindex="0">${errorMsg}</span>
                     </div>
                 </div>`;
         return html;
@@ -120,6 +126,7 @@ const getLogDetailsByType = function (log, type, content) {
 }
 
 const getLogDetailsFooter = function (tabUrl, logIndex) {
+    if (!tabUrl) return;
     return `<div class="details-footer">
                 <div class="details-source-link">
                     <img src="${getIconByType('tabUrl')}" width="20" alt="Link icon">
