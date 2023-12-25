@@ -28,7 +28,7 @@ const contextMenuHandler = async (click) => {
     const [{ url: tabUrl, id: tabId }] = await getCurrentTab();
     switch (click.menuItemId) {
         case 'text':
-            return await getSelectedText(click, tabId, tabUrl);
+            return await getSelectedText(click, tabId, tabUrl) || (click.selectionText ? { text: click.selectionText, tabUrl } : false);
         case 'link':
             return { linkUrl: click.linkUrl, tabUrl };
         case 'page':
@@ -90,7 +90,7 @@ const getSelectedText = async function (contextEvent, tabId, tabUrl) {
         });
     } catch (e) {
         console.log(e);
-        return; // ignoring an unsupported page like chrome://extensions
+        return false; // ignoring an unsupported page like chrome://extensions
     }
     return { text: result, tabUrl };
 }
@@ -277,7 +277,7 @@ const handleBadgeText = async function (success) {
 // Send the message to Telegram Bot API and handle the response
 const sendMessage = async function (content, type) {
     try {
-        if (typeof content === 'undefined' || !messageTypes.includes(type)) {
+        if (!content || !messageTypes.includes(type)) {
             throw new Error('sendMessage parameters are not valid!');
         }
         // Build the request parameters and message object
