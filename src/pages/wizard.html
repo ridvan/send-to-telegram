@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Installation Wizard | Send to Telegram</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/wizard.css">
+</head>
+<body>
+<header role="banner">
+    <h1><span class="logo-small"></span> <span>Send to Telegram</span></h1>
+</header>
+<main role="main">
+<div class="particle-container">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+</div>
+<section class="wizard-welcome" data-wizard-step="1">
+    <h2 id="wizard-heading" tabindex="0">Hello there 👋</h2>
+    <div id="wizard-content">
+        <div class="content-part-1" tabindex="0">
+            <p>Send to Telegram is a browser extension that helps you send text and image content to Telegram by simply using the context menu.</p>
+            <p>We just need to set up a few things before you can start using it.</p>
+        </div>
+        <div class="content-part-2 display-none" tabindex="0">
+            <p>We need to create a Telegram Bot 🤖<br>Don't worry, it's super easy and free!</p>
+            <p>Just follow the steps below:</p>
+            <ol type="1">
+                <li>Open the Telegram app.</li>
+                <li>In the search bar, search for <strong>@BotFather</strong>.<br>Make sure it has the verified badge <i class="verified-badge"></i></li>
+                <li>Click on the search result to start chatting.</li>
+                <li>Click on the <strong>Start</strong> button.</li>
+                <li>Type <strong>/newbot</strong> to the chat.</li>
+                <li>Give a name to your bot.</li>
+                <li>Set a username (must end with <strong>bot</strong>).</li>
+                <li>Copy the token and <strong>that's it!</strong> 🥳</li>
+            </ol>
+        </div>
+        <div class="content-part-3 display-none" tabindex="0">
+            <p class="bad-joke">Starts with a Chat ID 😂</p>
+            <p>Now, we need to get your Telegram chat ID.</p>
+            <p>It's your profile identifier and a necessity for the bot to be able to send you messages.</p>
+            <p>Here is how to obtain that:</p>
+            <ol type="1">
+                <li>Open the Telegram app.</li>
+                <li>In the search bar, search for <strong>@userinfobot</strong></li>
+                <li>Click on the search result to start chatting.</li>
+                <li>Click on the <strong>Start</strong> button.</li>
+                <li>Get the chat ID and <strong>that's all we need!</strong></li>
+            </ol>
+        </div>
+        <div class="content-part-4 display-none">
+            <p tabindex="0">All we have to do now is saving these credentials to the extension.</p>
+            <div class="hide-wizard-section">
+            <input type="checkbox" id="hide-wizard" name="hide-wizard" tabindex="0" checked>
+            <label for="hide-wizard">Don't show the wizard again.</label>
+            </div>
+        </div>
+    </div>
+    <button id="wizard-button" class="cta">
+        <span id="wizard-button-text">Let's get started</span>
+        <svg width="15px" height="10px" viewBox="0 0 13 10" role="img" aria-label=", proceed to next step">
+            <path d="M1,5 L11,5"></path>
+            <polyline points="8 1 12 5 8 9"></polyline>
+        </svg>
+    </button>
+</section>
+</main>
+<footer role="contentinfo">
+    <div class="footer-navigation" role="navigation" aria-label="Extension pages">
+        <div class="nav-home-btn tooltip">
+            <a href="home.html" aria-label="Homepage">
+                <img src="../assets/icons/phospor-icons/house-ph.svg" height="25" width="25" alt="Homepage icon">
+                <span class="tooltiptext">Home</span>
+            </a>
+        </div>
+        <div class="nav-settings-btn tooltip">
+            <a href="settings.html" aria-label="Settings">
+                <img src="../assets/icons/phospor-icons/gear-ph.svg" height="25" width="25" alt="Settings icon">
+                <span class="tooltiptext">Settings</span>
+            </a>
+        </div>
+        <div class="nav-logs-btn tooltip">
+            <a href="logs.html" aria-label="Logs">
+                <img src="../assets/icons/phospor-icons/list-ph.svg" height="25" width="25" alt="Logs icon">
+                <span class="tooltiptext">Logs</span>
+            </a>
+        </div>
+    </div>
+</footer>
+</body>
+<script src="./js/wizard.js" type="module"></script>
+</html>

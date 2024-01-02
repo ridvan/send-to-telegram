@@ -1,6 +1,14 @@
 import { getStorageData } from '../../utils/storage.js';
 import { timestampToReadableDate } from '../../utils/date.js';
 
+(async () => {
+    const hideWizard = await getStorageData('hideWizard');
+    if (!hideWizard) {
+        document.querySelector('body').style.display = 'none';
+        window.location.replace('/pages/wizard.html');
+    }
+})();
+
 const removeExtensionBadge = async () => {
     await chrome.action.setBadgeText({ text: '' })
 }
@@ -45,6 +53,7 @@ const handleStatistics = async () => {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await initializeStatusMessage();
     await handleStatistics();
     await handleMessageError();
 });
@@ -67,9 +76,14 @@ const updateStatusAfterDelay = (status, delay) => {
     }, delay);
 };
 
-await chrome.runtime.sendMessage({
-    message: "getConnectionStatus"
-});
+const initializeStatusMessage = async () => {
+    const isWizardHidden = await getStorageData('hideWizard');
+    if (isWizardHidden) {
+        await chrome.runtime.sendMessage({
+            message: "getConnectionStatus"
+        });
+    }
+};
 
 chrome.runtime.onMessage.addListener(function (request) {
     if (request.message === "returnConnectionStatus") {
