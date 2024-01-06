@@ -37,9 +37,9 @@ const getLastMessageByStatus = async status => {
     const logs = await getStorageData('messageLogs');
     const firstOfType = logs && logs.find(log => log.status === status);
     if (firstOfType) {
-        return `&bull; ${uppercaseFirstLetter(firstOfType.type)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
+        return `• ${uppercaseFirstLetter(firstOfType.type)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
     } else {
-        return `&bull; no messages yet 🕰️`;
+        return `• no messages yet 🕰️`;
     }
 }
 
@@ -48,7 +48,7 @@ const handleStatistics = async () => {
     if (totalSent === 1) document.getElementById('message-word').innerText = 'message';
     document.getElementById('total-message-count').innerText = totalSent || 0;
     ['success', 'fail'].map(
-        async status => document.getElementById(`last-${status}-message`).innerHTML = await getLastMessageByStatus(status)
+        async status => document.getElementById(`last-${status}-message`).textContent = await getLastMessageByStatus(status)
     );
 }
 

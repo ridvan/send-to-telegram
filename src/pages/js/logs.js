@@ -1,25 +1,7 @@
 import { timestampToReadableDate } from '../../utils/date.js';
 import { getStorageData, setStorageData } from '../../utils/storage.js';
-import { iconTypes, messageTypes } from '../../utils/constants.js';
-
-const getIconByType = function (type) {
-    if(!iconTypes.includes(type)) return false;
-
-    const iconMap = {
-        'text': 'text-aa',
-        'photo': 'image',
-        'document': 'image',
-        'page': 'article',
-        'link': 'link-simple',
-        'noLogs': 'paper-plane-tilt-duotone',
-        'tabUrl': 'arrow-up-right-light',
-        'deleteLog': 'trash-light',
-        'success': 'checks',
-        'fail': 'x'
-    };
-
-    return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
-}
+import { messageTypes } from '../../utils/constants.js';
+import { getIconPath } from '../../utils/getIconPath.js';
 
 const getLogsFromStorage = async function () {
     let logs = await getStorageData('messageLogs');
@@ -80,63 +62,76 @@ const getTextContentByType = (type, content) => {
     }
 }
 
-const getLogDetailsByType = function (log, type, content) {
+const createLogDetailsElement = function (log, type, content) {
     if (!messageTypes.includes(type)) return;
-    let html = '';
-    let errorMsg = '';
-    if (log?.errorLog?.ok === false || (log.errorLog && Object.keys(log.errorLog).length === 0)) {
+    const isErrorLog = log.errorLog && (log.errorLog.ok === false || Object.keys(log.errorLog).length === 0);
+    let modifiedType = type === 'document' ? 'photo' : type;
+    modifiedType = isErrorLog ? 'error' : modifiedType;
+
+    const template = document.querySelector(`#single-log-details-${modifiedType}-template`);
+    const clone = template.content.cloneNode(true);
+
+    let errorMsg;
+    if (isErrorLog) {
+        const errorMsgContainer = clone.querySelector('.error-message');
         if (!log.errorLog.description) {
             errorMsg = 'Unknown error';
         } else {
             errorMsg = log.errorLog.description.includes('wrong file identifier') ? 'Unsupported file type or header' : log.errorLog.description;
         }
-            html += `<div class="details-container">
-                    <div class="details-link-container">
-                        <span class="active-log-view" tabindex="0" aria-label="error log details">Error: </span>
-                        <span tabindex="0">${errorMsg}</span>
-                    </div>
-                </div>`;
-        return html;
+        errorMsgContainer.textContent = errorMsg;
+        return clone;
     }
+
+    let textarea, link, sourceLink, img;
+
     switch (type) {
         case 'text':
-            html += `<textarea aria-label="The text that was sent to Telegram" class="details-container active-log-view" readonly contenteditable="false">${getTextContentByType(type, content)}</textarea>`;
+            textarea = clone.querySelector('textarea');
+            textarea.textContent = getTextContentByType(type, content);
             break;
         case 'page':
         case 'link':
-            html += `<div class="details-container">
-                        <div class="details-link-container">
-                            <span>Link: </span>
-                            <a class="active-log-view" aria-label="The link that was sent to Telegram" target="_blank" href="${getTextContentByType(type, content)}">${getTextContentByType(type, content)}</a>
-                        </div>`;
-            if (type === 'link') {
-                html += `<div class="details-link-container">
-                            <span>Source: </span>
-                            <a class="active-log-view" aria-label="Source of the link" target="_blank" href="${content.tabUrl}">${content.tabUrl}</a>
-                        </div>`;
+            link = clone.querySelector('.details-link-container a.link');
+            [link.href, link.textContent] = [getTextContentByType(type, content), getTextContentByType(type, content)];
+            if (type === 'link' && content.tabUrl) {
+                sourceLink = clone.querySelector('.details-link-container a.source');
+                [sourceLink.href, sourceLink.textContent] = [content.tabUrl, content.tabUrl];
             }
-            html += `</div>`;
             break;
         case 'photo':
         case 'document':
-            html += `<img loading="lazy" class="details-container active-log-view sent-image display-none" src="${content.srcUrl}" alt="Image that was sent to Telegram" data-unique-id="${content.uniqueID}" tabindex="0">`;
+            img = clone.querySelector('.sent-image');
+            img.src = content.srcUrl;
+            img.dataset.uniqueId = content.uniqueID;
             break;
     }
-    return html;
+
+    return clone;
 }
 
 const getLogDetailsFooter = function (tabUrl, logIndex) {
-    if (!tabUrl) return;
-    return `<div class="details-footer">
-                <div class="details-source-link">
-                    <img src="${getIconByType('tabUrl')}" width="20" alt="Link icon">
-                    <a aria-label="Source of the link" target="_blank" href="${tabUrl}">Source link</a>
-                </div>
-                <div class="details-delete-log">
-                    <img src="${getIconByType('deleteLog')}" width="16" alt="Trash icon">
-                    <a id="delete-log" data-log-index="${logIndex}" aria-label="Delete log" role="button" href="#" tabindex="0">Delete log</a>
-                </div>
-            </div>`;
+    const template = document.querySelector('#single-log-details-footer-template');
+    const clone = template.content.cloneNode(true);
+
+    if (tabUrl) {
+        const linkIcon = clone.querySelector('.details-source-link img');
+        linkIcon.src = getIconPath('tabUrl');
+
+        const sourceLink = clone.querySelector('.details-source-link a');
+        sourceLink.href = tabUrl;
+    } else {
+        const sourceLinkDiv = clone.querySelector('.details-source-link');
+        sourceLinkDiv.remove();
+    }
+
+    const deleteLogIcon = clone.querySelector('.details-delete-log img');
+    deleteLogIcon.src = getIconPath('deleteLog');
+
+    const deleteLogBtn = clone.querySelector('.details-delete-log a');
+    deleteLogBtn.dataset.logIndex = logIndex;
+
+    return clone;
 }
 
 const displayLogItems = function (page) {
@@ -144,56 +139,68 @@ const displayLogItems = function (page) {
     const endIndex = startIndex + itemsPerPage;
 
     const logsContainer = document.querySelector('.logs-section');
-    let logsHTML = '';
+
+    const logElements = logsContainer.querySelectorAll('.log-single');
+
+    logElements.forEach(element => {
+        element.remove();
+    });
 
     if (logs.length === 0) {
-        return logsContainer.innerHTML = `<div class="logs-list-empty">
-            <img src="${getIconByType('noLogs')}" width="40">
-            <p tabindex="0">Logs will appear here,<br> as you start sending messages!</p>
-            </div>`;
+        const noLogsTemplate = document.querySelector('#no-logs-template');
+        const noLogsDiv = noLogsTemplate.content.cloneNode(true);
+        const noLogsIcon = noLogsDiv.querySelector('.no-logs-icon');
+        noLogsIcon.src = getIconPath('noLogs');
+        logsContainer.appendChild(noLogsDiv);
     }
 
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
+
         const { type, content, timestamp, status} = logs[i];
-
         const modifiedType = type === 'document' ? 'photo' : type;
-        logsHTML += `<div class="log-single${status === 'fail' ? ' failed-message-item' : ''}">
-        <div class="log-single-heading">
-            <div class="log-single-cell" aria-label="Message type">
-                <div class="log-single-icon">
-                    <img src="${getIconByType(type)}" width="25" alt="${type + ' icon'}" tabindex="0">
-                </div>
-                <div class="message-info">
-                    <span class="message-type-text" tabindex="0">${modifiedType.charAt(0).toUpperCase() + modifiedType.slice(1)}</span>
-                </div>
-            </div>
-            <div class="log-single-cell" aria-label="Message date">
-                <div class="log-single-icon">
-                    <img src="../../assets/icons/phospor-icons/calendar-blank-ph.svg" width="21" alt="Calendar icon">
-                </div>
-                <div class="message-date">
-                    <span class="message-date-text" tabindex="0">${timestampToReadableDate(timestamp)}</span>
-                </div>
-            </div>
-            <div class="log-single-cell" aria-label="Message status">
-                <div class="log-single-icon message-status">
-                    <img src="${getIconByType(status)}" width="${status === 'fail' ? 18 : 21}" alt="${status}" tabindex="0">
-                </div>
-            </div>
-            <div class="log-single-cell">
-                <div class="log-single-icon">
-                    <i id="token-eye" class="expand-logs eyes-open" data-log-index="${i - ((page - 1) * itemsPerPage)}" data-log-type="${type}" data-expand="false" role="button" aria-label="Open log details" tabindex="0"></i>
-                </div>
-            </div> 
-        </div>
-        <div class="log-single-details display-none" data-details-index="${i - ((page - 1) * itemsPerPage)}">
-            ${getLogDetailsByType(logs[i], type, content)}
-            ${getLogDetailsFooter(content.tabUrl, i)}
-        </div>
-    </div>`;
-    }
 
-    logsContainer.innerHTML = logsHTML;
+        const logViewTemplate = document.querySelector('#single-log-view-template');
+        const logView = logViewTemplate.content.cloneNode(true);
+
+        const selectors = {
+            logDiv: '.log-single',
+            logViewIcon: '.content-type-icon',
+            calendarIcon: '.calendar-icon',
+            logViewType: '.message-type-text',
+            logViewDate: '.message-date-text',
+            logViewStatus: '.message-status img',
+            logViewExpand: '.expand-logs',
+            logViewDetails: '.log-single-details',
+            logViewDetailsFooter: '.log-single-details .details-footer',
+            logViewDetailsLink: '.log-single-details .details-link-container a',
+            logViewDetailsDelete: '.log-single-details .details-delete-log a'
+        };
+
+        const elements = {};
+
+        for (let key in selectors) {
+            elements[key] = logView.querySelector(selectors[key]);
+        }
+
+        if (status === 'fail') {
+            elements.logDiv.classList.add('failed-message-item');
+        }
+
+        [elements.logViewIcon.src, elements.logViewIcon.alt] = [getIconPath(modifiedType), `${type} icon`];
+        elements.calendarIcon.src = getIconPath('calendar');
+
+        elements.logViewType.textContent = modifiedType.charAt(0).toUpperCase() + modifiedType.slice(1);
+        elements.logViewDate.textContent = timestampToReadableDate(timestamp);
+
+        [elements.logViewStatus.src, elements.logViewStatus.width, elements.logViewStatus.alt] = [getIconPath(status), status === 'fail' ? 18 : 21, status];
+        [elements.logViewExpand.dataset.logIndex, elements.logViewExpand.dataset.logType] = [i - ((page - 1) * itemsPerPage), type];
+
+        elements.logViewDetails.dataset.detailsIndex = i - ((page - 1) * itemsPerPage);
+        elements.logViewDetails.appendChild(createLogDetailsElement(logs[i], type, content));
+        elements.logViewDetails.appendChild(getLogDetailsFooter(content.tabUrl, i));
+
+        logsContainer.appendChild(logView);
+    }
 
     document.querySelectorAll('.expand-logs').forEach(singleRow => {
         singleRow.addEventListener('click', async () => {
@@ -244,7 +251,9 @@ const generatePagination = function () {
 
     const totalPages = Math.ceil(logs.length / itemsPerPage);
     const paginationContainer = document.querySelector('.pagination');
-    paginationContainer.innerHTML = '';
+    while (paginationContainer.firstChild) {
+        paginationContainer.removeChild(paginationContainer.firstChild);
+    }
 
     const prevButton = createPaginationButton('«', currentPage > 1, function () {
         if (currentPage > 1) {
@@ -276,7 +285,10 @@ const generatePagination = function () {
 
     // Add "..." and last page button if necessary
     if (endPage < totalPages && totalPages - currentPage > 2) {
-        paginationContainer.appendChild(createPaginationEllipsis());
+
+        if (totalPages !== 5) {
+            paginationContainer.appendChild(createPaginationEllipsis());
+        }
 
         const lastPageButton = createPaginationButton(totalPages, true, function () {
             currentPage = totalPages;

@@ -1,5 +1,6 @@
 import { defaultSettings } from '../../utils/constants.js';
 import { getStorageData, setStorageData } from '../../utils/storage.js';
+import { getIconPath } from '../../utils/getIconPath.js';
 
 const selectById = (id) => document.getElementById(id);
 const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);
@@ -185,7 +186,14 @@ const saveSettings = async function (data) {
 }
 
 const updateSaveButton = function (content, disabled, reset) {
-    saveButtonSelector.innerHTML = content;
+    if (typeof content === 'string') {
+        saveButtonSelector.textContent = content;
+    } else {
+        while (saveButtonSelector.firstChild) {
+            saveButtonSelector.removeChild(saveButtonSelector.firstChild);
+        }
+        saveButtonSelector.appendChild(content);
+    }
     saveButtonSelector.disabled = disabled;
 
     if (reset) {
@@ -196,10 +204,19 @@ const updateSaveButton = function (content, disabled, reset) {
 }
 
 const showSaveOperationStatus = function (status) {
-    updateSaveButton('<span class="loader no-button-hover"></span>', true, false);
-    const iconUrl = `../assets/icons/phospor-icons/${status.success ? 'check-bold' : 'x'}-ph.svg`;
-    setTimeout(function () {
-        updateSaveButton(`<img class="no-button-hover" src="${iconUrl}" height="26" width="26" role="status" alt="Settings are ${status.success ? 'saved' : 'not saved'}">`, true, 500);
+    const loaderSpan = document.createElement('span');
+    loaderSpan.classList.add('loader', 'no-button-hover');
+    updateSaveButton(loaderSpan, true, false);
+    const iconUrl = getIconPath(status.success ? 'success-bold' : 'fail');
+    setTimeout(() => {
+        const img = document.createElement('img');
+        img.src = iconUrl;
+        img.classList.add('no-button-hover');
+        img.height = 26;
+        img.width = 26;
+        img.role = 'status';
+        img.alt = `Settings are${status.success ? '' : ' not'} saved`;
+        updateSaveButton(img, true, 500);
     }, 500);
 }
 
