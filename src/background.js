@@ -242,7 +242,7 @@ const getFileIDsFromResponse = function (response) {
 // Build the log object by message type and user settings
 const buildLogObject = function (content, response, type, options) {
     if (!response.ok) {
-        return { type: type, content: content, errorLog: response, timestamp: Date.now(), status: 'fail' };
+        return { type: type, content: false, errorLog: response, timestamp: Date.now(), status: 'fail' };
     }
     else if (options.logs.type === 'timestamp') {
         return { type: type, content: false, timestamp: Date.now(), status: 'success' };

@@ -64,7 +64,7 @@ body {
 }
 
 .log-single-icon {
-    padding: 4px 12px 0 10px;
+    padding: 4px 7px 0 5px;
 }
 
 .log-single-cell:nth-child(3) {
@@ -79,7 +79,7 @@ body {
 }
 
 .message-date-text {
-    width: 95px;
+    width: 85px;
     display: inline-block;
 }
 
@@ -156,10 +156,10 @@ img.details-container {
 }
 
 .display-none {
-    display: none;
+    display: none !important;
 }
 
-.eyes-open, .eyes-wide-shut {
+.eyes-open, .eyes-wide-shut, .trash-can {
     background-size: 100% 100%;
     height: 18px;
     width: 18px;
@@ -178,6 +178,22 @@ img.details-container {
 .eyes-wide-shut {
     background: no-repeat url('../icons/phospor-icons/eye-closed-light-ph.svg');
     z-index: 1;
+}
+
+.no-log-details {
+    background: no-repeat url('../icons/phospor-icons/eye-slash-light-ph.svg');
+    z-index: 1;
+}
+
+.trash-can {
+    background: no-repeat url('../icons/phospor-icons/trash-light-ph.svg');
+    z-index: 1;
+    height: 17px;
+    width: 17px;
+}
+
+.no-button-hover {
+    pointer-events: none;
 }
 
 .log-single-details .details-container {
@@ -273,4 +289,13 @@ nav.pagination {
 
 .details-container:focus {
     outline: 1px solid lightblue;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.action-buttons .delete-log-icon {
+    padding-top: 2px;
 }

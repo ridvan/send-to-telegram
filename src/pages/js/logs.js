@@ -64,9 +64,25 @@ const getTextContentByType = (type, content) => {
 
 const createLogDetailsElement = function (log, type, content) {
     if (!messageTypes.includes(type)) return;
+
+    let modifiedType;
+    switch (type) {
+        case 'text':
+            modifiedType = 'text';
+            break;
+        case 'link':
+        case 'page':
+            modifiedType = 'link';
+            break;
+        case 'photo':
+        case 'document':
+            modifiedType = 'photo';
+            break;
+    }
     const isErrorLog = log.errorLog && (log.errorLog.ok === false || Object.keys(log.errorLog).length === 0);
-    let modifiedType = type === 'document' ? 'photo' : type;
-    modifiedType = isErrorLog ? 'error' : modifiedType;
+    if (isErrorLog) {
+        modifiedType = 'error';
+    }
 
     const template = document.querySelector(`#single-log-details-${modifiedType}-template`);
     const clone = template.content.cloneNode(true);
@@ -97,6 +113,7 @@ const createLogDetailsElement = function (log, type, content) {
             if (type === 'link' && content.tabUrl) {
                 sourceLink = clone.querySelector('.details-link-container a.source');
                 [sourceLink.href, sourceLink.textContent] = [content.tabUrl, content.tabUrl];
+                clone.querySelector('.source-container').classList.remove('display-none');
             }
             break;
         case 'photo':
@@ -110,11 +127,11 @@ const createLogDetailsElement = function (log, type, content) {
     return clone;
 }
 
-const getLogDetailsFooter = function (tabUrl, logIndex) {
+const getLogDetailsFooter = function (tabUrl, logIndex, type) {
     const template = document.querySelector('#single-log-details-footer-template');
     const clone = template.content.cloneNode(true);
 
-    if (tabUrl) {
+    if (tabUrl && type !== 'page') {
         const linkIcon = clone.querySelector('.details-source-link img');
         linkIcon.src = getIconPath('tabUrl');
 
@@ -156,7 +173,7 @@ const displayLogItems = function (page) {
 
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
 
-        const { type, content, timestamp, status} = logs[i];
+        const { type, content, timestamp, status, errorLog } = logs[i];
         const modifiedType = type === 'document' ? 'photo' : type;
 
         const logViewTemplate = document.querySelector('#single-log-view-template');
@@ -170,6 +187,7 @@ const displayLogItems = function (page) {
             logViewDate: '.message-date-text',
             logViewStatus: '.message-status img',
             logViewExpand: '.expand-logs',
+            logViewDelete: '.delete-log',
             logViewDetails: '.log-single-details',
             logViewDetailsFooter: '.log-single-details .details-footer',
             logViewDetailsLink: '.log-single-details .details-link-container a',
@@ -193,16 +211,28 @@ const displayLogItems = function (page) {
         elements.logViewDate.textContent = timestampToReadableDate(timestamp);
 
         [elements.logViewStatus.src, elements.logViewStatus.width, elements.logViewStatus.alt] = [getIconPath(status), status === 'fail' ? 18 : 21, status];
-        [elements.logViewExpand.dataset.logIndex, elements.logViewExpand.dataset.logType] = [i - ((page - 1) * itemsPerPage), type];
+
+        const isErrorLog = errorLog && (errorLog.ok === false || Object.keys(errorLog).length === 0);
+
+        if (!content && !isErrorLog) {
+            elements.logViewExpand.src = getIconPath('eye-slash');
+            elements.logViewExpand.classList.add('no-log-details', 'no-button-hover');
+            elements.logViewExpand.role = 'img'
+            elements.logViewExpand.setAttribute('aria-label', 'Based on your log settings, no log details were saved for this message.');
+        } else {
+            [elements.logViewExpand.dataset.logIndex, elements.logViewExpand.dataset.logType] = [i - ((page - 1) * itemsPerPage), type];
+        }
+
+        elements.logViewDelete.dataset.logIndex = i;
 
         elements.logViewDetails.dataset.detailsIndex = i - ((page - 1) * itemsPerPage);
         elements.logViewDetails.appendChild(createLogDetailsElement(logs[i], type, content));
-        elements.logViewDetails.appendChild(getLogDetailsFooter(content.tabUrl, i));
+        elements.logViewDetails.appendChild(getLogDetailsFooter(content.tabUrl, i, type));
 
         logsContainer.appendChild(logView);
     }
 
-    document.querySelectorAll('.expand-logs').forEach(singleRow => {
+    document.querySelectorAll('.expand-log-icon:not(:has(.no-log-details)) .expand-logs').forEach(singleRow => {
         singleRow.addEventListener('click', async () => {
             const elementIndex = Number(singleRow.dataset.logIndex);
             const detailsContainer = document.querySelector(`[data-details-index="${elementIndex}"]`);

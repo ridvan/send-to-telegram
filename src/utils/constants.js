@@ -1,4 +1,4 @@
-export const defaultSettings= {
+export const defaultSettings = {
     connections: {
         use: 0,
         setup: {

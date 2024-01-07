@@ -15,7 +15,8 @@ export const getIconPath = function (type) {
         'success': 'checks',
         'success-bold': 'check-bold',
         'fail': 'x',
-        'calendar': 'calendar-blank'
+        'calendar': 'calendar-blank',
+        'eye-slash': 'eye-slash-light'
     };
 
     return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
