@@ -37,7 +37,8 @@ const getLastMessageByStatus = async status => {
     const logs = await getStorageData('messageLogs');
     const firstOfType = logs && logs.find(log => log.status === status);
     if (firstOfType) {
-        return `• ${uppercaseFirstLetter(firstOfType.type)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
+        const modifiedType = firstOfType.type === 'document' ? 'photo' : firstOfType.type;
+        return `• ${uppercaseFirstLetter(modifiedType)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
     } else {
         return `• no messages yet 🕰️`;
     }
