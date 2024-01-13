@@ -40,7 +40,7 @@ const getLastMessageByStatus = async status => {
         const modifiedType = firstOfType.type === 'document' ? 'photo' : firstOfType.type;
         return `• ${uppercaseFirstLetter(modifiedType)} at ${timestampToReadableDate(firstOfType.timestamp)}`;
     } else {
-        return `• no messages yet 🕰️`;
+        return `• No messages yet.`;
     }
 }
 

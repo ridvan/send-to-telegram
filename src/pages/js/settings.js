@@ -119,9 +119,11 @@ const getActiveTabId = () => {
 }
 
 const getUserSettings = async () => {
-  let options = await getStorageData('options');
-  if (Object.keys(options).length === 0) await setStorageData('options', defaultSettings);
-  return await getStorageData('options');
+    const options = await getStorageData('options');
+    if (!options || Object.keys(options).length === 0) {
+        await setStorageData('options', defaultSettings)
+    }
+    return await getStorageData('options');
 }
 
 const validateConnectionSettings = () => {

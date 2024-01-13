@@ -188,8 +188,9 @@ img.details-container {
 .trash-can {
     background: no-repeat url('../icons/phospor-icons/trash-light-ph.svg');
     z-index: 1;
-    height: 17px;
-    width: 17px;
+    height: 16px;
+    width: 16px;
+    margin-top: -8px;
 }
 
 .no-button-hover {

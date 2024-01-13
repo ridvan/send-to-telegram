@@ -284,6 +284,14 @@ const sendMessage = async function (content, type) {
         const options = await getStorageData('options');
         const requestURL = buildRequestURL(type, options);
         const requestParameters = buildPostData(type, content, options);
+        const activeAccount = options.connections.setup[options.connections.use];
+        // Check if the Bot API key and chat ID are set
+        if (!activeAccount.key || !activeAccount.chatId) {
+            return await handleAPIResponse({
+                ok: false,
+                description: 'Please set up your Telegram bot token and chat ID to start sending messages.'
+            });
+        }
         // Send the request to Telegram Bot API
         const sendRequest = await fetchAPI(requestURL, requestParameters);
         const response = await sendRequest.json();

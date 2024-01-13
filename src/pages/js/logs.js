@@ -168,7 +168,7 @@ const displayLogItems = function (page) {
         const noLogsDiv = noLogsTemplate.content.cloneNode(true);
         const noLogsIcon = noLogsDiv.querySelector('.no-logs-icon');
         noLogsIcon.src = getIconPath('noLogs');
-        logsContainer.appendChild(noLogsDiv);
+        return logsContainer.appendChild(noLogsDiv);
     }
 
     for (let i = startIndex; i < endIndex && i < logs.length; i++) {
