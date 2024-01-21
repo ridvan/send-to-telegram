@@ -36,7 +36,7 @@ Send to Telegram extension helps you send **texts, links, and images** on web pa
 <h4>User Settings</h4>
 
 1. **Telegram Bot Token:** The token that you obtain by messaging [@BotFather](https://t.me/BotFather) on Telegram. The process of getting a token is super easy; don't be discouraged thinking it's necessary to be tech-savvy. Simply start chatting with the bot and you'll figure it out.
-2. **Chat ID:** Your personal identifier on Telegram which is required for the Bot to be able to find and text you. There are lots of bots that give you this ID with a single click. One of them is [@userinfobot](https://t.me/userinfobot). Simply start chatting with this bot and it will reply with your id. (It's safe, you can block the bot afterward if you want.)
+2. **Chat ID:** Your personal identifier on Telegram which is required for the Bot to be able to find and text you. You can use [@userinfobot](https://t.me/userinfobot). Simply start chatting with this bot and it will reply with your id. (It's safe, you can block the bot afterward if you want.)
 
 <h4>Message Settings</h4>
 
@@ -59,3 +59,32 @@ Send to Telegram extension helps you send **texts, links, and images** on web pa
 - If logging is turned off when a message is sent, the message won't appear here.
 - You can delete the log by clicking on the Trash icon.
 - Disabling logging doesn't delete the previous logs.
+
+<h2>Contributing</h2>
+
+PRs are welcome! To contribute:
+
+1. Fork the project.
+2. Create your feature branch. (`git checkout -b username/feat/the-feature-name`)
+3. Commit your changes. (`git commit -m 'feat(domain): info about the feature'`)
+4. Push to the branch. (`git push origin username/feat/the-feature-name`)
+5. Open a Pull Request.
+
+<h3>Development</h3>
+
+First, let's clone the project and install the dependencies.
+
+```
+git clone https://github.com/ridvan/send-to-telegram.git
+cd send-to-telegram
+npm install
+```
+
+Then, we need to add the '**src**' folder to the Chrome as an unpacked extension.
+
+1. Go to the [**Extensions Page** on Chrome](chrome://extensions/).
+2. Enable **Developer Mode** from the top-right side of the page.
+3. Click on the **Load Unpacked** button.
+4. Select the '**src**' folder under the '**send-to-telegram**' folder.
+
+You need to **reload the extension** in the Extensions Page **to see your changes**. You can either click on the refresh icon in the Extensions page or use an unpacked Extension Reloader like [this one](https://chromewebstore.google.com/detail/fimgfedafeadlieiabdeeaodndnlbhid).

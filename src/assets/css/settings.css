@@ -286,3 +286,7 @@ input:checked + .logs-slider:before {
 .save-button:has(.no-button-hover) img {
     padding-top: 3px;
 }
+
+.save-settings span a, .save-settings span a:visited {
+    color: black !important;
+}
