@@ -136,6 +136,9 @@ const buildContentByType = function (type, content) {
         case 'text':
             return { type: 'text', content: content.text };
         case 'link':
+            if (!content.linkUrl && content.srcUrl) {
+                content.linkUrl = content.srcUrl;
+            }
             return { type: 'text', content: content.linkUrl };
         case 'page':
             return { type: 'text', content: content.pageUrl };
