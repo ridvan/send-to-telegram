@@ -19,13 +19,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 // Get the active browser tab details
-const getCurrentTab = async () => {
-    return chrome.tabs.query({ active: true, currentWindow: true });
+const getCurrentTab = async (tabId) => {
+    return chrome.tabs.get(tabId);
 };
 
 // Handle extension option clicks in the context menu by content type
-const contextMenuHandler = async (click) => {
-    const [{ url: tabUrl, id: tabId }] = await getCurrentTab();
+const contextMenuHandler = async (click, tabId) => {
+    const { url: tabUrl } = await getCurrentTab(tabId);
     switch (click.menuItemId) {
         case 'text':
             return await getSelectedText(click, tabId, tabUrl) || (click.selectionText ? { text: click.selectionText, tabUrl } : false);
@@ -57,12 +57,12 @@ const overrideMessageType = function (content, options) {
 }
 
 // Listen for content from context menu and trigger sendMessage function
-chrome.contextMenus.onClicked.addListener(async click => {
+chrome.contextMenus.onClicked.addListener(async (click, tab) => {
     if (!contextTypes.includes(click.menuItemId)) return false;
 
     const options = await getStorageData('options');
     const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
-    const messageData = await contextMenuHandler(click);
+    const messageData = await contextMenuHandler(click, tab.id);
     await sendMessage(messageData, messageType);
 });
 
