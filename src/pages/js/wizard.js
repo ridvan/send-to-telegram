@@ -6,10 +6,10 @@ const getCurrentStep = () => Number(document.querySelector('.wizard-welcome').da
 const updateWizardSections = function ({ heading, button }) {
     const step = getCurrentStep();
     selectById('wizard-heading').innerText = heading;
-    document.querySelector(`#wizard-content div:not(.display-none)`).classList.toggle('display-none'),
+    document.querySelector('#wizard-content div:not(.display-none)').classList.toggle('display-none'),
     document.querySelector(`.content-part-${step}`).classList.toggle('display-none'),
     selectById('wizard-button-text').innerText = button;
-}
+};
 
 const wizardStepHandler = async function () {
     const step = getCurrentStep();
@@ -39,12 +39,12 @@ const wizardStepHandler = async function () {
         default:
             return false;
     }
-}
+};
 
 const hideTheWizard = async function () {
     const isChecked = selectById('hide-wizard').checked;
     await setStorageData('hideWizard', isChecked);
-}
+};
 
 document.querySelector('#wizard-button').addEventListener('click', async function (e) {
     e.preventDefault();

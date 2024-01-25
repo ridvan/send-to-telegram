@@ -5,18 +5,16 @@ import { getIconPath } from '../../utils/getIconPath.js';
 const selectById = (id) => document.getElementById(id);
 const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);
 
-const [tokenEye, chatIdEye] = [selectById('token-eye'), selectById('chat-id-eye')];
+const [toggleTokenVisibility, toggleChatIdVisibility] = [selectById('token-eye'), selectById('chat-id-eye')];
 const [tokenInput, chatIdInput] = [selectById('tokenInput'), selectById('chatIdInput')];
 
 const handleEyeSwitch = function (inputSelector) {
     this.classList.toggle('eyes-wide-shut');
     inputSelector.setAttribute('type', inputSelector.getAttribute('type') === 'password' ? 'text' : 'password');
-}
+};
 
-tokenEye.addEventListener('click', handleEyeSwitch.bind(tokenEye, tokenInput));
-chatIdEye.addEventListener('click', handleEyeSwitch.bind(chatIdEye, chatIdInput));
-
-// I guess the variable names are not so self-explanatory.
+toggleTokenVisibility.addEventListener('click', handleEyeSwitch.bind(toggleTokenVisibility, tokenInput));
+toggleChatIdVisibility.addEventListener('click', handleEyeSwitch.bind(toggleChatIdVisibility, chatIdInput));
 
 const messageTypeSelector = selectById('message-type-selector');
 const textMessageOptionsContainer = selectById('text-message-options');
@@ -28,23 +26,23 @@ const handleMessageSettingsChange = () => {
     const messageType = messageTypeSelector.value;
 
     if (messageType === 'text') {
-        imageMessageOptionsContainer.style.display = "none";
-        textMessageOptionsContainer.style.display = "block";
+        imageMessageOptionsContainer.style.display = 'none';
+        textMessageOptionsContainer.style.display = 'block';
     }
 
     if (messageType === 'photo') {
-        textMessageOptionsContainer.style.display = "none";
-        imageMessageOptionsContainer.style.display = "block";
+        textMessageOptionsContainer.style.display = 'none';
+        imageMessageOptionsContainer.style.display = 'block';
     }
 
-}
+};
 
-messageTypeSelector.addEventListener("change", handleMessageSettingsChange);
+messageTypeSelector.addEventListener('change', handleMessageSettingsChange);
 
 const logSwitchSelector = selectById('logs-switch-checkbox');
 const loggingOptionsSelector = selectById('logging-options');
 
-const disableLoggingOptions = bool => [...document.getElementsByName("logging-type")].map(el => el.disabled = bool);
+const disableLoggingOptions = bool => [...document.getElementsByName('logging-type')].map(el => el.disabled = bool);
 
 const toggleActivityLogStatus = () => {
 
@@ -56,10 +54,10 @@ const toggleActivityLogStatus = () => {
         disableLoggingOptions(true);
     }
 
-}
+};
 
-document.addEventListener("DOMContentLoaded", toggleActivityLogStatus);
-logSwitchSelector.addEventListener("change", toggleActivityLogStatus);
+document.addEventListener('DOMContentLoaded', toggleActivityLogStatus);
+logSwitchSelector.addEventListener('change', toggleActivityLogStatus);
 
 const getSelectedOptions = activeTab => {
     switch (activeTab) {
@@ -75,7 +73,7 @@ const getSelectedOptions = activeTab => {
                         }
                     }
                 }
-            }
+            };
         case 2:
             return {
                 actions: {
@@ -91,14 +89,14 @@ const getSelectedOptions = activeTab => {
                         sendAs: selectCheckedRadioByName('image-message-type').value
                     }
                 }
-            }
+            };
         case 3:
             return {
                 logs: {
                     active: selectById('logs-switch-checkbox').checked,
                     type: selectCheckedRadioByName('logging-type').value
                 }
-            }
+            };
         default:
             return false;
     }
@@ -107,24 +105,24 @@ const getSelectedOptions = activeTab => {
 const isValidToken = str => {
     const regex = /^\d{8,10}:[A-Za-z0-9_-]{35}$/;
     return regex.test(str);
-}
+};
 
 const isValidChatId = str => {
     const regex = /^-?\d+$/;
     return regex.test(str);
-}
+};
 
 const getActiveTabId = () => {
     return Number(document.querySelector('.legacy-tab-input:checked').dataset.targetId);
-}
+};
 
 const getUserSettings = async () => {
     const options = await getStorageData('options');
     if (!options || Object.keys(options).length === 0) {
-        await setStorageData('options', defaultSettings)
+        await setStorageData('options', defaultSettings);
     }
     return await getStorageData('options');
-}
+};
 
 const validateConnectionSettings = () => {
     if (!isValidToken(tokenInput.value)) {
@@ -134,7 +132,7 @@ const validateConnectionSettings = () => {
         chatIdInput.classList.add('invalid-input');
     }
     return !(!isValidToken(tokenInput.value) || !isValidChatId(chatIdInput.value));
-}
+};
 
 const validateActionSettings = () => {
     const actions = getSelectedOptions(2)['actions'];
@@ -147,7 +145,7 @@ const validateActionSettings = () => {
         }
     }
     return true;
-}
+};
 
 const validateLogSettings = () => {
     const logs = getSelectedOptions(3)['logs'];
@@ -158,7 +156,7 @@ const validateLogSettings = () => {
         }
     }
     return true;
-}
+};
 
 const validateByTabId = (tabId) => {
     switch (tabId) {
@@ -171,13 +169,17 @@ const validateByTabId = (tabId) => {
         default:
             return false;
     }
-}
+};
 
 const saveSettings = async function (data) {
     const [type, settings] = Object.entries(data)[0];
-    if (!['connections', 'actions', 'logs'].includes(type)) return false;
+    if (!['connections', 'actions', 'logs'].includes(type)) {
+        return false;
+    }
     const options = await getUserSettings();
-    if (!validateByTabId(getActiveTabId())) return false;
+    if (!validateByTabId(getActiveTabId())) {
+        return false;
+    }
     options[type] = settings;
     try {
         await setStorageData('options', options);
@@ -185,7 +187,7 @@ const saveSettings = async function (data) {
     } catch (err) {
         return { success: false, message: err };
     }
-}
+};
 
 const updateSaveButton = function (content, disabled, reset) {
     if (typeof content === 'string') {
@@ -203,7 +205,7 @@ const updateSaveButton = function (content, disabled, reset) {
             updateSaveButton('Save', false, false);
         }, reset);
     }
-}
+};
 
 const showSaveOperationStatus = function (status) {
     const loaderSpan = document.createElement('span');
@@ -220,18 +222,18 @@ const showSaveOperationStatus = function (status) {
         img.alt = `Settings are${status.success ? '' : ' not'} saved`;
         updateSaveButton(img, true, 500);
     }, 500);
-}
+};
 
 saveButtonSelector.addEventListener('click', async (event) => {
     event.preventDefault();
     showSaveOperationStatus(
         await saveSettings(getSelectedOptions(getActiveTabId()))
-    )
+    );
 });
 
 const removeInvalidInputClass = function () {
     this.classList.contains('invalid-input') && this.classList.remove('invalid-input');
-}
+};
 
 tokenInput.addEventListener('click', removeInvalidInputClass);
 chatIdInput.addEventListener('click', removeInvalidInputClass);
@@ -257,7 +259,7 @@ const populateSettings = async function () {
     selectById('logs-switch-checkbox').checked = active;
     selectById(`log-${type === 'everything' ? 'everything' : 'timestamp-only'}`).checked = true;
     toggleActivityLogStatus();
-}
+};
 
 document.addEventListener('DOMContentLoaded', populateSettings);
 

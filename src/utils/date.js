@@ -3,4 +3,4 @@ export const timestampToReadableDate = function (unixTimestamp) {
     const date = new Date(unixTimestamp);
     return `${date.toLocaleString('default', { month: 'short' })} 
     ${date.getDate()}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-}
+};
