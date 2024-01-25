@@ -2,7 +2,7 @@
 
 <h3 align="center">
 <sub>
-<img src="./src/assets/logo/48.png" height="24" width="24">
+<p align="center"><img src="./src/assets/logo/128.png" height="60" width="60"></p>
 </sub>
 Send to Telegram
 </h3>
@@ -19,7 +19,7 @@ Send to Telegram extension helps you send **texts, links, and images** on web pa
 <h2>Installation</h2>
 
 1. Create a Telegram Bot and obtain a Chat ID to start sending messages. You can follow the steps in the installation wizard to complete the setup process.
-2. Don't forget to open the chat dialog with your bot and type **/start** so that it can access to the chat.
+2. In the Telegram app, open the chat dialog with your bot and type **/start** so that it can access to the chat.
 3. Go to the Settings page and save these credentials. Check out Message and Log settings as well, they are pretty straight-forward.
 4. Start sending messages by simply right-clicking on the content and then clicking on the 'Send this to Telegram' option.
 
@@ -100,3 +100,7 @@ You need to **reload the extension** in the Extensions Page **to see your change
 - Matrix loader by [vineethtrv/css-loader](https://github.com/vineethtrv/css-loader).
 - PureCSS Tabs by [alvarotrigo](https://codepen.io/alvarotrigo/pen/bGoPzMe).
 - Particle ORB CSS by [natewiley](https://codepen.io/natewiley/pen/GgONKy).
+
+<h2>Disclaimer</h2>
+
+This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Telegram, or any of its subsidiaries or its affiliates. The official Telegram website can be found at [telegram.org](https://telegram.org). The name "Telegram" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
