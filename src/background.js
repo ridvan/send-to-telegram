@@ -14,7 +14,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     //Set default settings if not set
     const options = await getStorageData('options');
     if (!options || Object.keys(options).length === 0) {
-        await setStorageData('options', defaultSettings)
+        await setStorageData('options', defaultSettings);
     }
 });
 
@@ -43,9 +43,11 @@ const contextMenuHandler = async (click, tabId) => {
 // Get the file extension from the given URL string
 const getFileExtension = function (url) {
     const path = new URL(url).pathname;
-    if (!path.includes('.')) return false;
+    if (!path.includes('.')) {
+        return false;
+    }
     return path.substring(path.lastIndexOf('.') + 1, path.length);
-}
+};
 
 // Override the message type for certain file extensions to reach better results
 const overrideMessageType = function (content, options) {
@@ -54,12 +56,13 @@ const overrideMessageType = function (content, options) {
         return 'document';
     }
     return options.actions.sendImage.sendAs;
-}
+};
 
 // Listen for content from context menu and trigger sendMessage function
 chrome.contextMenus.onClicked.addListener(async (click, tab) => {
-    if (!contextTypes.includes(click.menuItemId)) return false;
-
+    if (!contextTypes.includes(click.menuItemId)) {
+        return false;
+    }
     const options = await getStorageData('options');
     const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
     const messageData = await contextMenuHandler(click, tab.id);
@@ -93,7 +96,7 @@ const getSelectedText = async function (contextEvent, tabId, tabUrl) {
         return false; // ignoring an unsupported page like chrome://extensions
     }
     return { text: result, tabUrl };
-}
+};
 
 //Function to check if given URL is valid
 //Author @Pavlo https://stackoverflow.com/a/43467144
@@ -105,7 +108,7 @@ const isValidURL = function (string) {
         return false;
     }
     return url.protocol === 'http:' || url.protocol === 'https:';
-}
+};
 
 // Get the Telegram Bot API method name by message type
 const getMessageType = function (type) {
@@ -117,18 +120,18 @@ const getMessageType = function (type) {
         case 'photo':
             return '/sendPhoto';
         case 'document':
-            return '/sendDocument'
+            return '/sendDocument';
         case 'me':
-            return '/getMe'
+            return '/getMe';
         default:
             return false;
     }
-}
+};
 
 // Build the Telegram Bot API request URL by message type and active account
 const buildRequestURL = function (type, options) {
     return 'https://api.telegram.org/bot' + options.connections.setup[options.connections.use].key + getMessageType(type);
-}
+};
 
 // Build the message content object by message type
 const buildContentByType = function (type, content) {
@@ -149,13 +152,17 @@ const buildContentByType = function (type, content) {
         default:
             return false;
     }
-}
+};
 
 // Build the request parameters object by message type and user settings
 const buildPostData = function (type, content, options) {
 
-    if (!messageTypes.includes(type)) return false;
-    if (type === 'me') return {};
+    if (!messageTypes.includes(type)) {
+        return false;
+    }
+    if (type === 'me') {
+        return {};
+    }
 
     const parameters = {
         chat_id: options.connections.setup[options.connections.use].chatId,
@@ -178,11 +185,11 @@ const buildPostData = function (type, content, options) {
             inline_keyboard: [
                 [{ text: 'Source', url: content.tabUrl }]
             ],
-        }
+        };
     }
 
     return parameters;
-}
+};
 
 // Make HTTP requests using Fetch API
 const fetchAPI = async function (url, postData) {
@@ -194,13 +201,15 @@ const fetchAPI = async function (url, postData) {
         body: postData ? JSON.stringify(postData) : undefined
     };
     return await fetch(url, options);
-}
+};
 
 // Register the API response to the extension storage to use it later,
 // and throw error with api response and stack trace if response is not ok
 const handleAPIResponse = async function (data) {
     await setStorageData('lastAPIResponse', data);
-    if (data.ok) return true;
+    if (data.ok) {
+        return true;
+    }
     else {
         throw({
             status: data['error_code'],
@@ -208,7 +217,7 @@ const handleAPIResponse = async function (data) {
             stackTrace: new Error()
         });
     }
-}
+};
 
 // Register the message log to the extension storage to use it later,
 // and increase the total message count if the message is sent successfully
@@ -231,7 +240,7 @@ const registerLog = async function (content, response, type) {
     if (response.ok) {
         await setStorageData('totalMessageCount', total + 1);
     }
-}
+};
 
 const getFileIDsFromResponse = function (response) {
     let type = '';
@@ -240,7 +249,7 @@ const getFileIDsFromResponse = function (response) {
         fileID: response.result[type]['file_id'],
         uniqueID: response.result[type]['file_unique_id']
     };
-}
+};
 
 // Build the log object by message type and user settings
 const buildLogObject = function (content, response, type, options) {
@@ -260,22 +269,24 @@ const buildLogObject = function (content, response, type, options) {
     else {
         return false;
     }
-}
+};
 
 // Show status badge on the extension's icon,
 // and clear it after 1.5 seconds if the message is sent successfully
 const handleBadgeText = async function (success) {
-    if (typeof success !== 'boolean') return false;
+    if (typeof success !== 'boolean') {
+        return false;
+    }
 
     await chrome.action.setBadgeText({ text: success ? 'Sent' : 'Fail' });
     await chrome.action.setBadgeBackgroundColor({ color: success ? '#008000bd' : '#880024' });
 
     if (success) {
         setTimeout(async () => {
-            await chrome.action.setBadgeText({ text: '' })
+            await chrome.action.setBadgeText({ text: '' });
         }, 1500);
     }
-}
+};
 
 // Send the message to Telegram Bot API and handle the response
 const sendMessage = async function (content, type) {
@@ -311,4 +322,4 @@ const sendMessage = async function (content, type) {
         await handleBadgeText(apiResponse.ok);
         await registerLog(content, apiResponse, type);
     }
-}
+};

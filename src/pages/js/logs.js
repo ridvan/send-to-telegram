@@ -10,7 +10,7 @@ const getLogsFromStorage = async function () {
         logs = [];
     }
     return logs;
-}
+};
 
 const logs = await getLogsFromStorage();
 
@@ -19,10 +19,14 @@ let currentPage = 1;
 let endPage;
 
 const toggleAfterDelay = (type, element, delay) => {
-    if (!['display-none', 'log-single-active', 'log-single-details'].includes(type)) return;
+    if (!['display-none', 'log-single-active', 'log-single-details'].includes(type)) {
+        return;
+    }
     setTimeout(() => {
         element.classList.toggle(type);
-        if (type === 'display-none') element.removeAttribute('style');
+        if (type === 'display-none') {
+            element.removeAttribute('style');
+        }
     }, delay);
 };
 
@@ -30,7 +34,7 @@ const focusAfterDelay = (element, delay) => {
     setTimeout(() => {
         element.focus();
     }, delay);
-}
+};
 
 const toggleExpandByIndex = (index) => {
     [...document.querySelectorAll('.log-single')].forEach((element, indexOnArray) => {
@@ -43,10 +47,10 @@ const toggleExpandByIndex = (index) => {
             toggleAfterDelay('display-none', element, 700);
             element.classList.toggle('hide-single-row');
             if (element.classList.contains('hide-single-row')) {
-                element.style.transition = `transform 700ms ease-out 0ms`;
+                element.style.transition = 'transform 700ms ease-out 0ms';
             }
         }
-    })
+    });
 };
 
 const getTextContentByType = (type, content) => {
@@ -60,10 +64,12 @@ const getTextContentByType = (type, content) => {
         default:
             return false;
     }
-}
+};
 
 const createLogDetailsElement = function (log, type, content) {
-    if (!messageTypes.includes(type)) return;
+    if (!messageTypes.includes(type)) {
+        return;
+    }
 
     let modifiedType;
     switch (type) {
@@ -125,7 +131,7 @@ const createLogDetailsElement = function (log, type, content) {
     }
 
     return clone;
-}
+};
 
 const getLogDetailsFooter = function (tabUrl, logIndex, type) {
     const template = document.querySelector('#single-log-details-footer-template');
@@ -149,7 +155,7 @@ const getLogDetailsFooter = function (tabUrl, logIndex, type) {
     deleteLogBtn.dataset.logIndex = logIndex;
 
     return clone;
-}
+};
 
 const displayLogItems = function (page) {
     const startIndex = (page - 1) * itemsPerPage;
@@ -217,7 +223,7 @@ const displayLogItems = function (page) {
         if (!content && !isErrorLog) {
             elements.logViewExpand.src = getIconPath('eye-slash');
             elements.logViewExpand.classList.add('no-log-details', 'no-button-hover');
-            elements.logViewExpand.role = 'img'
+            elements.logViewExpand.role = 'img';
             elements.logViewExpand.setAttribute('aria-label', 'Based on your log settings, no log details were saved for this message.');
         } else {
             [elements.logViewExpand.dataset.logIndex, elements.logViewExpand.dataset.logType] = [i - ((page - 1) * itemsPerPage), type];
@@ -239,7 +245,9 @@ const displayLogItems = function (page) {
             const imgContainer = detailsContainer.querySelector('.sent-image');
             singleRow.classList.toggle('eyes-wide-shut');
             toggleAfterDelay('display-none', detailsContainer, 350);
-            if (imgContainer) toggleAfterDelay('display-none', imgContainer, 150);
+            if (imgContainer) {
+                toggleAfterDelay('display-none', imgContainer, 150);
+            }
             toggleExpandByIndex(elementIndex);
             if (singleRow.getAttribute('aria-label') === 'Open log details') {
                 singleRow.setAttribute('aria-label', 'Return to logs page');
@@ -260,7 +268,7 @@ const displayLogItems = function (page) {
             await setStorageData('messageLogs', logs);
             await setStorageData('totalMessageCount', logs.length);
             const logContainersCount = document.querySelectorAll('.log-single').length;
-            const newPageIndex  = currentPage === endPage && logContainersCount === 1 ? currentPage - 1 : currentPage;
+            const newPageIndex = currentPage === endPage && logContainersCount === 1 ? currentPage - 1 : currentPage;
             currentPage = newPageIndex;
             displayLogItems(newPageIndex);
             generatePagination();
@@ -271,7 +279,7 @@ const displayLogItems = function (page) {
             }
         });
     });
-}
+};
 
 //generatePagination function was written by GPT-3.5
 const generatePagination = function () {
@@ -307,7 +315,7 @@ const generatePagination = function () {
 
         if (i === currentPage) {
             paginationLink.setAttribute('aria-current', 'page');
-            paginationLink.classList.toggle("active", i === currentPage);
+            paginationLink.classList.toggle('active', i === currentPage);
         }
 
         paginationContainer.appendChild(paginationLink);
@@ -336,7 +344,7 @@ const generatePagination = function () {
         }
     });
     paginationContainer.appendChild(nextButton);
-}
+};
 
 const createPaginationButton = function (label, isEnabled, clickHandler) {
     const button = document.createElement('a');
@@ -344,12 +352,12 @@ const createPaginationButton = function (label, isEnabled, clickHandler) {
     button.textContent = label;
     button.setAttribute('role', 'button');
     const symbolMap = { '«': 'previous', '»': 'next' };
-    const enOrdinalRules = new Intl.PluralRules("en-US", { type: "ordinal" });
+    const enOrdinalRules = new Intl.PluralRules('en-US', { type: 'ordinal' });
     const suffixes = new Map([
-        ["one", "st"],
-        ["two", "nd"],
-        ["few", "rd"],
-        ["other", "th"],
+        ['one', 'st'],
+        ['two', 'nd'],
+        ['few', 'rd'],
+        ['other', 'th'],
     ]);
     const formatOrdinals = (n) => {
         const rule = enOrdinalRules.select(n);
@@ -367,7 +375,7 @@ const createPaginationButton = function (label, isEnabled, clickHandler) {
         });
     }
     return button;
-}
+};
 
 const createPaginationEllipsis = function () {
     const ellipsis = document.createElement('a');
@@ -377,7 +385,7 @@ const createPaginationEllipsis = function () {
     ellipsis.setAttribute('aria-disabled', 'true');
     ellipsis.setAttribute('aria-label', 'two dots');
     return ellipsis;
-}
+};
 
 displayLogItems(currentPage);
 generatePagination();

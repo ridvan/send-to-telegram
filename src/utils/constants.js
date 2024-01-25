@@ -28,7 +28,7 @@ export const defaultSettings = {
         active: true,
         type: 'everything' // or 'timestamp'
     }
-}
+};
 
 export const messageTypes = ['text', 'photo', 'document', 'link', 'page', 'me'];
 

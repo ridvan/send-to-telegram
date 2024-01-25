@@ -1,7 +1,9 @@
 import { iconTypes } from './constants.js';
 
 export const getIconPath = function (type) {
-    if(!iconTypes.includes(type)) return false;
+    if(!iconTypes.includes(type)) {
+        return false;
+    }
 
     const iconMap = {
         'text': 'text-aa',
@@ -20,4 +22,4 @@ export const getIconPath = function (type) {
     };
 
     return `../../assets/icons/phospor-icons/${iconMap[type]}-ph.svg`;
-}
+};
