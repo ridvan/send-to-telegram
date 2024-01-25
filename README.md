@@ -2,7 +2,7 @@
 
 <h3 align="center">
 <sub>
-<img src="./src/assets/logo/64.png" height="24" width="24">
+<img src="./src/assets/logo/48.png" height="24" width="24">
 </sub>
 Send to Telegram
 </h3>
@@ -88,3 +88,15 @@ Then, we need to add the '**src**' folder to the Chrome as an unpacked extension
 4. Select the '**src**' folder under the '**send-to-telegram**' folder.
 
 You need to **reload the extension** in the Extensions Page **to see your changes**. You can either click on the refresh icon in the Extensions page or use an unpacked Extension Reloader like [this one](https://chromewebstore.google.com/detail/fimgfedafeadlieiabdeeaodndnlbhid).
+
+<h2>Resources</h2>
+
+- Extension Logo: [Telegram](https://icons8.com/icon/jZ1z64hEYYLW/telegram) icon by [Icons8](https://icons8.com)
+- Icons by [Phospor Icons](https://phosphoricons.com/). (License location: `./src/assets/icons/phospor-icons/LICENSE`)
+- Inter font by [The Inter Project Authors](https://github.com/rsms/inter). (License location: `./src/assets/font/Inter/LICENSE`)
+- Input design by [G4b413l](https://uiverse.io/G4b413l/mean-stingray-9). (License location: `./src/assets/css/input.css`)
+- Button design by [Mhyar-nsi](https://uiverse.io/Mhyar-nsi/tiny-wasp-99). (License location: `./src/assets/css/input.css`)
+- Button by [alexmaracinaru](https://uiverse.io/alexmaracinaru/brown-bobcat-65). (License location: `./src/assets/css/wizard.css`)
+- Matrix loader by [vineethtrv/css-loader](https://github.com/vineethtrv/css-loader).
+- PureCSS Tabs by [alvarotrigo](https://codepen.io/alvarotrigo/pen/bGoPzMe).
+- Particle ORB CSS by [natewiley](https://codepen.io/natewiley/pen/GgONKy).
