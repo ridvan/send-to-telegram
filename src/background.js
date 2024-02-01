@@ -245,9 +245,10 @@ const registerLog = async function (content, response, type) {
 const getFileIDsFromResponse = function (response) {
     let type = '';
     ['photo', 'document', 'sticker'].forEach(key => response.result[key] ? type = key : null);
+    const lastFileItem = response.result[type][response.result[type].length - 1];
     return {
-        fileID: response.result[type]['file_id'],
-        uniqueID: response.result[type]['file_unique_id']
+        fileID: lastFileItem['file_id'],
+        uniqueID: lastFileItem['file_unique_id']
     };
 };
 

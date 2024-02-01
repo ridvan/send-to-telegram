@@ -44,11 +44,13 @@ const toggleExpandByIndex = (index) => {
             toggleAfterDelay('log-single-active', element, 900);
             focusAfterDelay(activeLogView, 900);
         } else {
-            toggleAfterDelay('display-none', element, 700);
-            element.classList.toggle('hide-single-row');
             if (element.classList.contains('hide-single-row')) {
-                element.style.transition = 'transform 700ms ease-out 0ms';
+                toggleAfterDelay('display-none', element, 900);
+            } else {
+                toggleAfterDelay('display-none', element, 200);
+                element.style.transition = 'transform 200ms ease-out 0ms';
             }
+            element.classList.toggle('hide-single-row');
         }
     });
 };

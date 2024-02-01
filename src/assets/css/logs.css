@@ -3,6 +3,7 @@ body::-webkit-scrollbar {
 }
 
 body {
+    height: 434px !important;
     scrollbar-width: none;  /* Firefox */
 }
 
@@ -147,10 +148,6 @@ body {
     height: 245px;
 }
 
-.show-single-row:has(img) {
-    height: 255px;
-}
-
 img.details-container {
     margin-top: 5px;
 }
@@ -201,7 +198,7 @@ img.details-container {
     resize: none;
     background: transparent;
     height: auto;
-    max-height: 173px;
+    max-height: 160px;
     padding: 5px 5px 5px 5px;
     border-radius: 5px;
     border: 1px solid #00000017;
@@ -267,7 +264,11 @@ img.details-container {
 }
 
 nav.pagination {
-    margin: 12px 20px 15px 20px;
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px 20px 20px;
 }
 
 .pagination-disabled-button[aria-current="page"] {
