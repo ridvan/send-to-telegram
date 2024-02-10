@@ -91,7 +91,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 }
 
 .save-settings span {
-    opacity: 50%;
+    opacity: 70%;
     transition: .2s ease-in;
     padding-left: 2px;
 }
