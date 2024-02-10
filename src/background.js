@@ -25,7 +25,22 @@ const getCurrentTab = async (tabId) => {
 
 // Handle extension option clicks in the context menu by content type
 const contextMenuHandler = async (click, tabId) => {
-    const { url: tabUrl } = await getCurrentTab(tabId);
+    let tabUrl = await getTabUrl(click, tabId);
+    return await buildContentData(click, tabId, tabUrl);
+};
+
+// Get the tab URL from the context menu click event, including PDF viewer
+const getTabUrl = async (click, tabId) => {
+    if (tabId === -1 && click.frameUrl.includes('.pdf')) {
+        return click.frameUrl;
+    } else {
+        const currentTab = await getCurrentTab(tabId);
+        return currentTab.url;
+    }
+};
+
+// Build the content data object by context menu click event and tab URL
+const buildContentData = async (click, tabId, tabUrl) => {
     switch (click.menuItemId) {
         case 'text':
             return await getSelectedText(click, tabId, tabUrl) || (click.selectionText ? { text: click.selectionText, tabUrl } : false);
@@ -85,6 +100,9 @@ chrome.runtime.onMessage.addListener(async request => {
 
 //Get selected text from the browser, including iframes
 const getSelectedText = async function (contextEvent, tabId, tabUrl) {
+    if (tabId === -1) {
+        return false;
+    }
     let result;
     try {
         [{ result }] = await chrome.scripting.executeScript({
