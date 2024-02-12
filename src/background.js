@@ -18,36 +18,23 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
 });
 
-// Get the active browser tab details
-const getCurrentTab = async (tabId) => {
-    return chrome.tabs.get(tabId);
-};
-
-// Handle extension option clicks in the context menu by content type
-const contextMenuHandler = async (click, tabId) => {
-    let tabUrl = await getTabUrl(click, tabId);
-    return await buildContentData(click, tabId, tabUrl);
-};
-
 // Get the tab URL from the context menu click event, including PDF viewer
-const getTabUrl = async (click, tabId) => {
-    if (tabId === -1 && click.frameUrl.includes('.pdf')) {
+const parseTabUrl = async (click, tabUrl) => {
+    if (!tabUrl.startsWith('http') && click.frameUrl.includes('.pdf')) {
         return click.frameUrl;
-    } else {
-        const currentTab = await getCurrentTab(tabId);
-        return currentTab.url;
     }
+    return tabUrl;
 };
 
 // Build the content data object by context menu click event and tab URL
 const buildContentData = async (click, tabId, tabUrl) => {
     switch (click.menuItemId) {
         case 'text':
-            return await getSelectedText(click, tabId, tabUrl) || (click.selectionText ? { text: click.selectionText, tabUrl } : false);
+            return { text: click.selectionText, tabUrl };
         case 'link':
             return { linkUrl: click.linkUrl, tabUrl };
         case 'page':
-            return { pageUrl: tabUrl, tabUrl };
+            return { pageUrl: tabUrl };
         case 'image':
             return { srcUrl: click.srcUrl, tabUrl };
         default:
@@ -80,7 +67,8 @@ chrome.contextMenus.onClicked.addListener(async (click, tab) => {
     }
     const options = await getStorageData('options');
     const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
-    const messageData = await contextMenuHandler(click, tab.id);
+    const tabUrl = await parseTabUrl(click, tab.url);
+    const messageData = await buildContentData(click, tab.id, tabUrl);
     await sendMessage(messageData, messageType);
 });
 
@@ -97,24 +85,6 @@ chrome.runtime.onMessage.addListener(async request => {
         });
     }
 });
-
-//Get selected text from the browser, including iframes
-const getSelectedText = async function (contextEvent, tabId, tabUrl) {
-    if (tabId === -1) {
-        return false;
-    }
-    let result;
-    try {
-        [{ result }] = await chrome.scripting.executeScript({
-            target: { tabId, frameIds: [contextEvent?.frameId] },
-            function: () => getSelection().toString()
-        });
-    } catch (e) {
-        console.log(e);
-        return false; // ignoring an unsupported page like chrome://extensions
-    }
-    return { text: result, tabUrl };
-};
 
 //Function to check if given URL is valid
 //Author @Pavlo https://stackoverflow.com/a/43467144
