@@ -9,6 +9,9 @@ Send to Telegram
 <p align="center">
 A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.
 </p>
+<p align="center">
+<a target="_blank" href="https://microsoftedge.microsoft.com/addons/detail/send-to-telegram/gefemahopiogjhmaailegnjippcpfgbb"><img src="https://raw.githubusercontent.com/gist/ridvan/ac7147342bcf6ca9553cac9fca824e08/raw/603061e90d56021c0f7516995b5443a763fa9dfd/microsoft-edge-addon.svg" height="40"></a>
+</p>
 
 ***
 
@@ -100,6 +103,7 @@ You need to **reload the extension** in the Extensions Page **to see your change
 - Matrix loader by [vineethtrv/css-loader](https://github.com/vineethtrv/css-loader).
 - PureCSS Tabs by [alvarotrigo](https://codepen.io/alvarotrigo/pen/bGoPzMe).
 - Particle ORB CSS by [natewiley](https://codepen.io/natewiley/pen/GgONKy).
+- Extension Store Badges by [arnav-kr](https://github.com/arnav-kr).
 
 <h2>Disclaimer</h2>
 
