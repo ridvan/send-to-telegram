@@ -230,13 +230,13 @@ const registerLog = async function (content, response, type) {
     }
 };
 
-const getFileIDsFromResponse = function (response) {
+const getFileIDsFromResponse = function (result) {
     let type = '';
-    ['photo', 'document', 'sticker'].forEach(key => response.result[key] ? type = key : null);
-    const lastFileItem = response.result[type][response.result[type].length - 1];
+    ['photo', 'document', 'sticker'].forEach(key => result[key] ? type = key : null);
+    const uploadedFile = Array.isArray(result[type]) ? result[type].at(-1) : result[type];
     return {
-        fileID: lastFileItem['file_id'],
-        uniqueID: lastFileItem['file_unique_id']
+        fileID: uploadedFile['file_id'],
+        uniqueID: uploadedFile['file_unique_id']
     };
 };
 
@@ -251,7 +251,7 @@ const buildLogObject = function (content, response, type, options) {
     else if (options.logs.type === 'everything') {
         const contentObject = ['photo', 'document'].includes(type) ? {
             ...content,
-            ...getFileIDsFromResponse(response)
+            ...getFileIDsFromResponse(response.result)
         } : content;
         return { type: type, content: contentObject, timestamp: Date.now(), status: 'success' };
     }
