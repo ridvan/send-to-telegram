@@ -53,11 +53,19 @@ const getFileExtension = function (url) {
 
 // Override the message type for certain file extensions to reach better results
 const overrideMessageType = function (content, options) {
-    const fileExtension = getFileExtension(content);
-    if (['webp', 'gif'].includes(fileExtension)) {
-        return 'document';
+    if (options.actions.sendImage.sendAs === 'link') {
+        return 'link';
     }
-    return options.actions.sendImage.sendAs;
+    const fileExtension = getFileExtension(content);
+    switch (fileExtension) {
+        case 'webp':
+        case 'gif':
+            return 'document';
+        case 'svg':
+            return 'link';
+        default:
+            return options.actions.sendImage.sendAs;
+    }
 };
 
 // Listen for content from context menu and trigger sendMessage function
