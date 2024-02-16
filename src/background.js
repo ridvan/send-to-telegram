@@ -77,7 +77,7 @@ chrome.contextMenus.onClicked.addListener(async (click, tab) => {
     const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
     const tabUrl = await parseTabUrl(click, tab.url);
     const messageData = await buildContentData(click, tab.id, tabUrl);
-    await sendMessage(messageData, messageType);
+    await sendMessage(messageData, messageType, tab);
 });
 
 // Listen for connection status information request from homepage
@@ -286,7 +286,7 @@ const handleBadgeText = async function (success) {
 };
 
 // Send the message to Telegram Bot API and handle the response
-const sendMessage = async function (content, type) {
+const sendMessage = async function (content, type, tab) {
     try {
         if (!content || !messageTypes.includes(type)) {
             throw new Error('sendMessage parameters are not valid!');
@@ -315,8 +315,11 @@ const sendMessage = async function (content, type) {
         // Read the API response and then clear its value
         const apiResponse = await getStorageData('lastAPIResponse');
         await setStorageData('lastAPIResponse', {});
-        // Show status badge on the extension's icon and register the message log
+        // Show status badge on the extension's icon
         await handleBadgeText(apiResponse.ok);
-        await registerLog(content, apiResponse, type);
+        // If the browser is not in Incognito Mode, register the message log
+        if (!tab.incognito) {
+            await registerLog(content, apiResponse, type);
+        }
     }
 };
