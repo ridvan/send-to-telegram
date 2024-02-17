@@ -84,9 +84,20 @@ chrome.contextMenus.onClicked.addListener(async (click, tab) => {
 chrome.runtime.onMessage.addListener(async request => {
     if (request.message === 'getConnectionStatus') {
         const options = await getStorageData('options');
+
+        const botToken = options.connections.setup[options.connections.use].key;
+        if (!botToken) {
+            await chrome.runtime.sendMessage({
+                message: 'returnConnectionStatus',
+                data: { ok: false, description: 'No token was provided.' }
+            });
+            return false;
+        }
+
         const requestURL = buildRequestURL('me', options);
         const requestParameters = buildPostData('me', {}, options);
         const getMe = await fetchAPI(requestURL, requestParameters);
+
         await chrome.runtime.sendMessage({
             message: 'returnConnectionStatus',
             data: await getMe.json(),
@@ -196,7 +207,11 @@ const fetchAPI = async function (url, postData) {
         },
         body: postData ? JSON.stringify(postData) : undefined
     };
-    return await fetch(url, options);
+    try {
+        return await fetch(url, options);
+    } catch (error) {
+        return JSON.stringify({ ok: false, description: `Error while sending the request: ${error}` });
+    }
 };
 
 // Register the API response to the extension storage to use it later,
