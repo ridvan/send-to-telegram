@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Embedded full page view to be opened after the installation.
 
+## [1.0.2] - 2024-02-19
+
+### Fixed
+
+- Fixed CORS issue on homepage which occurs when there is no token saved yet. [~c29624f](https://github.com/ridvan/send-to-telegram/commit/c29624fa37889958fd0bd05ec20725cfae0a6ff7)
+
 ## [1.0.1] - 2024-02-17
 
 ### Fixed
@@ -26,3 +32,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial release of the Send to Telegram extension.
 
 [1.0.1]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.1
+[1.0.2]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.2
