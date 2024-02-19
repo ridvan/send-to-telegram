@@ -10,7 +10,8 @@ Send to Telegram
 A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.
 </p>
 <p align="center">
-<a target="_blank" href="https://microsoftedge.microsoft.com/addons/detail/send-to-telegram/gefemahopiogjhmaailegnjippcpfgbb"><img src="https://raw.githubusercontent.com/gist/ridvan/ac7147342bcf6ca9553cac9fca824e08/raw/603061e90d56021c0f7516995b5443a763fa9dfd/microsoft-edge-addon.svg" height="40"></a>
+<a target="_blank" title="Chrome Webstore Link of Send to Telegram extension" href="https://chromewebstore.google.com/detail/send-to-telegram/jejaagembgeeipilhpjpndednmcphenh"><img src="https://raw.githubusercontent.com/gist/ridvan/ac7147342bcf6ca9553cac9fca824e08/raw/8aa16ca40217f44e74f5d446710f37e4e4708f67/chrome-extension.svg" height="45" alt="Chrome Webstore Badge"></a>
+<a target="_blank" href="https://microsoftedge.microsoft.com/addons/detail/send-to-telegram/gefemahopiogjhmaailegnjippcpfgbb"><img src="https://raw.githubusercontent.com/gist/ridvan/ac7147342bcf6ca9553cac9fca824e08/raw/603061e90d56021c0f7516995b5443a763fa9dfd/microsoft-edge-addon.svg" height="45" alt="Microsoft Add-ons Badge"></a>
 </p>
 
 ***
