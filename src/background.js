@@ -27,7 +27,7 @@ const parseTabUrl = async (click, tabUrl) => {
 };
 
 // Build the content data object by context menu click event and tab URL
-const buildContentData = async (click, tabId, tabUrl) => {
+const buildContentData = async (click, tabUrl) => {
     switch (click.menuItemId) {
         case 'text':
             return { text: click.selectionText, tabUrl };
@@ -76,7 +76,7 @@ chrome.contextMenus.onClicked.addListener(async (click, tab) => {
     const options = await getStorageData('options');
     const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
     const tabUrl = await parseTabUrl(click, tab.url);
-    const messageData = await buildContentData(click, tab.id, tabUrl);
+    const messageData = await buildContentData(click, tabUrl);
     await sendMessage(messageData, messageType, tab);
 });
 
@@ -87,18 +87,16 @@ chrome.runtime.onMessage.addListener(async request => {
 
         const botToken = options.connections.setup[options.connections.use].key;
         if (!botToken) {
-            await chrome.runtime.sendMessage({
+            return await chrome.runtime.sendMessage({
                 message: 'returnConnectionStatus',
                 data: { ok: false, description: 'No token was provided.' }
             });
-            return false;
         }
 
         const requestURL = buildRequestURL('me', options);
-        const requestParameters = buildPostData('me', {}, options);
-        const getMe = await fetchAPI(requestURL, requestParameters);
+        const getMe = await fetchAPI(requestURL, {});
 
-        await chrome.runtime.sendMessage({
+        return await chrome.runtime.sendMessage({
             message: 'returnConnectionStatus',
             data: await getMe.json(),
         });
@@ -165,20 +163,17 @@ const buildContentByType = function (type, content) {
 const buildPostData = function (type, content, options) {
 
     if (!messageTypes.includes(type)) {
-        return false;
+        throw new Error(`Unrecognized message type: ${type}`);
     }
-    if (type === 'me') {
-        return {};
-    }
+
+    const typeKey = `send${['photo', 'document'].includes(type) ? 'Image' : 'Message'}`;
 
     const parameters = {
         chat_id: options.connections.setup[options.connections.use].chatId,
+        disable_notification: options.actions[typeKey].disableNotificationSound,
+        disable_web_page_preview: options.actions[typeKey].disablePreview
     };
 
-    const typeKey = `send${['photo', 'document'].includes(type) ? 'Image' : 'Message'}`;
-    parameters.disable_notification = options.actions[typeKey].disableNotificationSound;
-    parameters.disable_web_page_preview = options.actions[typeKey].disablePreview;
-    const addSourceLink = options.actions[typeKey].addSourceLink;
     const userContent = buildContentByType(type, content);
 
     if (['photo', 'document'].includes(type)) {
@@ -187,7 +182,7 @@ const buildPostData = function (type, content, options) {
 
     parameters[userContent['type']] = userContent['content'];
 
-    if (addSourceLink && isValidURL(content.tabUrl) && type !== 'page') {
+    if (options.actions[typeKey].addSourceLink && isValidURL(content.tabUrl) && type !== 'page') {
         parameters.reply_markup = {
             inline_keyboard: [
                 [{ text: 'Source', url: content.tabUrl }]
