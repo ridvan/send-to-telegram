@@ -1,6 +1,6 @@
 {
   "name": "Send to Telegram",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.",
   "permissions": ["contextMenus", "storage"],
   "background": {

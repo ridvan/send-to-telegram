@@ -34,6 +34,7 @@ Send to Telegram extension helps you send **texts, links, and images** on web pa
 1. **Connection Status:** Checks if the Telegram Bot Token is correct and functional.
 2. **Total Messages Sent:** Increments upon each successful message sent.
 3. **Last Messages:** Time and content type of the last successful/failed messages.
+4. **Embed View:** Opens the extension in a new tab, and has Wipe Data and Re-open Guide features.
 
 <h3>Settings</h3>
 
@@ -105,6 +106,7 @@ You need to **reload the extension** in the Extensions Page **to see your change
 - PureCSS Tabs by [alvarotrigo](https://codepen.io/alvarotrigo/pen/bGoPzMe).
 - Particle ORB CSS by [natewiley](https://codepen.io/natewiley/pen/GgONKy).
 - Extension Store Badges by [arnav-kr](https://github.com/arnav-kr).
+- nnnoise & llline by [fffuel.co](https://fffuel.co/).
 
 <h2>Disclaimer</h2>
 
