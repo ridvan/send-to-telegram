@@ -57,10 +57,21 @@ const handleStatistics = async () => {
     );
 };
 
+const addEmbedViewLink = () => {
+    // Show the embed view link only if the page is not embedded
+    if (window.self !== window.top) {
+        return;
+    }
+    const template = document.getElementById('open-embed-view-template');
+    const clone = template.content.cloneNode(true);
+    document.querySelector('.main-header').appendChild(clone);
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeStatusMessage();
     await handleStatistics();
     await handleMessageError();
+    addEmbedViewLink();
 });
 
 const removeBlinkerAfterDelay = delay => {

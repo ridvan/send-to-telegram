@@ -7,6 +7,14 @@ body {
     scrollbar-width: none;  /* Firefox */
 }
 
+body:has(.logs-list-empty) {
+    height: 250px !important;
+}
+
+body:has(.logs-list-empty) .logs-section {
+    margin-top: 50px;
+}
+
 .logs-section {
     display: flex;
     flex-direction: column;
@@ -80,7 +88,7 @@ body {
 }
 
 .message-date-text {
-    width: 85px;
+    width: 90px;
     display: inline-block;
 }
 

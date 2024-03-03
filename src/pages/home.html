@@ -12,13 +12,24 @@
     <h1><span class="logo-small"></span> <span>Send to Telegram</span></h1>
 </header>
 <main role="main">
-    <p class="connection-status" tabindex="0">
-        <span class="dot gray-dot blink-one"></span>
-        <span class="dot gray-dot blink-two"></span>
-        <span class="dot gray-dot blink-three"></span>
-        <span class="visually-hidden">Telegram Bot API, Connection Status:</span>
-        <span id="connection-message"> Trying to connect</span>
-    </p>
+    <div class="main-header">
+        <p class="connection-status" tabindex="0">
+            <span class="dot gray-dot blink-one"></span>
+            <span class="dot gray-dot blink-two"></span>
+            <span class="dot gray-dot blink-three"></span>
+            <span class="visually-hidden">Telegram Bot API, Connection Status:</span>
+            <span id="connection-message"> Trying to connect</span>
+        </p>
+        <template id="open-embed-view-template">
+            <div class="header-separator"></div>
+            <p class="open-embed-view">
+                <a target="_blank" href="./embed.html" aria-label="Open Extension in a new tab">
+                    <img src="../assets/icons/phospor-icons/arrows-out-duotone-ph.svg" height="18" width="18" alt="External link icon">
+                    <span>Embed View</span>
+                </a>
+            </p>
+        </template>
+    </div>
     <section class="home-statistics">
         <div class="split">
             <div class="messages-sent">

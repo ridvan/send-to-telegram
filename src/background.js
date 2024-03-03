@@ -3,7 +3,7 @@ import { getStorageData, setStorageData } from './utils/storage.js';
 
 //Add context menu items and set default settings on install
 const contextTypes = ['text', 'link', 'page', 'image'];
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async details => {
     contextTypes.forEach(type =>
         chrome.contextMenus.create({
             id: type,
@@ -15,6 +15,10 @@ chrome.runtime.onInstalled.addListener(async () => {
     const options = await getStorageData('options');
     if (!options || Object.keys(options).length === 0) {
         await setStorageData('options', defaultSettings);
+    }
+    // Open the embed view after the extension is installed
+    if (details.reason === 'install') {
+        chrome.tabs.create({ url: '/pages/embed.html' });
     }
 });
 

@@ -274,6 +274,7 @@ const displayLogItems = function (page) {
             currentPage = newPageIndex;
             displayLogItems(newPageIndex);
             generatePagination();
+            window.parent.postMessage('resize', '*');
         });
         deleteLogButton.addEventListener('keydown', function (event) {
             if (event.key === 'Enter' || event.keyCode === 13) {
@@ -391,3 +392,5 @@ const createPaginationEllipsis = function () {
 
 displayLogItems(currentPage);
 generatePagination();
+
+window.parent.postMessage('resize', '*');

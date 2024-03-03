@@ -35,6 +35,8 @@ const handleMessageSettingsChange = () => {
         imageMessageOptionsContainer.style.display = 'block';
     }
 
+    window.parent.postMessage('resize', '*');
+
 };
 
 messageTypeSelector.addEventListener('change', handleMessageSettingsChange);
@@ -276,5 +278,6 @@ const handleActiveTab = function () {
    element.addEventListener('click', function () {
        document.querySelector(`#settings-tab-selector-${this.dataset.btnId}`).checked = true;
        handleActiveTab();
+       window.parent.postMessage('resize', '*');
    });
 });

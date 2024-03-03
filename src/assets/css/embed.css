@@ -1,0 +1,115 @@
+@font-face {
+    font-family: 'Inter';
+    src: local('Inter'), url('./../font/Inter/Inter-VariableFont_slnt\,wght.ttf') format('truetype');
+}
+
+.hidden {
+    display: none !important;
+}
+
+.container {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    gap: 8px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #073141ff url(./../img/nnnoise.svg) fixed center;
+}
+
+.embed-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+iframe {
+    border: none;
+    background-color: #fff;
+    box-shadow: 0px 0px 20px 10px #0016217a;
+    border-radius:   10px;
+}
+
+.card {
+    background-color: #ffffffcf;
+    color: #223636;
+    border-radius: 10px;
+    box-shadow: 0px 0px 20px 10px #0016217a;
+    width: 350px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 50px;
+    height: auto;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    margin-left: 12px;
+}
+
+.column-item {
+    max-width: 60px;
+}
+
+.column-item.wipe-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-width: 220px;
+    padding: 10px;
+}
+
+.column-item a {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    color: black;
+}
+
+.column-item a:visited {
+    color: unset;
+    text-decoration: none;
+}
+
+.wipe-options {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin-left: 5px;
+}
+
+.wipe-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    justify-content: center;
+}
+
+.wipe-buttons a {
+    flex-direction: row;
+    gap: 5px;
+}
+
+.wipe-menu span {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.options-field label {
+    font-size: 13px;
+    vertical-align: 2px;
+}
+
+.column-separator {
+    height: 30px;
+    border-right: 1px solid #adadad;
+    margin-top: 5px;
+}

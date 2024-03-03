@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Embed View | Send to Telegram</title>
+    <link rel="stylesheet" href="./../assets/css/embed.css">
+</head>
+<body class="container">
+<div class="embed-container">
+    <iframe id="extension-view" src="home.html" width="350" scrolling="no"></iframe>
+</div>
+<div class="separator"></div>
+<footer class="card">
+    <div class="row item-wrapper">
+        <div class="column-item">
+            <a id="open-wizard" target="_blank" href="#" aria-label="Open installation guide on the embed view above">
+                <img src="./../assets/icons/phospor-icons/magic-wand-duotone-ph.svg" height="25" width="25" alt="Wand icon">
+                <span>Guide</span>
+            </a>
+        </div>
+        <div class="column-item">
+            <a id="wipe-data" target="_blank" href="https://github.com/ridvan/send-to-telegram" aria-label="Options to wipe local user data of the extension">
+                <img src="./../assets/icons/phospor-icons/broom-duotone-ph.svg" height="25" width="25" alt="Github icon">
+                <span>Wipe Data</span>
+            </a>
+        </div>
+        <div class="column-item column-separator"></div>
+        <div class="column-item">
+            <a target="_blank" href="https://t.me/send_to_telegram" aria-label="Extension community channel on Telegram">
+                <img src="./../assets/icons/phospor-icons/megaphone-simple-duotone-ph.svg" height="25" width="25" alt="Megaphone icon">
+                <span>Channel</span>
+            </a>
+        </div>
+        <div class="column-item">
+            <a target="_blank" href="https://github.com/ridvan/send-to-telegram" aria-label="Github page of Send to Telegram Project">
+                <img src="./../assets/icons/phospor-icons/github-logo-duotone-ph.svg" height="25" width="25" alt="Github icon">
+                <span>GitHub</span>
+            </a>
+        </div>
+        <div class="column-item wipe-menu hidden">
+            <span tabindex="0">Which data do you want to wipe?</span>
+            <div class="wipe-options">
+                <div class="options-field">
+                    <input type="radio" id="wipe-logs" name="wipe-option" value="logs" checked>
+                    <label for="wipe-logs">Logs</label>
+                </div>
+                <div class="options-field">
+                    <input type="radio" id="wipe-settings" name="wipe-option" value="settings">
+                    <label for="wipe-settings">Settings</label>
+                </div>
+                <div class="options-field">
+                    <input type="radio" id="wipe-all" name="wipe-option" value="all">
+                    <label for="wipe-all">All</label>
+                </div>
+            </div>
+            <div class="wipe-buttons">
+                <a id="wipe-confirm" href="#">
+                    <img src="./../assets/icons/phospor-icons/broom-duotone-ph.svg" height="20" width="20" alt="Wipe icon">
+                    <span aria-label="Delete the selected local data">Wipe</span>
+                </a>
+                <a id="wipe-cancel" href="#">
+                    <img src="./../assets/icons/phospor-icons/arrow-u-up-left-duotone-ph.svg" height="20" width="20" alt="Cancel icon">
+                    <span>Go Back</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+</body>
+<script src="./js/embed.js" type="module"></script>
+</html>

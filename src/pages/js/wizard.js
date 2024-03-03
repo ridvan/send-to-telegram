@@ -48,6 +48,7 @@ const hideTheWizard = async function () {
 
 document.querySelector('#wizard-button').addEventListener('click', async function (e) {
     e.preventDefault();
+    window.parent.postMessage('resize', '*');
     document.querySelector('.wizard-welcome').dataset.wizardStep = `${getCurrentStep() + 1}`;
     await wizardStepHandler();
     selectById('wizard-heading').focus();
