@@ -27,6 +27,15 @@ export const defaultSettings = {
     logs: {
         active: true,
         type: 'everything' // or 'timestamp'
+    },
+    hashtags: {
+        active: false,
+        use: 0,
+        setup: {
+            0: {
+                tags: ['links', 'work', 'fun', 'personal', 'art', 'news']
+            }
+        }
     }
 };
 

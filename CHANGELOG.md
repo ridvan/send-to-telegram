@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2024-03-03
 
+### Added
+
 - Added an Embed View page which is automatically opened on the first install to help users get a better onboarding process. It can also be opened from the Embed View link on homepage afterwards.
 - Added Wipe Data feature into the Embed View page.
+
+## Fixed
+
 - Fixed a width issue on Logs page.
 
 ## [1.0.2] - 2024-02-19

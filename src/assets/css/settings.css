@@ -19,7 +19,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 .settings-tab-label {
     display: inline-block;
     margin: 0 0 -1px;
-    padding: 15px 25px;
+    padding: 15px 14px;
     font-size: 14.5px;
     font-weight: 600;
     text-align: center;
@@ -174,7 +174,7 @@ label[for^="opt-image-send-as"] span {
 }
 
 /* The switch - the box around the slider */
-.logs-switch {
+.logs-switch, .tags-switch {
     position: relative;
     display: inline-block;
     width: 30px;
@@ -184,7 +184,7 @@ label[for^="opt-image-send-as"] span {
 }
 
 /* Hide default HTML checkbox */
-.logs-switch input {
+.logs-switch input, .tags-switch input {
     opacity: 0;
     width: 0;
     height: 0;
@@ -289,4 +289,119 @@ input:checked + .logs-slider:before {
 
 .save-settings span a, .save-settings span a:visited {
     color: black !important;
+}
+
+.gradient-text {
+    --bg-size: 400%;
+    --color-one: hsl(169.04deg 69.23% 19.68%);
+    --color-two: hsl(175.86deg 56.04% 47.12%);
+    font-family: sans-serif;
+    font-size: 13px;
+    background: linear-gradient(
+            90deg,
+            var(--color-one),
+            var(--color-two),
+            var(--color-one)
+    )
+    0 0 / var(--bg-size) 100%;
+    color: transparent;
+    background-clip: text;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .gradient-text {
+        animation: move-bg 8s linear infinite;
+    }
+    @keyframes move-bg {
+        to {
+            background-position: var(--bg-size) 0;
+        }
+    }
+}
+
+.grid-box {
+    width: 100%;
+    max-width: 130px;
+    height: 30px;
+    display: flex;
+    background-color: #fff;
+    border: solid 1px rgb(0, 0, 0, 0.2);
+    padding: 8px;
+    margin: 5px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    border-radius: 3px;
+}
+
+.grid-box-ghost {
+    background-color: #d6dfef;
+}
+
+.tag-order {
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.tag-rules-wrapper {
+    padding-inline-start: 5px;
+    list-style-type: none;
+}
+
+.tag-rules-wrapper li.satisfies::before {
+    content: "✓";
+    color: green;
+    margin-right: 5px;
+}
+
+.tag-rules-wrapper li.not-satisfies::before {
+    content: "✗";
+    color: red;
+    margin-right: 5px;
+}
+
+.hidden {
+    display: none;
+}
+
+.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+@keyframes expand {
+    from {
+        max-height: 0;
+        opacity: 0;
+    }
+    to {
+        max-height: 500px; /* Adjust as needed */
+        opacity: 1;
+    }
+}
+
+.expanded {
+    display: block;
+    animation: expand 0.7s ease-out forwards;
+    overflow: hidden;
+}
+
+.added-tag {
+    width: 100%;
+    height: 30px;
+    display: inline-block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.delete-tag {
+    cursor: pointer;
+    background: no-repeat url('../icons/phospor-icons/trash-light-ph.svg');
+    z-index: 1;
+    height: 20px;
+    width: 20px;
+    visibility: hidden;
+}
+
+#sortableList:hover ~ .delete-tag {
+    visibility: visible;
 }

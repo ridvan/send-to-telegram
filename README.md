@@ -99,6 +99,7 @@ You need to **reload the extension** in the Extensions Page **to see your change
 - Extension Logo: [Telegram](https://icons8.com/icon/jZ1z64hEYYLW/telegram) icon by [Icons8](https://icons8.com)
 - Icons by [Phospor Icons](https://phosphoricons.com/). (License location: `./src/assets/icons/phospor-icons/LICENSE`)
 - Inter font by [The Inter Project Authors](https://github.com/rsms/inter). (License location: `./src/assets/font/Inter/LICENSE`)
+- [SortableJS](https://github.com/SortableJS/Sortable). (License location: `.src/libraries/SortableJS/LICENSE`)
 - Input design by [G4b413l](https://uiverse.io/G4b413l/mean-stingray-9). (License location: `./src/assets/css/input.css`)
 - Button design by [Mhyar-nsi](https://uiverse.io/Mhyar-nsi/tiny-wasp-99). (License location: `./src/assets/css/input.css`)
 - Button by [alexmaracinaru](https://uiverse.io/alexmaracinaru/brown-bobcat-65). (License location: `./src/assets/css/wizard.css`)

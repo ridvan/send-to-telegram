@@ -4,6 +4,9 @@ module.exports = {
         'es2021': true,
         'webextensions': true
     },
+    'globals': {
+        'Sortable': 'readonly'
+    },
     'extends': 'eslint:recommended',
     'overrides': [
         {

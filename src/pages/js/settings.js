@@ -281,3 +281,89 @@ const handleActiveTab = function () {
        window.parent.postMessage('resize', '*');
    });
 });
+
+const updateTagOrder = () => {
+    const items = document.querySelectorAll('#sortableList .grid-box');
+    items.forEach((item, index) => {
+        item.querySelector('.tag-order').textContent = (index + 1) + '.';
+    });
+    window.parent.postMessage('resize', '*');
+};
+
+const validateInput = () => {
+    const input = document.getElementById('addTagInput').value;
+    const alphanumericOnly = input.length > 0 && /^[a-zA-Z0-9]*$/.test(input);
+    const atLeastTwoChars = input.length > 1;
+    const upToThirtyChars = input.length > 0 && input.length <= 30;
+
+    document.getElementById('alphanumeric-only').className = alphanumericOnly ? 'satisfies' : 'not-satisfies';
+    document.getElementById('at-least-two-chars').className = atLeastTwoChars ? 'satisfies' : 'not-satisfies';
+    document.getElementById('up-to-thirty-chars').className = upToThirtyChars ? 'satisfies' : 'not-satisfies';
+
+    const isValid = alphanumericOnly && atLeastTwoChars && upToThirtyChars;
+    document.getElementById('btn-add-tag').className = isValid ? 'add-item-icon' : 'add-item-icon disabled';
+
+    document.getElementById('tag-rules').className = input.length > 0 ? 'tag-rules-wrapper expanded' : 'tag-rules-wrapper hidden';
+
+    if (input.length < 2) {
+        const resizeInterval = setInterval(() => {
+            window.parent.postMessage('resize', '*');
+        }, 20);
+
+        setTimeout(() => {
+            clearInterval(resizeInterval);
+        }, 200);
+    }
+};
+
+const createAndAppendTag = (tag, index) => {
+    const tagTemplate = document.getElementById('tag-template').content.cloneNode(true);
+    tagTemplate.querySelector('.added-tag').textContent = tag;
+    tagTemplate.querySelector('.added-tag').dataset.tagIndex = index + 1;
+    tagTemplate.querySelector('.tag-order').textContent = `${index + 1}.`;
+    document.getElementById('sortableList').appendChild(tagTemplate);
+};
+
+const createTagElements = async () => {
+    const options = await getStorageData('options');
+    if (!options.hashtags || Object.keys(options.hashtags).length === 0) {
+        options.hashtags = defaultSettings.hashtags;
+        await setStorageData('options', options);
+    }
+
+    const tags = options.hashtags.setup[options.hashtags.use].tags;
+    tags.forEach((tag, index) => createAndAppendTag(tag, index));
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+    await createTagElements();
+
+    document.getElementById('addTagInput').addEventListener('input', validateInput);
+
+    new Sortable(document.getElementById('sortableList'), {
+        animation: 150,
+        ghostClass: 'grid-box-ghost',
+        onEnd: function () {
+            updateTagOrder();
+        }
+    });
+});
+
+document.getElementById('btn-add-tag').addEventListener('click', function() {
+    if (this.classList.contains('disabled')) {
+        return;
+    }
+
+    const input = document.getElementById('addTagInput');
+    const newTag = input.value.trim();
+
+    const sortableList = document.getElementById('sortableList');
+    const newIndex = sortableList.children.length;
+
+    createAndAppendTag(newTag, newIndex);
+    input.value = '';
+
+    updateTagOrder();
+    validateInput();
+});

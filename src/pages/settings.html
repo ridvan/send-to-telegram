@@ -19,8 +19,10 @@
     <button class="settings-tab-label" data-btn-id="1" role="tab" aria-controls="settings-tab-content-1" tabindex="0" aria-label="User Settings">User</button>
     <input class="legacy-tab-input" id="settings-tab-selector-2" data-target-id="2" aria-label="Message Settings" type="radio" name="tabs">
     <button class="settings-tab-label" data-btn-id="2" role="tab" aria-controls="settings-tab-content-2" tabindex="0" aria-label="Message Settings">Messages</button>
-    <input class="legacy-tab-input" id="settings-tab-selector-3" data-target-id="3" aria-label="Log Settings" type="radio" name="tabs">
-    <button class="settings-tab-label" data-btn-id="3" role="tab" aria-controls="settings-tab-content-3" tabindex="0" aria-label="Log Settings">Logs</button>
+    <input class="legacy-tab-input" id="settings-tab-selector-3" data-target-id="3" aria-label="Hashtag Settings" type="radio" name="tabs">
+    <button class="settings-tab-label" data-btn-id="3" role="tab" aria-controls="settings-tab-content-3" tabindex="0" aria-label="Hashtag Settings">Tags</button>
+    <input class="legacy-tab-input" id="settings-tab-selector-4" data-target-id="4" aria-label="Log Settings" type="radio" name="tabs">
+    <button class="settings-tab-label" data-btn-id="4" role="tab" aria-controls="settings-tab-content-4" tabindex="0" aria-label="Log Settings">Logs</button>
 </div>
 <div class="tab-contents">
     <section id="settings-tab-content-1" class="form-section settings-main" role="tabpanel">
@@ -45,10 +47,10 @@
         </fieldset>
     </section>
     <section id="settings-tab-content-2" class="form-section" role="tabpanel">
-        <fieldset>
+        <fieldset id="message-settings-field">
             <legend>
                 <span></span>
-                <label for="message-type-selector">Message Type:</label>
+                <label for="message-type-selector">Message Type</label>
                 <select name="message-type-selector" id="message-type-selector">
                     <option value="text">📝 Text</option>
                     <option value="photo">🏞️ Photo</option>
@@ -98,6 +100,46 @@
         </fieldset>
     </section>
     <section id="settings-tab-content-3" class="form-section" role="tabpanel">
+        <fieldset id="tags-field">
+            <legend>
+                <span>Message Tags</span>
+                <label class="tags-switch">
+                    <input id="tags-switch-checkbox" type="checkbox" role="switch" tabindex="0" aria-label="Attach hashtags to messages">
+                    <span id="tags-switch-span" class="logs-slider logs-slider-round" aria-hidden="true" tabindex="-1"></span>
+                </label>
+            </legend>
+            <div id="tag-options">
+                <p>
+                    You can attach <span class="gradient-text">#hashtags</span> to your messages to easily group them on Telegram.
+                </p>
+                <div class="settings-main">
+                    <div id="sortableList" class="col" style="justify-content: space-evenly;display: flex;flex-wrap: wrap;">
+                        <template id="tag-template">
+                            <div class="grid-box">
+                                <span class="tag-order">1.</span> #<span class="added-tag" data-tag-index="1">test</span>
+                                <i class="delete-tag" role="button" aria-label="Delete this hashtag"></i>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="add-tag-wrapper">
+                        <div class="group">
+                            <input name="addTagInput" id="addTagInput" type="text" aria-label="Enter a new hashtag" placeholder="Add new hashtag" autocomplete="off" required>
+                            <i id="btn-add-tag" class="add-item-icon disabled" role="button" aria-label="Add hashtag"></i>
+                            <span class="highlight"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <ul id="tag-rules" class="tag-rules-wrapper hidden">
+                            <li id="at-least-two-chars" class="not-satisfies">At least 2 characters long.</li>
+                            <li id="up-to-thirty-chars" class="not-satisfies">Up to 30 characters long.</li>
+                            <li id="alphanumeric-only" class="not-satisfies">Number and letters only.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <p></p>
+        </fieldset>
+    </section>
+    <section id="settings-tab-content-4" class="form-section" role="tabpanel">
         <fieldset>
             <legend>
                 <span>Activity Logs</span>
@@ -155,6 +197,7 @@
         </div>
     </div>
 </footer>
+<script src="./../libraries/SortableJS/Sortable.min.js"></script>
 <script src="./js/settings.js" type="module"></script>
 </body>
 </html>

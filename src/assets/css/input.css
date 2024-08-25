@@ -131,7 +131,7 @@ section {
     color: #fff;
 }
 
-.eyes-open, .eyes-wide-shut {
+.eyes-open, .eyes-wide-shut, .add-item-icon {
     height: 24px;
     width: 24px;
     position: absolute;
@@ -149,7 +149,14 @@ section {
     z-index: 1;
 }
 
-.eyes-open, .eyes-wide-shut, #tokenInput, #chatIdInput {
+.add-item-icon {
+    background: no-repeat url('../icons/phospor-icons/plus-circle-ph.svg') center/70%;
+    z-index: 1;
+    top: 33%;
+    right: 6px;
+}
+
+.eyes-open, .eyes-wide-shut, #tokenInput, #chatIdInput, #addTagInput {
     transition:.2s;
     background-color: transparent;
     padding-right: 30px;
