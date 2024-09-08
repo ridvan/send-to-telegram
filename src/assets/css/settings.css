@@ -333,6 +333,18 @@ input:checked + .logs-slider:before {
     border-radius: 3px;
 }
 
+.grid-box span {
+    cursor: grab;
+}
+
+.grabbing * {
+    cursor: grabbing !important;
+}
+
+body.grabbing {
+    user-select: none;
+}
+
 .grid-box-ghost {
     background-color: #d6dfef;
 }

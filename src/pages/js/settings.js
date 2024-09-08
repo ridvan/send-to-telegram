@@ -295,12 +295,20 @@ const validateInput = () => {
     const alphanumericOnly = input.length > 0 && /^[a-zA-Z0-9]*$/.test(input);
     const atLeastTwoChars = input.length > 1;
     const upToThirtyChars = input.length > 0 && input.length <= 30;
+    const currentTagCount = document.querySelectorAll('#sortableList .grid-box').length;
+    const maxTagsNotReached = currentTagCount < 8;
+    const isUnique = ![...document.querySelectorAll('.added-tag')].some(tag => tag.textContent.toLowerCase() === input);
 
     document.getElementById('alphanumeric-only').className = alphanumericOnly ? 'satisfies' : 'not-satisfies';
     document.getElementById('at-least-two-chars').className = atLeastTwoChars ? 'satisfies' : 'not-satisfies';
     document.getElementById('up-to-thirty-chars').className = upToThirtyChars ? 'satisfies' : 'not-satisfies';
+    document.getElementById('max-tags-not-reached').className = maxTagsNotReached ? 'satisfies' : 'not-satisfies';
+    document.getElementById('is-unique-tag').className = isUnique ? 'satisfies' : 'not-satisfies';
 
-    const isValid = alphanumericOnly && atLeastTwoChars && upToThirtyChars;
+    const nonPrimaryRules = document.querySelectorAll('#tag-rules li:not(#max-tags-not-reached)');
+    nonPrimaryRules.forEach(el => el.classList[maxTagsNotReached ? 'remove' : 'add']('hidden'));
+
+    const isValid = alphanumericOnly && atLeastTwoChars && upToThirtyChars && maxTagsNotReached && isUnique;
     document.getElementById('btn-add-tag').className = isValid ? 'add-item-icon' : 'add-item-icon disabled';
 
     document.getElementById('tag-rules').className = input.length > 0 ? 'tag-rules-wrapper expanded' : 'tag-rules-wrapper hidden';
@@ -335,23 +343,9 @@ const createTagElements = async () => {
     tags.forEach((tag, index) => createAndAppendTag(tag, index));
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-
-    await createTagElements();
-
-    document.getElementById('addTagInput').addEventListener('input', validateInput);
-
-    new Sortable(document.getElementById('sortableList'), {
-        animation: 150,
-        ghostClass: 'grid-box-ghost',
-        onEnd: function () {
-            updateTagOrder();
-        }
-    });
-});
-
-document.getElementById('btn-add-tag').addEventListener('click', function() {
-    if (this.classList.contains('disabled')) {
+const addTag = () => {
+    const btnAddTag = document.getElementById('btn-add-tag');
+    if (btnAddTag.classList.contains('disabled')) {
         return;
     }
 
@@ -366,4 +360,38 @@ document.getElementById('btn-add-tag').addEventListener('click', function() {
 
     updateTagOrder();
     validateInput();
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+    await createTagElements();
+
+    const addTagInput = document.getElementById('addTagInput');
+    const btnAddTag = document.getElementById('btn-add-tag');
+
+    addTagInput.addEventListener('input', validateInput);
+
+    addTagInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addTag();
+        }
+    });
+
+    btnAddTag.addEventListener('click', addTag);
+
+    new Sortable(document.getElementById('sortableList'), {
+        forceFallback: true,
+        animation: 150,
+        ghostClass: 'grid-box-ghost',
+        onEnd: () => {
+            updateTagOrder();
+        },
+        onChoose: () => {
+            document.body.classList.add('grabbing');
+        },
+        onUnchoose: () => {
+            document.body.classList.remove('grabbing');
+        }
+    });
 });
