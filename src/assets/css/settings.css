@@ -247,11 +247,12 @@ input:checked + .logs-slider:before {
     vertical-align: bottom;
 }
 
-.disabled-log-field {
+.disabled-action-items {
     color: gray !important;
+    user-select: none;
 }
 
-.disabled-log-field input[type="radio"] {
+.disabled-action-items input[type="radio"] {
     accent-color: gray;
 }
 
@@ -317,6 +318,11 @@ input:checked + .logs-slider:before {
             background-position: var(--bg-size) 0;
         }
     }
+}
+
+.disabled-action-items .gradient-text {
+    --color-one: #808080;
+    --color-two: #383838;
 }
 
 .grid-box {

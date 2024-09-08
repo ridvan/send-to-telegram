@@ -123,8 +123,8 @@
                     </div>
                     <div class="add-tag-wrapper">
                         <div class="group">
-                            <input name="addTagInput" id="addTagInput" type="text" aria-label="Enter a new hashtag" placeholder="Add new hashtag" autocomplete="off" required>
-                            <i id="btn-add-tag" class="add-item-icon disabled" role="button" aria-label="Add hashtag"></i>
+                            <input name="addTagInput" id="addTagInput" type="text" aria-label="Enter a new hashtag" placeholder="Add new hashtag" autocomplete="off" required data-is-action-item="true">
+                            <i id="btn-add-tag" class="add-item-icon disabled" role="button" aria-label="Add hashtag" data-is-action-item="true"></i>
                             <span class="highlight"></span>
                             <span class="bar"></span>
                         </div>
@@ -156,12 +156,11 @@
                     No logs will be recorded in Incognito Mode.
                 </p>
                 <div class="options-field">
-                    <input type="radio" id="log-timestamp-only" name="logging-type" value="timestamp"
-                           checked>
+                    <input type="radio" id="log-timestamp-only" name="logging-type" value="timestamp" data-is-action-item="true" checked>
                     <label for="log-timestamp-only">Store message timestamps only</label>
                 </div>
                 <div class="options-field">
-                    <input type="radio" id="log-everything" name="logging-type" value="everything">
+                    <input type="radio" id="log-everything" name="logging-type" value="everything" data-is-action-item="true">
                     <label for="log-everything">Store everything including message data</label>
                 </div>
             </div>

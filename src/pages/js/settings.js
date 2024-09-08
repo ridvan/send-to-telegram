@@ -41,25 +41,19 @@ const handleMessageSettingsChange = () => {
 
 messageTypeSelector.addEventListener('change', handleMessageSettingsChange);
 
+const hashtagsSwitchSelector = selectById('tags-switch-checkbox');
 const logSwitchSelector = selectById('logs-switch-checkbox');
-const loggingOptionsSelector = selectById('logging-options');
 
-const disableLoggingOptions = bool => [...document.getElementsByName('logging-type')].map(el => el.disabled = bool);
+const disableOptions = (parent, bool) => [...parent.querySelectorAll('[data-is-action-item="true"]')].map(el => el.disabled = bool);
 
-const toggleActivityLogStatus = () => {
+const toggleSettingsAvailability = (selector, area) => {
+    area.classList.toggle('disabled-action-items', !selector.checked);
 
-    if (logSwitchSelector.checked) {
-        loggingOptionsSelector.classList.remove('disabled-log-field');
-        disableLoggingOptions(false);
-    } else {
-        loggingOptionsSelector.classList.add('disabled-log-field');
-        disableLoggingOptions(true);
-    }
-
+    disableOptions(area, !selector.checked);
 };
 
-document.addEventListener('DOMContentLoaded', toggleActivityLogStatus);
-logSwitchSelector.addEventListener('change', toggleActivityLogStatus);
+logSwitchSelector.addEventListener('change', () => toggleSettingsAvailability(logSwitchSelector, selectById('logging-options')));
+hashtagsSwitchSelector.addEventListener('change', () => toggleSettingsAvailability(hashtagsSwitchSelector, selectById('tag-options')));
 
 const getSelectedOptions = activeTab => {
     switch (activeTab) {
@@ -93,6 +87,18 @@ const getSelectedOptions = activeTab => {
                 }
             };
         case 3:
+            return {
+                hashtags: {
+                    active: selectById('tags-switch-checkbox').checked,
+                    use: 0,
+                    setup: {
+                        0: {
+                            tags: [...document.querySelectorAll('.added-tag')].slice(0, 8).map(tag => tag.textContent)
+                        }
+                    }
+                }
+            };
+        case 4:
             return {
                 logs: {
                     active: selectById('logs-switch-checkbox').checked,
@@ -149,8 +155,16 @@ const validateActionSettings = () => {
     return true;
 };
 
+const validateHashtagSettings = () => {
+    const hashtags = getSelectedOptions(3)['hashtags'];
+    if (hashtags.setup[hashtags.use].tags.length > 8) {
+        return false;
+    }
+    return true;
+};
+
 const validateLogSettings = () => {
-    const logs = getSelectedOptions(3)['logs'];
+    const logs = getSelectedOptions(4)['logs'];
     for (const option in logs) {
         const value = logs[option];
         if (!(typeof value === 'boolean' || (typeof value === 'string' && ['everything', 'timestamp'].includes(value)))) {
@@ -167,6 +181,8 @@ const validateByTabId = (tabId) => {
         case 2:
             return validateActionSettings();
         case 3:
+            return validateHashtagSettings();
+        case 4:
             return validateLogSettings();
         default:
             return false;
@@ -175,7 +191,7 @@ const validateByTabId = (tabId) => {
 
 const saveSettings = async function (data) {
     const [type, settings] = Object.entries(data)[0];
-    if (!['connections', 'actions', 'logs'].includes(type)) {
+    if (!['connections', 'actions', 'logs', 'hashtags'].includes(type)) {
         return false;
     }
     const options = await getUserSettings();
@@ -241,7 +257,7 @@ tokenInput.addEventListener('click', removeInvalidInputClass);
 chatIdInput.addEventListener('click', removeInvalidInputClass);
 
 const populateSettings = async function () {
-    const { connections: { setup }, actions: { sendMessage, sendImage }, logs: { active, type } } = await getUserSettings();
+    const { connections: { setup }, actions: { sendMessage, sendImage }, logs: { active, type }, hashtags: { active: hashtagsActive } } = await getUserSettings();
 
     // Connections
     const [connection] = Object.values(setup);
@@ -257,10 +273,15 @@ const populateSettings = async function () {
     // selectById('opt-image-use-weserv-proxy').checked = sendImage.useWeservProxy;
     selectById(`opt-image-send-as-${sendImage.sendAs}`).checked = true;
 
+    // Hashtags
+    selectById('tags-switch-checkbox').checked = hashtagsActive;
+
     // Logs
     selectById('logs-switch-checkbox').checked = active;
     selectById(`log-${type === 'everything' ? 'everything' : 'timestamp-only'}`).checked = true;
-    toggleActivityLogStatus();
+
+    toggleSettingsAvailability(hashtagsSwitchSelector, selectById('tag-options'));
+    toggleSettingsAvailability(logSwitchSelector, selectById('logging-options'));
 };
 
 document.addEventListener('DOMContentLoaded', populateSettings);
@@ -380,7 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     btnAddTag.addEventListener('click', addTag);
 
-    new Sortable(document.getElementById('sortableList'), {
+    window.sortable = new Sortable(document.getElementById('sortableList'), {
         forceFallback: true,
         animation: 150,
         ghostClass: 'grid-box-ghost',
