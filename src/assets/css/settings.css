@@ -420,6 +420,6 @@ body.grabbing {
     visibility: hidden;
 }
 
-#sortableList:hover ~ .delete-tag {
+.grid-box:hover .delete-tag:not(.hidden) {
     visibility: visible;
 }

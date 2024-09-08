@@ -2,8 +2,8 @@ import { defaultSettings } from '../../utils/constants.js';
 import { getStorageData, setStorageData } from '../../utils/storage.js';
 import { getIconPath } from '../../utils/getIconPath.js';
 
-const selectById = (id) => document.getElementById(id);
-const selectCheckedRadioByName = (name) => document.querySelector(`input[name="${name}"]:checked`);
+const selectById = id => document.getElementById(id);
+const selectCheckedRadioByName = name => document.querySelector(`input[name="${name}"]:checked`);
 
 const [toggleTokenVisibility, toggleChatIdVisibility] = [selectById('token-eye'), selectById('chat-id-eye')];
 const [tokenInput, chatIdInput] = [selectById('tokenInput'), selectById('chatIdInput')];
@@ -201,6 +201,9 @@ const saveSettings = async function (data) {
     options[type] = settings;
     try {
         await setStorageData('options', options);
+        if (type === 'hashtags') {
+            await chrome.runtime.sendMessage({ message: 'updateHashtagContextMenu' });
+        }
         return { success: true };
     } catch (err) {
         return { success: false, message: err };
@@ -350,7 +353,15 @@ const createAndAppendTag = (tag, index) => {
     tagTemplate.querySelector('.added-tag').textContent = tag;
     tagTemplate.querySelector('.added-tag').dataset.tagIndex = index + 1;
     tagTemplate.querySelector('.tag-order').textContent = `${index + 1}.`;
+
+    const deleteButton = tagTemplate.querySelector('.delete-tag');
+    deleteButton.addEventListener('click', event => {
+        event.stopPropagation();
+        deleteTag(event.target.closest('.grid-box'));
+    });
+
     document.getElementById('sortableList').appendChild(tagTemplate);
+    updateDeleteButtonVisibility();
 };
 
 const createTagElements = async () => {
@@ -381,11 +392,46 @@ const addTag = () => {
 
     updateTagOrder();
     validateInput();
+    updateDeleteButtonVisibility();
+    window.parent.postMessage('resize', '*');
+};
+
+const updateDeleteButtonVisibility = () => {
+    const deleteButtons = document.querySelectorAll('.delete-tag');
+    const shouldHide = deleteButtons.length <= 1;
+
+    deleteButtons.forEach(button => {
+        button.classList.toggle('hidden', shouldHide);
+    });
+};
+
+const deleteTag = tagElement => {
+    const sortableList = document.querySelectorAll('.grid-box');
+    if (sortableList.length <= 1) {
+        return;
+    }
+
+    tagElement.remove();
+    updateTagOrder();
+    validateInput();
+    updateDeleteButtonVisibility();
+    window.parent.postMessage('resize', '*');
+};
+
+const addDeleteListeners = () => {
+    document.querySelectorAll('.delete-tag').forEach(button => {
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            deleteTag(event.target.closest('.grid-box'));
+        });
+    });
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
 
     await createTagElements();
+    addDeleteListeners();
+    updateDeleteButtonVisibility();
 
     const addTagInput = document.getElementById('addTagInput');
     const btnAddTag = document.getElementById('btn-add-tag');
@@ -405,6 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         forceFallback: true,
         animation: 150,
         ghostClass: 'grid-box-ghost',
+        filter: '.delete-tag',
         onEnd: () => {
             updateTagOrder();
         },

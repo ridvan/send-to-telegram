@@ -3,6 +3,47 @@ import { getStorageData, setStorageData } from './utils/storage.js';
 
 //Add context menu items and set default settings on install
 const contextTypes = ['text', 'link', 'page', 'image'];
+
+const createHashtagContextMenuItems = hashtags => {
+    contextTypes.forEach(contextType => {
+        chrome.contextMenus.create({
+            id: `${contextType}-hashtag-parent`,
+            title: `Send this ${contextType} with a #hashtag`,
+            contexts: [contextType === 'text' ? 'selection' : contextType]
+        });
+
+        hashtags.forEach((tag, index) => {
+            chrome.contextMenus.create({
+                id: `${contextType}-hashtag-${index}`,
+                parentId: `${contextType}-hashtag-parent`,
+                title: `#${tag}`,
+                contexts: [contextType === 'text' ? 'selection' : contextType]
+            });
+        });
+    });
+};
+
+const updateHashtagContextMenu = async () => {
+    const options = await getStorageData('options');
+
+    if (!options.hashtags || Object.keys(options.hashtags).length === 0) {
+        options.hashtags = defaultSettings.hashtags;
+        await setStorageData('options', options);
+    }
+
+    contextTypes.forEach(contextType => {
+        chrome.contextMenus.remove(`${contextType}-hashtag-parent`, () => {
+            if (chrome.runtime.lastError) {
+                console.log(chrome.runtime.lastError.message);
+            }
+        });
+    });
+
+    if (options.hashtags.active) {
+        createHashtagContextMenuItems(options.hashtags.setup[options.hashtags.use].tags);
+    }
+};
+
 chrome.runtime.onInstalled.addListener(async details => {
     contextTypes.forEach(type =>
         chrome.contextMenus.create({
@@ -11,6 +52,7 @@ chrome.runtime.onInstalled.addListener(async details => {
             contexts: [type === 'text' ? 'selection' : type]
         })
     );
+
     //Set default settings if not set
     const options = await getStorageData('options');
     if (!options || Object.keys(options).length === 0) {
@@ -19,6 +61,20 @@ chrome.runtime.onInstalled.addListener(async details => {
     // Open the embed view after the extension is installed
     if (details.reason === 'install') {
         chrome.tabs.create({ url: '/pages/embed.html' });
+    }
+
+    if (!options.hashtags || Object.keys(options.hashtags).length === 0) {
+        options.hashtags = defaultSettings.hashtags;
+        await setStorageData('options', options);
+    }
+
+    const hashtags = options.hashtags.setup[options.hashtags.use].tags;
+    createHashtagContextMenuItems(hashtags);
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.options) {
+      updateHashtagContextMenu();
     }
 });
 
