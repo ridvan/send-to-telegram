@@ -321,7 +321,7 @@ const validateInput = () => {
     const upToThirtyChars = input.length > 0 && input.length <= 30;
     const currentTagCount = document.querySelectorAll('#sortableList .grid-box').length;
     const maxTagsNotReached = currentTagCount < 8;
-    const isUnique = ![...document.querySelectorAll('.added-tag')].some(tag => tag.textContent.toLowerCase() === input);
+    const isUnique = ![...document.querySelectorAll('.added-tag')].some(tag => tag.textContent.toLowerCase() === input.toLowerCase());
 
     document.getElementById('alphanumeric-only').className = alphanumericOnly ? 'satisfies' : 'not-satisfies';
     document.getElementById('at-least-two-chars').className = atLeastTwoChars ? 'satisfies' : 'not-satisfies';
