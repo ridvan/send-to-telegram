@@ -88,7 +88,11 @@ const parseTabUrl = async (click, tabUrl) => {
 
 // Build the content data object by context menu click event and tab URL
 const buildContentData = async (click, tabUrl) => {
-    switch (click.menuItemId) {
+    const baseMenuItemId = click.menuItemId.includes('-hashtag-')
+        ? click.menuItemId.split('-')[0]
+        : click.menuItemId;
+
+    switch (baseMenuItemId) {
         case 'text':
             return { text: click.selectionText, tabUrl };
         case 'link':
@@ -130,14 +134,27 @@ const overrideMessageType = function (content, options) {
 
 // Listen for content from context menu and trigger sendMessage function
 chrome.contextMenus.onClicked.addListener(async (click, tab) => {
-    if (!contextTypes.includes(click.menuItemId)) {
+    const options = await getStorageData('options');
+
+    let baseMenuItemId = click.menuItemId;
+    let hashtag = '';
+
+    if (options.hashtags && options.hashtags.active && click.menuItemId.includes('-hashtag-')) {
+        const itemParts = click.menuItemId.split('-');
+        baseMenuItemId = itemParts[0];
+        const hashtagIndex = Number(itemParts[2]);
+        hashtag = options.hashtags.setup[options.hashtags.use].tags[hashtagIndex];
+    }
+
+    if (!contextTypes.includes(baseMenuItemId)) {
         return false;
     }
-    const options = await getStorageData('options');
-    const messageType = click.menuItemId !== 'image' ? click.menuItemId : overrideMessageType(click.srcUrl, options);
+
+    const messageType = baseMenuItemId === 'image' ? overrideMessageType(click.srcUrl, options) : baseMenuItemId;
     const tabUrl = await parseTabUrl(click, tab.url);
     const messageData = await buildContentData(click, tabUrl);
-    await sendMessage(messageData, messageType, tab);
+
+    await sendMessage(messageData, messageType, tab, hashtag);
 });
 
 // Listen for connection status information request from homepage
@@ -220,7 +237,7 @@ const buildContentByType = function (type, content) {
 };
 
 // Build the request parameters object by message type and user settings
-const buildPostData = function (type, content, options) {
+const buildPostData = function (type, content, options, hashtag = '') {
 
     if (!messageTypes.includes(type)) {
         throw new Error(`Unrecognized message type: ${type}`);
@@ -248,6 +265,14 @@ const buildPostData = function (type, content, options) {
                 [{ text: 'Source', url: content.tabUrl }]
             ],
         };
+    }
+
+    if (options.hashtags && options.hashtags.active && hashtag) {
+        if (['document', 'photo'].includes(type)) {
+            parameters.caption = `#${hashtag}`;
+        } else {
+            parameters[userContent['type']] += ` #${hashtag}`;
+        }
     }
 
     return parameters;
@@ -356,7 +381,7 @@ const handleBadgeText = async function (success) {
 };
 
 // Send the message to Telegram Bot API and handle the response
-const sendMessage = async function (content, type, tab) {
+const sendMessage = async function (content, type, tab, hashtag = '') {
     try {
         if (!content || !messageTypes.includes(type)) {
             throw new Error('sendMessage parameters are not valid!');
@@ -364,7 +389,7 @@ const sendMessage = async function (content, type, tab) {
         // Build the request parameters and message object
         const options = await getStorageData('options');
         const requestURL = buildRequestURL(type, options);
-        const requestParameters = buildPostData(type, content, options);
+        const requestParameters = buildPostData(type, content, options, hashtag);
         const activeAccount = options.connections.setup[options.connections.use];
         // Check if the Bot API key and chat ID are set
         if (!activeAccount.key || !activeAccount.chatId) {
