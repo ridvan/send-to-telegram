@@ -132,6 +132,16 @@ const createLogDetailsElement = function (log, type, content) {
             break;
     }
 
+    if (log.hashtag) {
+        const isLinkOrPage = ['link', 'page'].includes(type);
+        const tagElement = clone.querySelector(isLinkOrPage ? '.hashtag' : '.center-hashtag');
+
+        tagElement.textContent = `#${log.hashtag}`;
+
+        const containerClass = isLinkOrPage ? '.tag-container' : '.center-hashtag';
+        clone.querySelector(containerClass).classList.remove('display-none');
+    }
+
     return clone;
 };
 

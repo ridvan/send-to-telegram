@@ -60,7 +60,7 @@ body:has(.logs-list-empty) .logs-section {
     padding: 10px 40px 10px 40px;
     width: 94%;
     height: 100%;
-    max-height: 200px;
+    max-height: 210px;
     align-items: center;
 }
 
@@ -153,7 +153,7 @@ body:has(.logs-list-empty) .logs-section {
 
 .show-single-row {
     transform: scaleY(1);
-    height: 245px;
+    height: 255px;
 }
 
 img.details-container {
@@ -206,7 +206,7 @@ img.details-container {
     resize: none;
     background: transparent;
     height: auto;
-    max-height: 160px;
+    max-height: 150px;
     padding: 5px 5px 5px 5px;
     border-radius: 5px;
     border: 1px solid #00000017;
@@ -245,7 +245,7 @@ img.details-container {
 }
 
 .details-container:has(.details-link-container) {
-    max-height: 73px;
+    max-height: 85px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -308,4 +308,15 @@ nav.pagination {
 
 .action-buttons .delete-log-icon {
     padding-top: 2px;
+}
+
+.hashtag {
+    font-weight: 400 !important;
+    text-align: right;
+}
+
+.center-hashtag {
+    text-align: center;
+    padding-top: 3px;
+    width: 100%;
 }

@@ -61,10 +61,15 @@
                     <span class="active-log-view" tabindex="0" aria-label="error log details">Error: </span>
                     <span class="error-message" tabindex="0"></span>
                 </div>
+                <div class="details-link-container tag-container display-none">
+                    <span>Hashtag: </span>
+                    <span class="hashtag" aria-label="Content hashtag" tabindex="0"></span>
+                </div>
             </div>
         </template>
         <template id="single-log-details-text-template">
             <textarea aria-label="The text that was sent to Telegram" class="details-container active-log-view" readonly contenteditable="false"></textarea>
+            <span class="center-hashtag display-none" aria-label="Content hashtag" tabindex="0"></span>
         </template>
         <template id="single-log-details-link-template">
             <div class="details-container">
@@ -76,10 +81,15 @@
                     <span>Source: </span>
                     <a class="active-log-view source" aria-label="Source of the link" target="_blank" href=""></a>
                 </div>
+                <div class="details-link-container tag-container display-none">
+                    <span>Hashtag: </span>
+                    <span class="hashtag" aria-label="Content hashtag" tabindex="0"></span>
+                </div>
             </div>
         </template>
         <template id="single-log-details-photo-template">
             <img loading="lazy" class="details-container active-log-view sent-image display-none" src="" alt="Image that was sent to Telegram" data-unique-id="" tabindex="0">
+            <span class="center-hashtag display-none" aria-label="Content hashtag" tabindex="0"></span>
         </template>
         <!--End of Single Log Details Templates-->
         <!--Start of Single Log Details Footer Template-->

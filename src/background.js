@@ -8,7 +8,7 @@ const createHashtagContextMenuItems = hashtags => {
     contextTypes.forEach(contextType => {
         chrome.contextMenus.create({
             id: `${contextType}-hashtag-parent`,
-            title: `Send this ${contextType} with a #hashtag`,
+            title: `Send this ${contextType} with #hashtag`,
             contexts: [contextType === 'text' ? 'selection' : contextType]
         });
 
@@ -312,7 +312,7 @@ const handleAPIResponse = async function (data) {
 
 // Register the message log to the extension storage to use it later,
 // and increase the total message count if the message is sent successfully
-const registerLog = async function (content, response, type) {
+const registerLog = async function (content, response, type, hashtag = '') {
     let logs = await getStorageData('messageLogs');
     let total = await getStorageData('totalMessageCount');
     const options = await getStorageData('options');
@@ -325,7 +325,7 @@ const registerLog = async function (content, response, type) {
             await setStorageData('totalMessageCount', 0);
             total = 0;
         }
-        logs.unshift(buildLogObject(content, response, type, options));
+        logs.unshift(buildLogObject(content, response, type, options, hashtag));
         await setStorageData('messageLogs', logs);
     }
     if (response.ok) {
@@ -344,19 +344,19 @@ const getFileIDsFromResponse = function (result) {
 };
 
 // Build the log object by message type and user settings
-const buildLogObject = function (content, response, type, options) {
+const buildLogObject = function (content, response, type, options, hashtag = '') {
     if (!response.ok) {
         return { type: type, content: false, errorLog: response, timestamp: Date.now(), status: 'fail' };
     }
     else if (options.logs.type === 'timestamp') {
-        return { type: type, content: false, timestamp: Date.now(), status: 'success' };
+        return { type: type, content: false, timestamp: Date.now(), status: 'success', hashtag };
     }
     else if (options.logs.type === 'everything') {
         const contentObject = ['photo', 'document'].includes(type) ? {
             ...content,
             ...getFileIDsFromResponse(response.result)
         } : content;
-        return { type: type, content: contentObject, timestamp: Date.now(), status: 'success' };
+        return { type: type, content: contentObject, timestamp: Date.now(), status: 'success', hashtag };
     }
     else {
         return false;
@@ -414,7 +414,7 @@ const sendMessage = async function (content, type, tab, hashtag = '') {
         await handleBadgeText(apiResponse.ok);
         // If the browser is not in Incognito Mode, register the message log
         if (!tab.incognito) {
-            await registerLog(content, apiResponse, type);
+            await registerLog(content, apiResponse, type, hashtag);
         }
     }
 };
