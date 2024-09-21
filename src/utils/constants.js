@@ -33,7 +33,11 @@ export const defaultSettings = {
         use: 0,
         setup: {
             0: {
-                tags: ['links', 'work', 'fun', 'personal', 'art', 'news']
+                tags: ['links', 'work', 'fun', 'personal', 'art', 'news'],
+                default: {
+                    active: false,
+                    tagIndex: 0
+                }
             }
         }
     }
