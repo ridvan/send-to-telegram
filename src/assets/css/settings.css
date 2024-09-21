@@ -36,6 +36,10 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
     margin-right: 1px;
 }
 
+.settings-tab-label[data-btn-id="3"] {
+    max-width: 64px;
+}
+
 .settings-tab-label:hover {
     color: #3c3c3c;
     cursor: pointer;
@@ -48,6 +52,10 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 .legacy-tab-input:checked + .settings-tab-label {
     color: #000;
     position: relative;
+}
+
+.legacy-tab-input:not(:checked) + .settings-tab-label .hashtag-icon {
+    filter: grayscale(100%);
 }
 
 .legacy-tab-input:checked + .settings-tab-label::after {
@@ -422,4 +430,27 @@ body.grabbing {
 
 .grid-box:hover .delete-tag:not(.hidden) {
     visibility: visible;
+}
+
+.hashtag-icon {
+    height: 14px;
+    width: 14px;
+    position: absolute;
+    margin: 2px 0 0 -10px;
+    background: no-repeat url('../icons/phospor-icons/hash-ph.svg');
+    transition: .2s;
+}
+
+.tags-tab-label {
+    margin-left: 5px;
+}
+
+.tags-info-text {
+    text-align: justify;
+    width: 270px;
+    padding-left: 7px;
+}
+
+.tags-info-text strong {
+    font-weight: 500;
 }

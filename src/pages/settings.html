@@ -20,7 +20,10 @@
     <input class="legacy-tab-input" id="settings-tab-selector-2" data-target-id="2" aria-label="Message Settings" type="radio" name="tabs">
     <button class="settings-tab-label" data-btn-id="2" role="tab" aria-controls="settings-tab-content-2" tabindex="0" aria-label="Message Settings">Messages</button>
     <input class="legacy-tab-input" id="settings-tab-selector-3" data-target-id="3" aria-label="Hashtag Settings" type="radio" name="tabs">
-    <button class="settings-tab-label" data-btn-id="3" role="tab" aria-controls="settings-tab-content-3" tabindex="0" aria-label="Hashtag Settings">Tags</button>
+    <button class="settings-tab-label" data-btn-id="3" role="tab" aria-controls="settings-tab-content-3" tabindex="0" aria-label="Hashtag Settings">
+        <i class="hashtag-icon"></i>
+        <span class="tags-tab-label">Tags</span>
+    </button>
     <input class="legacy-tab-input" id="settings-tab-selector-4" data-target-id="4" aria-label="Log Settings" type="radio" name="tabs">
     <button class="settings-tab-label" data-btn-id="4" role="tab" aria-controls="settings-tab-content-4" tabindex="0" aria-label="Log Settings">Logs</button>
 </div>
@@ -109,8 +112,8 @@
                 </label>
             </legend>
             <div id="tag-options">
-                <p>
-                    You can attach <span class="gradient-text">#hashtags</span> to your messages to easily group them on Telegram.
+                <p class="tags-info-text">
+                    Attach <span class="gradient-text">#hashtags</span> to your messages to easily group them on Telegram! You can add/delete tags, and <strong>drag and drop</strong> to reorder.
                 </p>
                 <div class="settings-main">
                     <div id="sortableList" class="col" style="justify-content: space-evenly;display: flex;flex-wrap: wrap;">
