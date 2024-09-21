@@ -112,22 +112,22 @@
                 </label>
             </legend>
             <div id="tag-options">
-                <p class="tags-info-text">
+                <p class="tags-info-text" tabindex="0">
                     Attach <span class="gradient-text">#hashtags</span> to your messages to easily group them on Telegram! You can add/delete tags, and <strong>drag and drop</strong> to reorder.
                 </p>
                 <div class="settings-main">
                     <div id="sortableList" class="col" style="justify-content: space-evenly;display: flex;flex-wrap: wrap;">
                         <template id="tag-template">
-                            <div class="grid-box">
-                                <span class="tag-order">1.</span> #<span class="added-tag" data-tag-index="1">test</span>
-                                <i class="delete-tag" role="button" aria-label="Delete this hashtag"></i>
+                            <div class="grid-box" tabindex="0" aria-label="Hashtag">
+                                <span class="tag-order">1.</span> #<span class="added-tag" data-tag-index="1" tabindex="0">test</span>
+                                <i class="delete-tag" role="button" aria-label="Delete this hashtag" tabindex="0"></i>
                             </div>
                         </template>
                     </div>
                     <div class="add-tag-wrapper">
                         <div class="group">
-                            <input name="addTagInput" id="addTagInput" type="text" aria-label="Enter a new hashtag" placeholder="Add new hashtag" autocomplete="off" required data-is-action-item="true">
-                            <i id="btn-add-tag" class="add-item-icon disabled" role="button" aria-label="Add hashtag" data-is-action-item="true"></i>
+                            <input name="addTagInput" id="addTagInput" type="text" placeholder="Add new hashtag" aria-label="Add new hashtag" autocomplete="off" required data-is-action-item="true">
+                            <i id="btn-add-tag" class="add-item-icon disabled" role="button" aria-label="Add hashtag" data-is-action-item="true" tabindex="0" aria-disabled="true"></i>
                             <span class="highlight"></span>
                             <span class="bar"></span>
                         </div>
@@ -172,11 +172,11 @@
     </section>
 </div>
     <section class="save-settings">
+        <button id="save-all-settings" class="save-button">Save</button>
         <span>
             Join our  <a target="_blank" href="https://t.me/send_to_telegram" tabindex="0" aria-label="Telegram channel of the extension">channel</a>
             <br> for the updates. 📣
         </span>
-        <button id="save-all-settings" class="save-button">Save</button>
     </section>
 </main>
 <footer role="contentinfo">

@@ -334,8 +334,22 @@ const validateInput = () => {
 
     const isValid = alphanumericOnly && atLeastTwoChars && upToThirtyChars && maxTagsNotReached && isUnique;
     document.getElementById('btn-add-tag').className = isValid ? 'add-item-icon' : 'add-item-icon disabled';
+    document.getElementById('btn-add-tag').setAttribute('aria-disabled', !isValid);
+    document.getElementById('btn-add-tag').setAttribute('aria-label', isValid ? 'Add hashtag' : 'Hashtag is invalid, check the errors next');
 
     document.getElementById('tag-rules').className = input.length > 0 ? 'tag-rules-wrapper expanded' : 'tag-rules-wrapper hidden';
+
+    document.querySelectorAll('#tag-rules li').forEach(el => {
+        if (el.classList.contains('not-satisfies')) {
+            el.setAttribute('role', 'alert');
+            el.setAttribute('tabindex', 0);
+            el.setAttribute('aria-label', 'Tag rule');
+        } else {
+            el.removeAttribute('role');
+            el.removeAttribute('tabindex');
+            el.removeAttribute('aria-label');
+        }
+    });
 
     if (input.length < 2) {
         const resizeInterval = setInterval(() => {
@@ -393,6 +407,17 @@ const addTag = () => {
     updateTagOrder();
     validateInput();
     updateDeleteButtonVisibility();
+
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('role', 'status');
+    announcement.style.position = 'absolute';
+    announcement.style.left = '-9999px';
+    announcement.textContent = `Tag ${newTag} is added successfully. Save the changes to activate it.`;
+
+    document.body.appendChild(announcement);
+    setTimeout(() => announcement.remove(), 3000);
+
     window.parent.postMessage('resize', '*');
 };
 

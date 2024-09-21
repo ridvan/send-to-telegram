@@ -94,6 +94,7 @@ PureCSS Tabs - https://codepen.io/alvarotrigo/pen/bGoPzMe
 .save-settings {
     display: flex;
     justify-content: space-between;
+    flex-direction: row-reverse;
     align-items: center;
     max-width: 308px;
 }
@@ -349,6 +350,7 @@ input:checked + .logs-slider:before {
 
 .grid-box span {
     cursor: grab;
+    height: 15px;
 }
 
 .grabbing * {
@@ -428,7 +430,7 @@ body.grabbing {
     visibility: hidden;
 }
 
-.grid-box:hover .delete-tag:not(.hidden) {
+.grid-box:hover .delete-tag:not(.hidden), .grid-box:focus-within .delete-tag:not(.hidden) {
     visibility: visible;
 }
 
