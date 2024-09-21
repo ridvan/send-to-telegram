@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-09-21
+
+### Added
+
+- Added Hashtags feature to the extension. It allows users to attach hashtags to the messages, which helps categorizing them on Telegram.
+
 ## [1.1.0] - 2024-03-03
 
 ### Added
@@ -36,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release of the Send to Telegram extension.
 
+[1.2.0]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.1.0
-[1.0.1]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.1
 [1.0.2]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.2
+[1.0.1]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.1

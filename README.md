@@ -52,6 +52,11 @@ Send to Telegram extension helps you send **texts, links, and images** on web pa
 5. **Send as Document:** The image will be sent without compression, and you will have to download it to see the image.
 6. **Send as Link:** Images won't get uploaded to Telegram and only the image of the link will be sent.
 
+<h4>Hashtag Settings</h4>
+
+1. **Hashtag List:** The list of hashtags that can be added to the message. You can drag and drop the hashtags to reorder them.
+2. **Add Hashtag:** If it passes the validation, the hashtag will be added to the list.
+
 <h4>Log Settings</h4>
 
 1. **Store Timestamps Only**: Only the message date and content type will be saved, the message content won't be available to check out later.
