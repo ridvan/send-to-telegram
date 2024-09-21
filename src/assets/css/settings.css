@@ -456,3 +456,9 @@ body.grabbing {
 .tags-info-text strong {
     font-weight: 500;
 }
+
+.footer-message {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
