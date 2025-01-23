@@ -259,6 +259,10 @@ const buildPostData = function (type, content, options, hashtag = '') {
 
     parameters[userContent['type']] = userContent['content'];
 
+    if (type === 'photo') {
+        parameters.has_spoiler = options.actions.sendImage.hasSpoiler || false;
+    }
+
     if (options.actions[typeKey].addSourceLink && isValidURL(content.tabUrl) && type !== 'page') {
         parameters.reply_markup = {
             inline_keyboard: [
