@@ -19,6 +19,7 @@ export const defaultSettings = {
             disableNotificationSound: true,
             disablePreview: false,
             sendAs: 'photo', // or 'document' - 'link'?
+            hasSpoiler: false,
             addSourceLink: true,
             useWeservProxy: false
             // prefetch weserv url?
