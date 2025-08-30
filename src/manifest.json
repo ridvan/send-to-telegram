@@ -1,25 +1,26 @@
 {
-  "name": "Send to Telegram",
-  "version": "1.2.0",
-  "description": "A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.",
-  "permissions": ["contextMenus", "storage"],
-  "background": {
-    "service_worker": "./background.js",
-    "type": "module"
-  },
-  "icons": {
-    "16": "./assets/logo/16.png",
-    "32": "./assets/logo/32.png",
-    "48": "./assets/logo/48.png",
-    "128": "./assets/logo/128.png"
-  },
-  "action": {
-    "default_icon": {
-      "16": "./assets/logo/16.png",
-      "32": "./assets/logo/32.png"
+    "name": "Send to Telegram",
+    "version": "1.2.0",
+    "description": "A browser extension to send selected contents on web pages to Telegram via Telegram Bot API.",
+    "permissions": ["contextMenus", "storage", "activeTab"],
+    "background": {
+        "scripts": ["background.js"],
+        "service_worker": "./background.js",
+        "type": "module"
     },
-    "default_title": "Send to Telegram",
-    "default_popup": "./pages/home.html"
-  },
-  "manifest_version": 3
+    "icons": {
+        "16": "./assets/logo/16.png",
+        "32": "./assets/logo/32.png",
+        "48": "./assets/logo/48.png",
+        "128": "./assets/logo/128.png"
+    },
+    "action": {
+        "default_icon": {
+            "16": "./assets/logo/16.png",
+            "32": "./assets/logo/32.png"
+        },
+        "default_title": "Send to Telegram",
+        "default_popup": "./pages/home.html"
+    },
+    "manifest_version": 3
 }
