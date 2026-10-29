@@ -7,7 +7,7 @@
 
 ## Previewing pages
 
-`pnpm dev` opens Chrome with the extension loaded (profile in `packages/extension/.wxt/chrome-data`); use it to verify menus, the background worker, migration and real sends. For the pages alone, `pnpm --filter extension dev:pages` builds and serves without opening a browser (the `extension` entry in `.claude/launch.json`). Serve `packages/extension/.output/chrome-mv3-dev` (the `extension-pages` entry, port 3001) and open `popup.html`, `options.html` or `welcome.html`. `src/lib/preview.ts` stands in for extension APIs outside an extension. Add `?demo` for sample data, `?selection` for a text selection, `?reset` to clear it.
+`pnpm dev` opens Chrome with the extension loaded (profile in `packages/extension/.wxt/chrome-data`); use it to verify menus, the background worker, migration and real sends. For the pages alone, `pnpm --filter extension dev:pages` builds and serves without opening a browser (the `extension` entry in `.claude/launch.json`). Serve `packages/extension/.output/chrome-mv3-dev` (the `extension-pages` entry, port 3001) and open `popup.html`, `options.html` or `welcome.html`. `src/lib/preview.ts` stands in for extension APIs outside an extension. Add `?demo` for sample data, `?selection` for a text selection, `?fail` to make sends fail, `?reset` to clear it.
 
 ## Constraints
 

@@ -63,6 +63,7 @@ import {
 } from '@/lib/destinations';
 import { chatTypeLabel } from '@/lib/format';
 import {
+  avatarSeed,
   type Destination,
   destinationName,
   settingsStore,
@@ -209,7 +210,7 @@ function ChatRow({
   return (
     <Item size="sm">
       <ItemMedia>
-        <ChatAvatar name={name} />
+        <ChatAvatar name={name} seed={avatarSeed(destination)} />
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle>

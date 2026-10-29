@@ -1,7 +1,8 @@
 /**
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
- * the extension APIs with localStorage. Add `?demo` to seed sample data.
+ * the extension APIs with localStorage. Add `?demo` to seed sample data, and
+ * `?fail` to make sends fail.
  * Production builds drop this module because `import.meta.env.DEV` is false.
  */
 
@@ -201,6 +202,16 @@ function install() {
       connect: () => ({ name: 'popup', disconnect: noop, onDisconnect: event }),
       sendMessage: async () => {
         await new Promise((resolve) => setTimeout(resolve, 700));
+
+        // `?fail` shows how the pages handle a send Telegram refuses.
+        if (url.searchParams.has('fail')) {
+          return {
+            ok: false,
+            reason: 'unauthorized',
+            message:
+              'The bot can’t post to this chat. Open the chat in Telegram and press Start.',
+          };
+        }
 
         return { ok: true, destination: 'Rıdvan Aktogan' };
       },

@@ -9,6 +9,12 @@ const toggleVariants = cva(
       variant: {
         default: 'bg-transparent',
         outline: 'border border-input bg-transparent hover:bg-muted',
+        // Options in a sunken track; the chosen one is raised. Pair with
+        // ToggleGroup's segmented variant, which draws the track.
+        segmented:
+          'rounded-md bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-input/60',
+        // A hashtag; chosen, it takes the message bubble's colors.
+        chip: 'border border-input bg-transparent hover:bg-transparent not-aria-pressed:hover:bg-muted aria-pressed:border-bubble-accent/30 aria-pressed:bg-bubble aria-pressed:text-bubble-accent',
       },
       size: {
         default:
@@ -17,6 +23,10 @@ const toggleVariants = cva(
         lg: 'h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
       },
     },
+    compoundVariants: [
+      { variant: 'segmented', className: 'rounded-md' },
+      { variant: 'chip', className: 'rounded-full' },
+    ],
     defaultVariants: {
       variant: 'default',
       size: 'default',

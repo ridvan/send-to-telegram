@@ -1,13 +1,26 @@
 import {
+  ArrowUpRight01Icon,
+  Clock01Icon,
   ComputerIcon,
+  Delete02Icon,
+  HashtagIcon,
+  Image02Icon,
+  KeyboardIcon,
+  Link04Icon,
   Moon02Icon,
+  NotificationOff01Icon,
+  RotateLeft01Icon,
   Sun03Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useId, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { SettingRow, SettingsSection } from '@/components/setting-row';
+import {
+  type SettingIcon,
+  SettingRow,
+  SettingsSection,
+} from '@/components/setting-row';
 import {
   canOpenShortcutSettings,
   openShortcutSettings,
@@ -60,13 +73,13 @@ function setDelivery<K extends keyof Settings['delivery']>(
 }
 
 function SwitchRow({
+  icon,
   label,
-  description,
   checked,
   onCheckedChange,
 }: {
+  icon: SettingIcon;
   label: string;
-  description: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
@@ -74,8 +87,8 @@ function SwitchRow({
 
   return (
     <SettingRow
+      icon={icon}
       label={label}
-      description={description}
       htmlFor={id}
       control={
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
@@ -85,54 +98,45 @@ function SwitchRow({
 }
 
 const imageModes = {
-  photo: {
-    label: 'Photo',
-    description: 'Shown right in the chat. Telegram compresses it.',
-  },
+  photo: { label: 'Photo', description: 'Shown in the chat, compressed.' },
   document: {
     label: 'File',
-    description: 'Kept at full quality. Open it from the chat to view.',
+    description: 'Full quality, opens from the chat.',
   },
-  link: {
-    label: 'Link',
-    description: 'Only the image’s address is sent, with a preview.',
-  },
+  link: { label: 'Link', description: 'Only the address, with a preview.' },
 } satisfies Record<ImageMode, { label: string; description: string }>;
 
 export function MessagesSection() {
   const { delivery } = useStore(settingsStore);
 
   return (
-    <SettingsSection
-      id="messages"
-      title="Messages"
-      description="How messages look when they arrive."
-    >
+    <SettingsSection id="messages" title="Messages">
       <SwitchRow
+        icon={{ icon: NotificationOff01Icon, tone: 'orange' }}
         label="Send silently"
-        description="Messages arrive without a notification sound."
         checked={delivery.silent}
         onCheckedChange={(value) => void setDelivery('silent', value)}
       />
       <SwitchRow
+        icon={{ icon: Link04Icon, tone: 'blue' }}
         label="Show link previews"
-        description="Telegram adds the page’s title and image under links."
         checked={delivery.linkPreview}
         onCheckedChange={(value) => void setDelivery('linkPreview', value)}
       />
       <SwitchRow
+        icon={{ icon: ArrowUpRight01Icon, tone: 'violet' }}
         label="Add an “Open page” button"
-        description="Text, links and images get a button that opens the page they came from."
         checked={delivery.sourceButton}
         onCheckedChange={(value) => void setDelivery('sourceButton', value)}
       />
       <SettingRow
+        icon={{ icon: Image02Icon, tone: 'green' }}
         label="Send images as"
         wide
         description={imageModes[delivery.imageMode].description}
         control={
           <ToggleGroup
-            variant="outline"
+            variant="segmented"
             size="sm"
             aria-label="Send images as"
             value={[delivery.imageMode]}
@@ -158,14 +162,10 @@ export function TagsSection() {
   const { tags } = useStore(settingsStore);
 
   return (
-    <SettingsSection
-      id="hashtags"
-      title="Hashtags"
-      description="Tag messages so they’re easy to find in Telegram later."
-    >
+    <SettingsSection id="hashtags" title="Hashtags">
       <SwitchRow
-        label="Offer hashtags"
-        description="Pick one from the right-click menu or the popup when you send."
+        icon={{ icon: HashtagIcon, tone: 'cyan' }}
+        label="Offer hashtags when sending"
         checked={tags.enabled}
         onCheckedChange={(enabled) =>
           void update((settings) => ({
@@ -192,20 +192,12 @@ export function TagsSection() {
 }
 
 const historyModes = {
-  full: {
-    label: 'Everything',
-    description: 'Keeps what you sent, so you can find it and send it again.',
-  },
+  full: { label: 'Everything', description: 'Find and resend anything.' },
   minimal: {
     label: 'Times only',
-    description:
-      'Keeps when you sent something and what kind it was, not the content.',
+    description: 'When and what kind, no content.',
   },
-  off: {
-    label: 'Off',
-    description:
-      'Nothing new is kept. Earlier history stays until you clear it.',
-  },
+  off: { label: 'Off', description: 'Nothing new is kept.' },
 } satisfies Record<HistoryMode, { label: string; description: string }>;
 
 export function HistorySection() {
@@ -221,12 +213,13 @@ export function HistorySection() {
       description="Kept only in this browser, and never for private windows."
     >
       <SettingRow
+        icon={{ icon: Clock01Icon, tone: 'pink' }}
         label="Keep"
         wide
         description={historyModes[mode].description}
         control={
           <ToggleGroup
-            variant="outline"
+            variant="segmented"
             size="sm"
             aria-label="Keep in history"
             value={[mode]}
@@ -250,8 +243,9 @@ export function HistorySection() {
         }
       />
       <SettingRow
+        icon={{ icon: Delete02Icon, tone: 'red' }}
         label="Clear history"
-        description={`${plural(history.length, { one: '# item is', other: '# items are' })} in history. ${plural(stats.sent, { one: '# message', other: '# messages' })} sent in all.`}
+        description={`${plural(history.length, { one: '# item', other: '# items' })}, ${plural(stats.sent, { one: '# sent in all', other: '# sent in all' })}`}
         control={
           <AlertDialog>
             <AlertDialogTrigger
@@ -302,8 +296,9 @@ function ResetRow({ onReset }: { onReset: () => void }) {
 
   return (
     <SettingRow
+      icon={{ icon: RotateLeft01Icon, tone: 'red' }}
       label="Reset Send to Telegram"
-      description="Removes your chats, settings and history from this browser."
+      description="Removes chats, settings and history."
       control={
         <AlertDialog>
           <AlertDialogTrigger
@@ -347,11 +342,12 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
   return (
     <SettingsSection id="general" title="General">
       <SettingRow
+        icon={{ icon: Moon02Icon, tone: 'violet' }}
         label="Appearance"
         wide
         control={
           <ToggleGroup
-            variant="outline"
+            variant="segmented"
             size="sm"
             aria-label="Appearance"
             value={[appearance.theme]}
@@ -380,6 +376,7 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
         }
       />
       <SettingRow
+        icon={{ icon: KeyboardIcon, tone: 'blue' }}
         label="Keyboard shortcuts"
         description={
           canOpenShortcutSettings

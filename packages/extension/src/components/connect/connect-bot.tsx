@@ -43,6 +43,7 @@ import { toSendFailure } from '@/lib/failure';
 import { chatTypeLabel } from '@/lib/format';
 import type { BotDestination } from '@/lib/settings';
 
+import { BotFatherChat } from './illustrations';
 import { Steps, Step } from './steps';
 
 type TokenState =
@@ -224,53 +225,56 @@ export function ConnectBot({
           done={valid !== undefined}
           description={
             <>
-              In Telegram, open{' '}
+              Open{' '}
               <TelegramLink href="https://t.me/BotFather">
                 @BotFather
               </TelegramLink>
               , send <code className="font-mono text-xs">/newbot</code> and pick
-              a name. It replies with a token.
+              a name. Paste the token it replies with.
             </>
           }
         >
-          <Field data-invalid={tokenState.name === 'invalid'}>
-            <FieldLabel htmlFor={tokenId}>Bot token</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id={tokenId}
-                value={token}
-                onChange={(event) => {
-                  setToken(event.target.value);
-                  void check(event.target.value, false);
-                }}
-                onBlur={() => void check(token, true)}
-                placeholder="123456789:AAH4kYbPq…"
-                autoComplete="off"
-                spellCheck={false}
-                aria-invalid={tokenState.name === 'invalid'}
-                code
-              />
-              <InputGroupAddon align="inline-end">
-                {tokenState.name === 'checking' ? <Spinner /> : null}
-                {valid ? (
-                  <HugeiconsIcon
-                    icon={Tick02Icon}
-                    strokeWidth={2}
-                    className="text-success"
-                  />
-                ) : null}
-              </InputGroupAddon>
-            </InputGroup>
-            {tokenState.name === 'invalid' ? (
-              <FieldError>{tokenState.message}</FieldError>
-            ) : (
-              <FieldDescription>
-                {valid
-                  ? `Token works for @${valid.username}.`
-                  : 'Keep it private: anyone with the token can post as your bot.'}
-              </FieldDescription>
-            )}
-          </Field>
+          <div className="flex flex-col gap-4">
+            {valid ? null : <BotFatherChat />}
+            <Field data-invalid={tokenState.name === 'invalid'}>
+              <FieldLabel htmlFor={tokenId}>Bot token</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id={tokenId}
+                  value={token}
+                  onChange={(event) => {
+                    setToken(event.target.value);
+                    void check(event.target.value, false);
+                  }}
+                  onBlur={() => void check(token, true)}
+                  placeholder="123456789:AAH4kYbPq…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-invalid={tokenState.name === 'invalid'}
+                  code
+                />
+                <InputGroupAddon align="inline-end">
+                  {tokenState.name === 'checking' ? <Spinner /> : null}
+                  {valid ? (
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      strokeWidth={2}
+                      className="text-success"
+                    />
+                  ) : null}
+                </InputGroupAddon>
+              </InputGroup>
+              {tokenState.name === 'invalid' ? (
+                <FieldError>{tokenState.message}</FieldError>
+              ) : (
+                <FieldDescription>
+                  {valid
+                    ? `Works for @${valid.username}.`
+                    : 'Keep it private. Anyone with it can post as your bot.'}
+                </FieldDescription>
+              )}
+            </Field>
+          </div>
         </Step>
 
         <Step
@@ -285,12 +289,9 @@ export function ConnectBot({
                 <TelegramLink
                   href={botLink}
                 >{`@${valid.username}`}</TelegramLink>{' '}
-                and press Start, or add the bot to a group or channel. Chats
-                show up here once they write to the bot.
+                and press Start, or add it to a group or channel.
               </>
-            ) : (
-              'Once the token checks out, pick where messages should go.'
-            )
+            ) : undefined
           }
         >
           {valid ? (
@@ -433,14 +434,7 @@ export function ConnectBot({
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {onUseRelay ? (
-          <Button variant="link" size="text" tone="muted" onClick={onUseRelay}>
-            Use the Send to Telegram bot instead
-          </Button>
-        ) : (
-          <span />
-        )}
+      <div className="flex justify-end">
         <Button
           onClick={() => void connect()}
           disabled={!selected || connecting}
@@ -449,6 +443,14 @@ export function ConnectBot({
           Connect and send a test
         </Button>
       </div>
+
+      {onUseRelay ? (
+        <p className="text-xs text-muted-foreground">
+          <Button variant="link" size="text" tone="muted" onClick={onUseRelay}>
+            Use the Send to Telegram bot instead
+          </Button>
+        </p>
+      ) : null}
     </div>
   );
 }

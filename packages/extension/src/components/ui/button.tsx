@@ -8,6 +8,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        // The send action, in Telegram's blue.
+        brand:
+          'bg-brand text-brand-foreground hover:bg-brand/85 focus-visible:border-brand focus-visible:ring-brand/40',
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
@@ -32,6 +35,8 @@ const buttonVariants = cva(
         'icon-sm':
           'size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
         'icon-lg': 'size-9',
+        // The round button at the end of a message field, as in a chat app.
+        send: 'size-9 rounded-full',
       },
       tone: {
         default: '',

@@ -1,5 +1,8 @@
+import type { SentIcon } from '@hugeicons/core-free-icons';
 import { cva } from 'class-variance-authority';
 import { createContext, use, type ReactNode } from 'react';
+
+import { IconTile, type TileTone } from '@/components/icon-tile';
 
 type Density = 'comfortable' | 'compact';
 
@@ -26,7 +29,7 @@ const rowVariants = cva(
     variants: {
       density: {
         comfortable: 'gap-3 py-4 first:pt-0 last:pb-0',
-        compact: 'gap-2.5 py-3',
+        compact: 'gap-2.5 py-2.5',
       },
     },
   }
@@ -49,8 +52,11 @@ const rowHeaderVariants = cva('flex justify-between', {
   ],
 });
 
+export type SettingIcon = { icon: typeof SentIcon; tone: TileTone };
+
 /** One setting: label and description on the left, its control on the right. */
 export function SettingRow({
+  icon,
   label,
   description,
   htmlFor,
@@ -58,6 +64,8 @@ export function SettingRow({
   wide = false,
   children,
 }: {
+  /** A colored icon before the label, so rows are found by eye, not read. */
+  icon?: SettingIcon;
   label: ReactNode;
   description?: ReactNode;
   /** Ties the label to the control, so clicking the label toggles it. */
@@ -74,21 +82,34 @@ export function SettingRow({
   return (
     <div className={rowVariants({ density })}>
       <div className={rowHeaderVariants({ density, wide })}>
-        <div className="flex min-w-0 flex-col gap-1">
-          <LabelTag htmlFor={htmlFor} className="text-sm font-medium">
-            {label}
-          </LabelTag>
-          {description ? (
-            <div className="text-sm text-pretty text-muted-foreground">
-              {description}
-            </div>
-          ) : null}
+        <div className="flex min-w-0 items-center gap-3">
+          {icon ? <IconTile {...icon} size="sm" /> : null}
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <LabelTag htmlFor={htmlFor} className="text-sm font-medium">
+              {label}
+            </LabelTag>
+            {description ? (
+              <div className="text-sm text-pretty text-muted-foreground">
+                {description}
+              </div>
+            ) : null}
+          </div>
         </div>
         {control ? (
-          <div className="flex shrink-0 items-center gap-2">{control}</div>
+          <div
+            className={
+              // Under the label in the popup; line up with the label's text.
+              icon && wide && density === 'compact'
+                ? 'flex shrink-0 items-center gap-2 pl-10'
+                : 'flex shrink-0 items-center gap-2'
+            }
+          >
+            {control}
+          </div>
         ) : null}
       </div>
-      {children}
+      {/* Line up with the label's text when an icon sits before it. */}
+      {icon && children ? <div className="pl-10">{children}</div> : children}
     </div>
   );
 }
@@ -111,12 +132,6 @@ const sectionHeaderVariants = cva('flex justify-between gap-4', {
 const sectionTitleVariants = cva('font-semibold tracking-tight', {
   variants: {
     density: { comfortable: 'text-base', compact: 'text-sm' },
-  },
-});
-
-const sectionDescriptionVariants = cva('text-pretty text-muted-foreground', {
-  variants: {
-    density: { comfortable: 'text-sm', compact: 'text-xs' },
   },
 });
 
@@ -157,8 +172,9 @@ export function SettingsSection({
           <h2 id={`${id}-title`} className={sectionTitleVariants({ density })}>
             {title}
           </h2>
-          {description ? (
-            <p className={sectionDescriptionVariants({ density })}>
+          {/* The popup leaves these out; the options page has room. */}
+          {description && density === 'comfortable' ? (
+            <p className="text-sm text-pretty text-muted-foreground">
               {description}
             </p>
           ) : null}

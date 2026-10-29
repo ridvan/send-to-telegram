@@ -42,9 +42,6 @@ const itemVariants = cva(
         default: 'border-transparent',
         outline: 'border-border',
         muted: 'border-transparent bg-muted/50',
-        // A row whose action did not complete; its media turns destructive.
-        failed:
-          'border-transparent *:data-[slot=item-media]:bg-destructive/10 *:data-[slot=item-media]:text-destructive',
       },
       size: {
         default: 'gap-2.5 px-3 py-2.5',

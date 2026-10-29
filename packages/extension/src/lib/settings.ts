@@ -162,6 +162,11 @@ export function destinationName(destination: Destination): string {
   return destination.kind === 'bot' ? `Chat ${destination.chatId}` : 'Telegram';
 }
 
+/** Picks a chat's avatar color from its name in Telegram, so a rename keeps it. */
+export function avatarSeed(destination: Destination): string {
+  return destination.chatTitle ?? destination.id;
+}
+
 export function defaultDestination(
   settings: Settings
 ): Destination | undefined {

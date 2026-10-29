@@ -19,6 +19,7 @@ import {
 } from '@/lib/relay';
 import type { RelayDestination } from '@/lib/settings';
 
+import { StartButton } from './illustrations';
 import { Steps, Step } from './steps';
 
 type Phase =
@@ -101,13 +102,10 @@ export function ConnectRelay({
   return (
     <div className="flex flex-col gap-6">
       <Steps>
-        <Step
-          index={1}
-          title="Open the bot in Telegram"
-          description="Your browser opens a one-time link to the Send to Telegram bot."
-        >
+        <Step index={1} title="Open the bot in Telegram" done={waiting}>
           <div className="flex flex-wrap items-center gap-2">
             <Button
+              variant="brand"
               onClick={() => void open(false)}
               disabled={phase.name === 'opening'}
             >
@@ -127,25 +125,23 @@ export function ConnectRelay({
               onClick={() => void open(true)}
               disabled={phase.name === 'opening'}
             >
-              Add to a group instead
+              Add to a group
             </Button>
           </div>
         </Step>
-        <Step
-          index={2}
-          title="Press Start"
-          description="In a group, Telegram asks you to pick the group first. This page updates on its own."
-          active={waiting}
-        >
-          {waiting ? (
-            <p
-              role="status"
-              className="flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <Spinner />
-              Waiting for Telegram
-            </p>
-          ) : null}
+        <Step index={2} title="Press Start" active={waiting}>
+          <div className="flex flex-col gap-3">
+            <StartButton bot="Send to Telegram" />
+            {waiting ? (
+              <p
+                role="status"
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Spinner />
+                Waiting for Telegram
+              </p>
+            ) : null}
+          </div>
         </Step>
       </Steps>
 
@@ -166,8 +162,8 @@ export function ConnectRelay({
       ) : null}
 
       <p className="text-xs text-pretty text-muted-foreground">
-        Messages pass through the Send to Telegram server on their way to
-        Telegram. It keeps only which chat to deliver to, never what you send.{' '}
+        Messages pass through the Send to Telegram server, which never keeps
+        them.{' '}
         <Button variant="link" size="text" tone="muted" onClick={onUseOwnBot}>
           Use your own bot instead
         </Button>

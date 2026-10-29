@@ -1,9 +1,13 @@
 import {
   Clock01Icon,
   FlashIcon,
+  KeyboardIcon,
   MessageMultiple01Icon,
+  MouseRightClick02Icon,
+  PinIcon,
   SentIcon,
   TextIcon,
+  TickDouble02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useState, type ReactNode } from 'react';
@@ -12,6 +16,7 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ConnectFlow } from '@/components/connect/connect-flow';
+import { IconTile, type TileTone } from '@/components/icon-tile';
 import { useShortcuts } from '@/components/shortcuts';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -22,12 +27,15 @@ import { addDestination } from '@/lib/destinations';
 import { plural } from '@/lib/format';
 import { hasRelay } from '@/lib/relay';
 import {
+  avatarSeed,
   defaultDestination,
   destinationName,
   historyStore,
   onboardingStore,
   settingsStore,
 } from '@/lib/settings';
+
+const isMac = navigator.userAgent.includes('Mac');
 
 async function closeTab() {
   const tab = await browser.tabs.getCurrent();
@@ -46,10 +54,10 @@ function Page({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-10 px-6 py-16 sm:py-24">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-10 px-6 py-16 sm:py-24">
       <header className="flex flex-col gap-5">
         <AppMark size="lg" />
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="text-base text-pretty text-muted-foreground">
             {description}
@@ -81,12 +89,8 @@ export function Welcome() {
 
   return (
     <Page
-      title="Send to Telegram"
-      description={
-        hasRelay
-          ? 'Right-click text, links, images or the page itself to send them to a Telegram chat. First, choose how to connect.'
-          : 'Right-click text, links, images or the page itself to send them to a Telegram chat. Setup takes about two minutes.'
-      }
+      title="Send anything to Telegram"
+      description="Connect a chat to start."
     >
       <ConnectFlow
         onConnected={async (next) => {
@@ -102,23 +106,23 @@ export function Welcome() {
   );
 }
 
-/** A still of the browser's right-click menu, so people know where to look. */
-function MenuIllustration() {
+/**
+ * The whole idea in one still: the right-click menu on a page, and the
+ * message it sends arriving in Telegram.
+ */
+function FlowIllustration() {
   return (
     <figure
-      aria-label="The right-click menu, with Send selection to Telegram highlighted"
-      className="flex justify-center rounded-xl border bg-muted/40 px-6 py-8"
+      aria-label="Right-click selected text and choose Send selection to Telegram. It arrives in your chat."
+      className="relative flex h-56 flex-col justify-between overflow-hidden rounded-2xl bg-chat p-5"
     >
       <div
         aria-hidden
-        className="w-64 rounded-lg border bg-popover p-1 text-sm shadow-lg"
+        className="w-60 rounded-lg border bg-popover p-1 text-sm shadow-lg"
       >
         <div className="flex items-center justify-between rounded-md px-2 py-1.5 text-muted-foreground">
           Copy
-          <span className="text-xs">⌘C</span>
-        </div>
-        <div className="rounded-md px-2 py-1.5 text-muted-foreground">
-          Search for “grid layout”
+          <span className="text-xs">{isMac ? '⌘C' : 'Ctrl+C'}</span>
         </div>
         <Separator className="my-1" />
         <div className="flex items-center gap-2 rounded-md bg-accent px-2 py-1.5 font-medium">
@@ -126,7 +130,38 @@ function MenuIllustration() {
           Send selection to Telegram
         </div>
       </div>
+      <div
+        aria-hidden
+        className="flex max-w-64 animate-rise flex-col self-end rounded-2xl rounded-br-sm bg-bubble px-3 py-1.5 text-sm text-bubble-foreground shadow-xs"
+      >
+        Grid is a two-dimensional layout system.
+        <span className="flex items-center justify-end gap-1 text-xs text-bubble-muted">
+          now
+          <HugeiconsIcon
+            icon={TickDouble02Icon}
+            strokeWidth={2}
+            className="size-3.5 text-bubble-accent"
+          />
+        </span>
+      </div>
     </figure>
+  );
+}
+
+function Tip({
+  icon,
+  tone,
+  children,
+}: {
+  icon: typeof SentIcon;
+  tone: TileTone;
+  children: ReactNode;
+}) {
+  return (
+    <li className="flex items-center gap-3 text-sm">
+      <IconTile icon={icon} tone={tone} size="sm" />
+      <span>{children}</span>
+    </li>
   );
 }
 
@@ -135,22 +170,20 @@ function Ready({ chat }: { chat: string }) {
   const sendPage = shortcuts.find((shortcut) => shortcut.name === 'send-page');
 
   return (
-    <Page
-      title="You’re ready"
-      description={`Messages now go to ${chat}. Select something on any page, right-click it and send.`}
-    >
-      <div className="flex animate-rise flex-col gap-6">
-        <MenuIllustration />
-        <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-          <li>
-            Pin Send to Telegram to your toolbar to send the page you’re on with
-            a note or a hashtag.
-          </li>
+    <Page title="You’re all set" description={`Messages go to ${chat}.`}>
+      <div className="flex animate-rise flex-col gap-8">
+        <FlowIllustration />
+        <ul className="flex flex-col gap-3">
+          <Tip icon={MouseRightClick02Icon} tone="blue">
+            Right-click text, links, images or the page
+          </Tip>
+          <Tip icon={PinIcon} tone="orange">
+            Pin the extension to add a note or hashtag
+          </Tip>
           {sendPage?.keys ? (
-            <li>
-              Press <Kbd>{sendPage.keys}</Kbd> to send the current page right
-              away.
-            </li>
+            <Tip icon={KeyboardIcon} tone="violet">
+              <Kbd>{sendPage.keys}</Kbd> sends the page you’re on
+            </Tip>
           ) : null}
         </ul>
       </div>
@@ -169,19 +202,19 @@ function Ready({ chat }: { chat: string }) {
 
 function Feature({
   icon,
+  tone,
   title,
   children,
 }: {
   icon: typeof SentIcon;
+  tone: TileTone;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <li className="flex gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        <HugeiconsIcon icon={icon} strokeWidth={1.8} className="size-4" />
-      </span>
-      <div className="flex flex-col gap-0.5 pt-1">
+    <li className="flex items-center gap-3">
+      <IconTile icon={icon} tone={tone} />
+      <div className="flex flex-col">
         <p className="text-sm font-medium">{title}</p>
         <p className="text-sm text-pretty text-muted-foreground">{children}</p>
       </div>
@@ -198,7 +231,7 @@ function Upgraded() {
   return (
     <Page
       title="Send to Telegram 2.0"
-      description="Rebuilt from the ground up. Your chat, settings and history came along, so everything keeps working as before."
+      description="Rebuilt from scratch. Your chat, settings and history came along."
     >
       <section aria-labelledby="carried" className="flex flex-col gap-3">
         <h2 id="carried" className="text-sm font-medium">
@@ -209,7 +242,11 @@ function Upgraded() {
             <>
               <dt className="text-muted-foreground">Chat</dt>
               <dd className="flex min-w-0 items-center gap-2">
-                <ChatAvatar name={destinationName(destination)} size="sm" />
+                <ChatAvatar
+                  name={destinationName(destination)}
+                  seed={avatarSeed(destination)}
+                  size="sm"
+                />
                 <span className="truncate">{destinationName(destination)}</span>
               </dd>
             </>
@@ -237,25 +274,33 @@ function Upgraded() {
           What’s new
         </h2>
         <ul className="flex flex-col gap-4">
-          <Feature icon={SentIcon} title="Send from the toolbar">
-            Open the popup to send the page or the text you selected, with a
-            note and a hashtag.
+          <Feature icon={SentIcon} tone="blue" title="Send from the toolbar">
+            With a note and a hashtag, previewed as it will arrive.
           </Feature>
-          <Feature icon={MessageMultiple01Icon} title="More than one chat">
-            Send to yourself, a group or a channel, and choose from the
-            right-click menu.
+          <Feature
+            icon={MessageMultiple01Icon}
+            tone="green"
+            title="More than one chat"
+          >
+            Yourself, groups and channels.
           </Feature>
-          <Feature icon={Clock01Icon} title="History you can search">
-            Find anything you sent and send it again.
+          <Feature
+            icon={Clock01Icon}
+            tone="pink"
+            title="History you can search"
+          >
+            Find anything and send it again.
           </Feature>
-          <Feature icon={TextIcon} title="Line breaks survive">
-            Selected text keeps its paragraphs, and long selections arrive in
-            full instead of being cut off.
+          <Feature icon={TextIcon} tone="orange" title="Line breaks survive">
+            Long selections arrive in full.
           </Feature>
           {hasRelay ? (
-            <Feature icon={FlashIcon} title="Setup without BotFather">
-              New chats can use the Send to Telegram bot instead of a bot of
-              your own.
+            <Feature
+              icon={FlashIcon}
+              tone="violet"
+              title="Setup without BotFather"
+            >
+              New chats connect in a few seconds.
             </Feature>
           ) : null}
         </ul>

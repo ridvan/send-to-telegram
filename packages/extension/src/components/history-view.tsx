@@ -128,7 +128,7 @@ function EntryActions({ entry }: { entry: HistoryEntry }) {
   const copyText = content?.text ?? content?.url ?? content?.pageUrl;
 
   return (
-    <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/item:opacity-100 group-focus-within/item:opacity-100 pointer-coarse:opacity-100">
+    <div className="absolute inset-y-0 right-full mr-1 flex items-center gap-0.5 bg-background opacity-0 transition-opacity duration-100 group-focus-within/item:opacity-100 group-hover/item:opacity-100 before:absolute before:inset-y-0 before:right-full before:w-6 before:bg-linear-to-l before:from-background pointer-coarse:static pointer-coarse:opacity-100 pointer-coarse:before:hidden">
       {openUrl ? (
         <RowAction
           label={
@@ -211,8 +211,8 @@ export function HistoryView({
             </EmptyTitle>
             <EmptyDescription>
               {off
-                ? 'Turn it on to keep a list of what you send from this browser.'
-                : 'Right-click text, a link, an image or the page, then choose Send to Telegram. It shows up here.'}
+                ? 'Turn it on to keep a list of what you send.'
+                : 'What you send shows up here.'}
             </EmptyDescription>
           </EmptyHeader>
           {off ? (

@@ -21,6 +21,28 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-chat: var(--chat);
+  --color-bubble: var(--bubble);
+  --color-bubble-foreground: var(--bubble-foreground);
+  --color-bubble-muted: var(--bubble-muted);
+  --color-bubble-accent: var(--bubble-accent);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-tint-red: var(--tint-red);
+  --color-tint-red-to: var(--tint-red-to);
+  --color-tint-orange: var(--tint-orange);
+  --color-tint-orange-to: var(--tint-orange-to);
+  --color-tint-violet: var(--tint-violet);
+  --color-tint-violet-to: var(--tint-violet-to);
+  --color-tint-green: var(--tint-green);
+  --color-tint-green-to: var(--tint-green-to);
+  --color-tint-cyan: var(--tint-cyan);
+  --color-tint-cyan-to: var(--tint-cyan-to);
+  --color-tint-blue: var(--tint-blue);
+  --color-tint-blue-to: var(--tint-blue-to);
+  --color-tint-pink: var(--tint-pink);
+  --color-tint-pink-to: var(--tint-pink-to);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -83,6 +105,31 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.6 0.14 65);
   --warning-foreground: oklch(0.985 0 0);
+  /* Telegram's blue, for the one action that sends. */
+  --brand: oklch(0.62 0.135 238);
+  --brand-foreground: oklch(1 0 0);
+  /* The popup is drawn as a chat: a wallpaper and your outgoing message. */
+  --chat: oklch(0.955 0.012 235);
+  --bubble: oklch(0.93 0.045 232);
+  --bubble-foreground: oklch(0.2 0.02 245);
+  --bubble-muted: oklch(0.48 0.04 240);
+  --bubble-accent: oklch(0.5 0.14 245);
+  /* Telegram's avatar colors, top to bottom of each gradient. */
+  --tint-foreground: oklch(1 0 0);
+  --tint-red: oklch(0.75 0.156 40);
+  --tint-red-to: oklch(0.66 0.2 17);
+  --tint-orange: oklch(0.84 0.13 78);
+  --tint-orange-to: oklch(0.76 0.15 58);
+  --tint-violet: oklch(0.74 0.124 262);
+  --tint-violet-to: oklch(0.57 0.22 279);
+  --tint-green: oklch(0.82 0.142 135);
+  --tint-green-to: oklch(0.7 0.175 147);
+  --tint-cyan: oklch(0.84 0.133 181);
+  --tint-cyan-to: oklch(0.72 0.127 184);
+  --tint-blue: oklch(0.8 0.109 227);
+  --tint-blue-to: oklch(0.65 0.157 246);
+  --tint-pink: oklch(0.78 0.129 318);
+  --tint-pink-to: oklch(0.67 0.211 321);
   --border: oklch(0.89 0 0);
   --input: oklch(0.89 0 0);
   --ring: oklch(0.708 0 0);
@@ -122,6 +169,12 @@
   --success-foreground: oklch(0.205 0 0);
   --warning: oklch(0.83 0.15 80);
   --warning-foreground: oklch(0.205 0 0);
+  --brand: oklch(0.64 0.135 240);
+  --chat: oklch(0.12 0.006 250);
+  --bubble: oklch(0.4 0.075 250);
+  --bubble-foreground: oklch(0.985 0 0);
+  --bubble-muted: oklch(0.8 0.04 245);
+  --bubble-accent: oklch(0.83 0.1 230);
   --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.556 0 0);
@@ -206,5 +259,78 @@
 @keyframes fade {
   from {
     opacity: 0;
+  }
+}
+
+/* A view that slides over the composer, such as History. */
+@utility animate-enter {
+  animation: enter 200ms var(--ease-out-strong) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 150ms ease-out both;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    translate: 12px 0;
+  }
+}
+
+/* A status icon that replaces another, such as the sent check. */
+@utility animate-pop {
+  animation: pop 260ms var(--ease-out-strong) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 150ms ease-out both;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
+/* The paper plane leaving the send button. */
+@utility animate-depart {
+  animation: depart 320ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade-out 150ms ease-out forwards;
+  }
+}
+
+@keyframes depart {
+  to {
+    opacity: 0;
+    translate: 18px -18px;
+    scale: 0.8;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* A row that scrolls sideways, such as hashtags, without a scrollbar. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Shows a spinner only once a wait outlasts the animation before it. */
+@utility animate-pop-late {
+  animation: pop 260ms var(--ease-out-strong) 320ms both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 150ms ease-out 320ms both;
   }
 }

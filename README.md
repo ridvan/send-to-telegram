@@ -49,7 +49,7 @@ pnpm dev
 
 `pnpm dev` opens a separate Chrome window with the extension already loaded, and reloads it as you save. That window keeps its own profile in `packages/extension/.wxt/chrome-data`, so a connected chat and its history carry over between runs; delete the folder to start fresh. `pnpm dev:firefox` does the same in Firefox, with a fresh profile each time.
 
-To work on the pages without a browser window, run `pnpm --filter extension dev:pages`, serve `packages/extension/.output/chrome-mv3-dev`, and open `popup.html`, `options.html` or `welcome.html` in any browser. Extension APIs are replaced with a local stand-in there. Add `?demo` to the URL for sample chats and history, `?selection` for a text selection, or `?reset` to start over.
+To work on the pages without a browser window, run `pnpm --filter extension dev:pages`, serve `packages/extension/.output/chrome-mv3-dev`, and open `popup.html`, `options.html` or `welcome.html` in any browser. Extension APIs are replaced with a local stand-in there. Add `?demo` to the URL for sample chats and history, `?selection` for a text selection, `?fail` to make sends fail, or `?reset` to start over.
 
 | Command          | What it does                                     |
 | ---------------- | ------------------------------------------------ |

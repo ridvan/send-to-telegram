@@ -5,9 +5,9 @@ import {
   Link04Icon,
   TextIcon,
 } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import type { ComponentProps, ReactNode } from 'react';
 
+import { IconTile, type TileTone } from '@/components/icon-tile';
 import {
   Tooltip,
   TooltipContent,
@@ -30,12 +30,12 @@ import {
 } from '@/lib/format';
 import type { ContentKind, HistoryEntry } from '@/lib/settings';
 
-const kindIcons = {
-  selection: TextIcon,
-  link: Link04Icon,
-  image: Image02Icon,
-  page: Globe02Icon,
-} satisfies Record<ContentKind, typeof TextIcon>;
+const kindTiles = {
+  selection: { icon: TextIcon, tone: 'orange' },
+  link: { icon: Link04Icon, tone: 'violet' },
+  image: { icon: Image02Icon, tone: 'green' },
+  page: { icon: Globe02Icon, tone: 'blue' },
+} satisfies Record<ContentKind, { icon: typeof TextIcon; tone: TileTone }>;
 
 /** A relative time; the tooltip that wraps it shows the full date. */
 function Timestamp({
@@ -75,12 +75,13 @@ export function HistoryRow({
   ].filter(Boolean);
 
   return (
-    <Item size="xs" variant={failed ? 'failed' : 'default'}>
-      <ItemMedia variant="tile">
-        <HugeiconsIcon
-          icon={failed ? Alert02Icon : kindIcons[entry.kind]}
-          strokeWidth={1.8}
-        />
+    <Item size="xs">
+      <ItemMedia>
+        {failed ? (
+          <IconTile icon={Alert02Icon} tone="red" />
+        ) : (
+          <IconTile {...kindTiles[entry.kind]} />
+        )}
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle className="w-full">
@@ -90,7 +91,9 @@ export function HistoryRow({
           {details.join(' · ')}
         </ItemDescription>
       </ItemContent>
-      <ItemActions>
+      {/* Actions show over the end of the title on hover, so they don't
+          take its room the rest of the time. */}
+      <ItemActions className="relative self-stretch">
         {actions}
         <Tooltip>
           <TooltipTrigger

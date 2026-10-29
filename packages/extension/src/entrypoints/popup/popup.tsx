@@ -1,4 +1,10 @@
-import { CheckmarkCircle02Icon, Globe02Icon } from '@hugeicons/core-free-icons';
+import {
+  ArrowLeft01Icon,
+  Clock01Icon,
+  SentIcon,
+  Settings01Icon,
+  Tick02Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import { browser } from 'wxt/browser';
@@ -6,6 +12,10 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { HistoryView } from '@/components/history-view';
+import {
+  MessagePreview,
+  type MessageStatus,
+} from '@/components/message-preview';
 import { SettingsDensity } from '@/components/setting-row';
 import { ChatsSection } from '@/components/settings/chats-section';
 import {
@@ -21,14 +31,6 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
 import { Kbd } from '@/components/ui/kbd';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -40,14 +42,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useStore } from '@/hooks/use-store';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
 import type { Draft } from '@/lib/compose';
-import { displayUrl } from '@/lib/format';
 import {
+  avatarSeed,
   defaultDestination,
   destinationName,
   historyStore,
@@ -57,13 +63,18 @@ import {
 
 import type { PageContext } from './page';
 
-const isMac = navigator.userAgent.includes('Mac');
-
 type Phase =
   | { name: 'idle' }
   | { name: 'sending' }
-  | { name: 'sent' }
+  | { name: 'sent'; destination: string }
   | { name: 'failed'; message: string; canSetUp: boolean };
+
+const statusOf = {
+  idle: 'draft',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+} satisfies Record<Phase['name'], MessageStatus>;
 
 /** Holding the port open tells the background the popup is showing, so it clears a failure badge. */
 function useBadgeReset() {
@@ -88,13 +99,12 @@ export function Popup({ page }: { page: PageContext }) {
   return <Shell page={page} settings={settings} />;
 }
 
-const views = ['send', 'history', 'settings'] as const;
+type View = 'send' | 'history' | 'settings';
 
-type View = (typeof views)[number];
-
-function isView(value: unknown): value is View {
-  return views.some((view) => view === value);
-}
+const viewTitles = {
+  history: 'History',
+  settings: 'Settings',
+} satisfies Record<Exclude<View, 'send'>, string>;
 
 /** Switches to a view and, once it renders, scrolls a section of it into view. */
 function useNavigation() {
@@ -113,66 +123,124 @@ function useNavigation() {
   return { view, show };
 }
 
+function HeaderButton({
+  label,
+  icon,
+  alert,
+  onClick,
+}: {
+  label: string;
+  icon: typeof Clock01Icon;
+  /** Marks the button with a red dot, such as History after a failed send. */
+  alert?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            tone="muted"
+            aria-label={alert ? `${label}, ${alert}` : label}
+            onClick={onClick}
+            className="relative"
+          />
+        }
+      >
+        <HugeiconsIcon icon={icon} strokeWidth={1.8} />
+        {alert ? (
+          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
+        ) : null}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 /**
- * Fixed height so switching views doesn't resize the popup window, which
- * browsers animate poorly. Chrome caps popups at 600px.
+ * Drawn like a Telegram chat: the chat you're sending to on top, your message
+ * in the middle and the note field at the bottom. Fixed height so switching
+ * views doesn't resize the popup window, which browsers animate poorly.
+ * Chrome caps popups at 600px.
  */
 function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
   const { view, show } = useNavigation();
   const history = useStore(historyStore);
   const lastFailed = history[0]?.status === 'failed';
 
+  const [destinationId, setDestinationId] = useState(
+    defaultDestination(settings)?.id
+  );
+
   return (
-    <Tabs
-      value={view}
-      onValueChange={(next) => {
-        if (isView(next)) show(next);
-      }}
-      spacing="none"
-      className="h-[540px] w-[360px]"
-    >
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b px-4">
-        <AppMark size="sm" />
-        <TabsList variant="line" aria-label="Send to Telegram">
-          <TabsTrigger value="send">Send</TabsTrigger>
-          <TabsTrigger value="history">
-            History
-            {lastFailed ? (
-              <span className="size-1.5 rounded-full bg-destructive">
-                <span className="sr-only">, last message not sent</span>
-              </span>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-      </header>
+    <div className="flex h-[540px] w-[360px] flex-col">
+      {view === 'send' ? (
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+          <ChatPicker
+            settings={settings}
+            value={destinationId}
+            onChange={setDestinationId}
+          />
+          <HeaderButton
+            label="History"
+            icon={Clock01Icon}
+            {...(lastFailed && { alert: 'last message not sent' })}
+            onClick={() => show('history')}
+          />
+          <HeaderButton
+            label="Settings"
+            icon={Settings01Icon}
+            onClick={() => show('settings')}
+          />
+        </header>
+      ) : (
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back"
+            autoFocus
+            onClick={() => show('send')}
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
+          </Button>
+          <h1 className="text-sm font-semibold">{viewTitles[view]}</h1>
+        </header>
+      )}
 
       {/* Kept mounted so a half-written note survives a look at settings. */}
-      <TabsContent value="send" keepMounted className="min-h-0">
+      <div hidden={view !== 'send'} className="min-h-0 flex-1">
         <Composer
           page={page}
           settings={settings}
+          destinationId={destinationId}
           onOpenChatSettings={() => show('settings', 'chats')}
         />
-      </TabsContent>
+      </div>
 
-      <TabsContent value="history" className="min-h-0">
-        <ScrollArea className="h-full">
-          {/* Relative, so sr-only text can't escape the scroll viewport. */}
-          <div className="relative p-4">
-            <HistoryView
-              onOpenSettings={() => show('settings', 'history-settings')}
-            />
-          </div>
-        </ScrollArea>
-      </TabsContent>
+      {view === 'history' ? (
+        <div className="min-h-0 flex-1 animate-enter">
+          <ScrollArea className="h-full">
+            {/* Relative, so sr-only text can't escape the scroll viewport. */}
+            <div className="relative p-4">
+              <HistoryView
+                onOpenSettings={() => show('settings', 'history-settings')}
+              />
+            </div>
+          </ScrollArea>
+        </div>
+      ) : null}
 
-      <TabsContent value="settings" className="min-h-0">
-        <ScrollArea className="h-full">
-          <SettingsPanel />
-        </ScrollArea>
-      </TabsContent>
-    </Tabs>
+      {view === 'settings' ? (
+        <div className="min-h-0 flex-1 animate-enter">
+          <ScrollArea className="h-full">
+            <SettingsPanel />
+          </ScrollArea>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -210,71 +278,86 @@ function SettingsPanel() {
 
 function SetupPrompt() {
   return (
-    <main className="w-[360px] p-4">
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia>
-            <AppMark size="lg" />
-          </EmptyMedia>
-          <EmptyTitle>Connect a Telegram chat</EmptyTitle>
-          <EmptyDescription>
-            Choose where the pages, links and text you send should arrive. It
-            takes about a minute.
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button
-            autoFocus
-            onClick={() => void openExtensionPage('/welcome.html').then(close)}
-          >
-            Get started
-          </Button>
-        </EmptyContent>
-      </Empty>
+    <main className="flex w-[360px] flex-col items-center gap-5 px-8 pt-10 pb-8 text-center">
+      <AppMark size="lg" />
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-base font-semibold">Send anything to Telegram</h1>
+        <p className="text-sm text-muted-foreground">
+          Connect a chat once, then send pages, links and text in one click.
+        </p>
+      </div>
+      <Button
+        variant="brand"
+        size="lg"
+        autoFocus
+        onClick={() => void openExtensionPage('/welcome.html').then(close)}
+      >
+        Connect Telegram
+      </Button>
     </main>
   );
 }
 
-function PageHeader({ page }: { page: PageContext }) {
+function SendButton({ phase, onSend }: { phase: Phase; onSend: () => void }) {
+  const busy = phase.name === 'sending' || phase.name === 'sent';
+
   return (
-    <header className="flex items-center gap-3 px-4 pt-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-        {page.favIconUrl ? (
-          <img src={page.favIconUrl} alt="" className="size-4" />
-        ) : (
-          <HugeiconsIcon
-            icon={Globe02Icon}
-            strokeWidth={1.8}
-            className="size-4 text-muted-foreground"
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="brand"
+            size="send"
+            aria-label="Send"
+            aria-keyshortcuts="Enter"
+            aria-disabled={busy}
+            onClick={onSend}
+            className="relative overflow-hidden"
           />
+        }
+      >
+        {phase.name === 'sent' ? (
+          <HugeiconsIcon
+            icon={Tick02Icon}
+            strokeWidth={2.5}
+            className="animate-pop"
+          />
+        ) : phase.name === 'sending' ? (
+          <>
+            <HugeiconsIcon
+              icon={SentIcon}
+              strokeWidth={2}
+              className="absolute animate-depart"
+            />
+            <span className="animate-pop-late">
+              <Spinner />
+            </span>
+          </>
+        ) : (
+          <HugeiconsIcon icon={SentIcon} strokeWidth={2} />
         )}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <p className="truncate text-sm font-medium">
-          {page.title ?? 'Untitled page'}
-        </p>
-        {page.url ? (
-          <p className="truncate text-xs text-muted-foreground">
-            {displayUrl(page.url)}
-          </p>
-        ) : null}
-      </div>
-    </header>
+      </TooltipTrigger>
+      <TooltipContent>
+        Send
+        <Kbd>↵</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
 function Composer({
   page,
   settings,
+  destinationId,
   onOpenChatSettings,
 }: {
   page: PageContext;
   settings: Settings;
+  destinationId: string | undefined;
   onOpenChatSettings: () => void;
 }) {
   const noteId = useId();
-  const fallback = defaultDestination(settings);
-  const [destinationId, setDestinationId] = useState(fallback?.id);
+  const [time] = useState(() => Date.now());
 
   const [mode, setMode] = useState<'page' | 'selection'>(
     page.selection ? 'selection' : 'page'
@@ -304,8 +387,8 @@ function Composer({
     const outcome = await requestSend(draft, { incognito: page.incognito });
 
     if (outcome.ok) {
-      setPhase({ name: 'sent' });
-      setTimeout(close, 900);
+      setPhase({ name: 'sent', destination: outcome.destination });
+      setTimeout(close, 1000);
 
       return;
     }
@@ -319,66 +402,86 @@ function Composer({
     });
   }
 
-  function onKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+  /** Enter sends, as in Telegram; Shift+Enter starts a new line. */
+  function onNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
       event.preventDefault();
       void send();
     }
   }
 
   return (
-    <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
-      <PageHeader page={page} />
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+    <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-chat p-3">
         {page.selection ? (
-          <div className="flex flex-col gap-2">
-            <ToggleGroup
-              variant="outline"
-              size="sm"
-              aria-label="What to send"
-              value={[mode]}
-              onValueChange={([next]) => {
-                if (next === 'page' || next === 'selection') setMode(next);
-              }}
-              className="w-full"
-            >
-              <ToggleGroupItem value="selection" className="flex-1">
-                Selected text
-              </ToggleGroupItem>
-              <ToggleGroupItem value="page" className="flex-1">
-                Page link
-              </ToggleGroupItem>
-            </ToggleGroup>
-            {mode === 'selection' ? (
-              <blockquote className="line-clamp-4 border-l-2 pl-3 text-sm text-pretty whitespace-pre-line text-muted-foreground">
-                {page.selection}
-              </blockquote>
-            ) : null}
-          </div>
+          <ToggleGroup
+            variant="segmented"
+            size="sm"
+            aria-label="What to send"
+            value={[mode]}
+            onValueChange={([next]) => {
+              if (next === 'page' || next === 'selection') setMode(next);
+            }}
+            className="self-center"
+          >
+            <ToggleGroupItem value="selection">Selected text</ToggleGroupItem>
+            <ToggleGroupItem value="page">Page link</ToggleGroupItem>
+          </ToggleGroup>
         ) : null}
 
-        <label htmlFor={noteId} className="sr-only">
-          Note
-        </label>
-        <Textarea
-          id={noteId}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Add a note"
-          rows={2}
-          className="min-h-16 flex-1 resize-none"
-        />
+        <div className="mt-auto flex flex-col gap-3">
+          {phase.name === 'failed' ? null : <LastFailure />}
 
-        {tags.length > 0 ? (
+          <MessagePreview
+            kind={mode}
+            pageUrl={page.url}
+            pageTitle={page.title}
+            favIconUrl={page.favIconUrl}
+            text={page.selection}
+            note={note}
+            tag={tag}
+            delivery={settings.delivery}
+            status={statusOf[phase.name]}
+            time={time}
+          />
+
+          {phase.name === 'failed' ? (
+            <Alert variant="destructive">
+              <AlertTitle>Not sent</AlertTitle>
+              <AlertDescription>
+                {phase.message}{' '}
+                {phase.canSetUp ? (
+                  <Button
+                    variant="link"
+                    size="text"
+                    onClick={onOpenChatSettings}
+                  >
+                    Open chat settings
+                  </Button>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <p role="status" className="sr-only">
+            {phase.name === 'sent' ? `Sent to ${phase.destination}` : ''}
+          </p>
+        </div>
+      </div>
+
+      {tags.length > 0 ? (
+        <div className="scrollbar-none overflow-x-auto border-t px-3 pt-2">
           <ToggleGroup
             size="sm"
-            variant="outline"
+            variant="chip"
             spacing={1}
             aria-label="Hashtag"
             value={tag ? [tag] : []}
             onValueChange={([next]) => setTag(next)}
-            className="flex-wrap"
           >
             {tags.map((item) => (
               <ToggleGroupItem key={item} value={item}>
@@ -386,62 +489,32 @@ function Composer({
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-        ) : null}
+        </div>
+      ) : null}
 
-        {phase.name === 'failed' ? null : <LastFailure />}
-
-        {phase.name === 'failed' ? (
-          <Alert variant="destructive">
-            <AlertTitle>Not sent</AlertTitle>
-            <AlertDescription>
-              {phase.message}
-              {phase.canSetUp ? (
-                <Button variant="link" size="text" onClick={onOpenChatSettings}>
-                  Open chat settings
-                </Button>
-              ) : null}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
-
-      <footer className="flex items-center gap-2 border-t px-4 py-3">
-        <DestinationPicker
-          settings={settings}
-          value={destinationId}
-          onChange={setDestinationId}
-        />
-        <Button
+      <div
+        className={
+          tags.length > 0
+            ? 'flex items-end gap-2 px-3 pt-1 pb-2.5'
+            : 'flex items-end gap-2 border-t px-3 py-2.5'
+        }
+      >
+        <label htmlFor={noteId} className="sr-only">
+          Note
+        </label>
+        <Textarea
+          id={noteId}
+          variant="bare"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          onKeyDown={onNoteKeyDown}
+          readOnly={busy}
+          placeholder="Add a note"
+          rows={1}
           autoFocus
-          onClick={() => void send()}
-          disabled={busy}
-          className="min-w-24"
-          aria-keyshortcuts={isMac ? 'Meta+Enter' : 'Control+Enter'}
-        >
-          {phase.name === 'sending' ? (
-            <>
-              <Spinner data-icon="inline-start" />
-              Sending
-            </>
-          ) : phase.name === 'sent' ? (
-            <>
-              <HugeiconsIcon
-                icon={CheckmarkCircle02Icon}
-                strokeWidth={2}
-                data-icon="inline-start"
-              />
-              Sent
-            </>
-          ) : (
-            <>
-              Send
-              <Kbd variant="button" data-icon="inline-end">
-                {isMac ? '⌘↵' : 'Ctrl ↵'}
-              </Kbd>
-            </>
-          )}
-        </Button>
-      </footer>
+        />
+        <SendButton phase={phase} onSend={() => void send()} />
+      </div>
     </div>
   );
 }
@@ -491,7 +564,8 @@ function LastFailure() {
   );
 }
 
-function DestinationPicker({
+/** The chat a message goes to, in the header like a Telegram chat's name. */
+function ChatPicker({
   settings,
   value,
   onChange,
@@ -505,13 +579,16 @@ function DestinationPicker({
   const current =
     destinations.find((item) => item.id === value) ?? destinations[0];
 
-  if (!current) return null;
+  if (!current) return <span className="flex-1" />;
 
   if (destinations.length === 1) {
     return (
-      <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
-        <ChatAvatar name={destinationName(current)} size="sm" />
-        <span className="truncate text-muted-foreground">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 px-1.5">
+        <ChatAvatar
+          name={destinationName(current)}
+          seed={avatarSeed(current)}
+        />
+        <span className="truncate text-sm font-medium">
           {destinationName(current)}
         </span>
       </div>
@@ -519,34 +596,44 @@ function DestinationPicker({
   }
 
   return (
-    <Select
-      value={current.id}
-      onValueChange={(next) => {
-        if (next) onChange(next);
-      }}
-      items={destinations.map((item) => ({
-        value: item.id,
-        label: destinationName(item),
-      }))}
-    >
-      <SelectTrigger
-        variant="ghost"
-        aria-label="Send to"
-        className="min-w-0 flex-1"
+    <div className="flex min-w-0 flex-1">
+      <Select
+        value={current.id}
+        onValueChange={(next) => {
+          if (next) onChange(next);
+        }}
+        items={destinations.map((item) => ({
+          value: item.id,
+          label: destinationName(item),
+        }))}
       >
-        <ChatAvatar name={destinationName(current)} size="sm" />
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          {destinations.map((item) => (
-            <SelectItem key={item.id} value={item.id}>
-              <ChatAvatar name={destinationName(item)} size="sm" />
-              {destinationName(item)}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+        <SelectTrigger
+          variant="ghost"
+          size="lg"
+          aria-label="Send to"
+          className="min-w-0"
+        >
+          <ChatAvatar
+            name={destinationName(current)}
+            seed={avatarSeed(current)}
+          />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {destinations.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                <ChatAvatar
+                  name={destinationName(item)}
+                  seed={avatarSeed(item)}
+                  size="sm"
+                />
+                {destinationName(item)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Avatar as AvatarPrimitive } from '@base-ui/react/avatar';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
 
 function Avatar({
@@ -35,17 +36,41 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   );
 }
 
+const avatarFallbackVariants = cva(
+  'flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs',
+  {
+    variants: {
+      // Telegram colors chats it has no photo for; `tone` does the same.
+      tone: {
+        none: 'bg-muted text-muted-foreground',
+        red: 'bg-linear-to-b from-tint-red to-tint-red-to font-semibold text-tint-foreground',
+        orange:
+          'bg-linear-to-b from-tint-orange to-tint-orange-to font-semibold text-tint-foreground',
+        violet:
+          'bg-linear-to-b from-tint-violet to-tint-violet-to font-semibold text-tint-foreground',
+        green:
+          'bg-linear-to-b from-tint-green to-tint-green-to font-semibold text-tint-foreground',
+        cyan: 'bg-linear-to-b from-tint-cyan to-tint-cyan-to font-semibold text-tint-foreground',
+        blue: 'bg-linear-to-b from-tint-blue to-tint-blue-to font-semibold text-tint-foreground',
+        pink: 'bg-linear-to-b from-tint-pink to-tint-pink-to font-semibold text-tint-foreground',
+      },
+    },
+    defaultVariants: {
+      tone: 'none',
+    },
+  }
+);
+
 function AvatarFallback({
   className,
+  tone,
   ...props
-}: AvatarPrimitive.Fallback.Props) {
+}: AvatarPrimitive.Fallback.Props &
+  VariantProps<typeof avatarFallbackVariants>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
-      className={cn(
-        'flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs',
-        className
-      )}
+      className={cn(avatarFallbackVariants({ tone }), className)}
       {...props}
     />
   );
@@ -100,6 +125,7 @@ export {
   Avatar,
   AvatarImage,
   AvatarFallback,
+  avatarFallbackVariants,
   AvatarGroup,
   AvatarGroupCount,
   AvatarBadge,
