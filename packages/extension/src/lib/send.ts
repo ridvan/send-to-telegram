@@ -1,0 +1,190 @@
+import {
+  createBotClient,
+  deliver,
+  type Delivery,
+} from '@send-to-telegram/core';
+import { browser } from 'wxt/browser';
+import { z } from 'zod';
+
+import { compose, type Draft, draftSchema } from './compose.ts';
+import {
+  failureCopy,
+  failureReasonSchema,
+  SendFailure,
+  toSendFailure,
+} from './failure.ts';
+import { relaySend } from './relay.ts';
+import {
+  type Destination,
+  defaultDestination,
+  destinationName,
+  type HistoryEntry,
+  historyStore,
+  MAX_HISTORY,
+  type Settings,
+  settingsStore,
+  statsStore,
+} from './settings.ts';
+
+export const sendRequestSchema = z.object({
+  type: z.literal('send'),
+  draft: draftSchema,
+  incognito: z.boolean(),
+  /** A failed history entry this send replaces. */
+  retryOf: z.string().optional(),
+});
+
+export type SendRequest = z.infer<typeof sendRequestSchema>;
+
+export const sendOutcomeSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), destination: z.string() }),
+  z.object({
+    ok: z.literal(false),
+    reason: failureReasonSchema,
+    message: z.string(),
+  }),
+]);
+
+export type SendOutcome = z.infer<typeof sendOutcomeSchema>;
+
+export function transmit(
+  destination: Destination,
+  message: ReturnType<typeof compose>
+): Promise<Delivery> {
+  if (destination.kind === 'relay') {
+    return relaySend(destination.relayUrl, destination.deviceToken, message);
+  }
+
+  return deliver(
+    createBotClient(destination.token),
+    destination.chatId,
+    message
+  );
+}
+
+function findDestination(settings: Settings, id: string | undefined) {
+  const destination = id
+    ? settings.destinations.find((candidate) => candidate.id === id)
+    : defaultDestination(settings);
+
+  if (!destination) {
+    throw new SendFailure('no_destination', failureCopy.no_destination);
+  }
+
+  return destination;
+}
+
+function historyEntry(
+  draft: Draft,
+  settings: Settings,
+  result: {
+    destination?: Destination;
+    delivery?: Delivery;
+    failure?: SendFailure;
+  }
+): HistoryEntry {
+  const keepContent = settings.history.mode === 'full';
+
+  return {
+    id: crypto.randomUUID(),
+    sentAt: Date.now(),
+    kind: draft.kind,
+    status: result.failure ? 'failed' : 'sent',
+    ...(result.destination && {
+      destinationId: result.destination.id,
+      destinationName: destinationName(result.destination),
+    }),
+    ...(draft.tag && { tag: draft.tag }),
+    ...(result.delivery && { via: result.delivery.via }),
+    ...(result.failure && { error: result.failure.message }),
+    ...(keepContent && {
+      content: {
+        ...(draft.text && { text: draft.text }),
+        ...(draft.url && { url: draft.url }),
+        ...(draft.note && { note: draft.note }),
+        ...(draft.pageUrl && { pageUrl: draft.pageUrl }),
+        ...(draft.pageTitle && { pageTitle: draft.pageTitle }),
+      },
+    }),
+  };
+}
+
+function record(entry: HistoryEntry, replaces: string | undefined) {
+  return historyStore.update((history) =>
+    [entry, ...history.filter((item) => item.id !== replaces)].slice(
+      0,
+      MAX_HISTORY
+    )
+  );
+}
+
+const action = browser.action ?? browser.browserAction;
+let clearBadge: ReturnType<typeof setTimeout> | undefined;
+
+/** A check mark that clears itself, or an alert that stays until the popup opens. */
+export async function showBadge(ok: boolean) {
+  clearTimeout(clearBadge);
+  await action.setBadgeBackgroundColor({ color: ok ? '#15803d' : '#b91c1c' });
+  await action.setBadgeTextColor?.({ color: '#ffffff' });
+  await action.setBadgeText({ text: ok ? '✓' : '!' });
+
+  if (ok) {
+    clearBadge = setTimeout(() => void action.setBadgeText({ text: '' }), 2000);
+  }
+}
+
+export async function clearFailureBadge() {
+  const text = await action.getBadgeText({});
+
+  if (text === '!') await action.setBadgeText({ text: '' });
+}
+
+/**
+ * Sends a draft and records the outcome. Private windows leave no history and
+ * do not count towards the total, as in 1.x.
+ */
+export async function send(request: SendRequest): Promise<SendOutcome> {
+  const settings = await settingsStore.get();
+  const { draft, incognito } = request;
+  const remember = !incognito && settings.history.mode !== 'off';
+  let destination: Destination | undefined;
+
+  try {
+    destination = findDestination(settings, draft.destinationId);
+
+    const delivery = await transmit(
+      destination,
+      compose(draft, settings.delivery)
+    );
+
+    await showBadge(true);
+
+    if (!incognito) {
+      await statsStore.update((stats) => ({ sent: stats.sent + 1 }));
+    }
+
+    if (remember) {
+      const entry = historyEntry(draft, settings, { destination, delivery });
+
+      await record(entry, request.retryOf);
+    }
+
+    return { ok: true, destination: destinationName(destination) };
+  } catch (cause) {
+    const failure = toSendFailure(cause);
+
+    console.error('Send failed', cause);
+    await showBadge(false);
+
+    if (remember) {
+      const entry = historyEntry(draft, settings, {
+        failure,
+        ...(destination && { destination }),
+      });
+
+      await record(entry, request.retryOf);
+    }
+
+    return { ok: false, reason: failure.reason, message: failure.message };
+  }
+}
