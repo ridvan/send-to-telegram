@@ -9,10 +9,11 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  type ReactNode,
   type RefObject,
+  useDeferredValue,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -23,7 +24,11 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
-import { ChatSearchField, ChatSearchResults } from '@/components/chat-search';
+import {
+  ChatSearchField,
+  MatchCount,
+  NoMatches,
+} from '@/components/chat-search';
 import {
   MessagePreview,
   type MessageStatus,
@@ -71,8 +76,10 @@ import { useChatItems } from '@/hooks/use-chat-items';
 import { useInbox } from '@/hooks/use-inbox';
 import { useStore } from '@/hooks/use-store';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
+import { plural } from '@/lib/format';
 import type { Draft } from '@/lib/compose';
 import { revealMessage } from '@/lib/reveal';
+import { matchChatItems } from '@/lib/search';
 import {
   avatarSeed,
   defaultDestination,
@@ -121,6 +128,13 @@ export function Popup({ page }: { page: PageContext }) {
 }
 
 type View = 'send' | 'search' | 'settings';
+
+type ChatSearch = {
+  query: string;
+  onClear: () => void;
+  /** Closes search and scrolls the chat to the message picked. */
+  onShow: (key: string) => void;
+};
 
 /** Switches to a view and, once it renders, scrolls a section of it into view. */
 function useNavigation() {
@@ -194,38 +208,44 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
     defaultDestination(settings)?.id
   );
 
-  const destination = settings.destinations.find(
-    (item) => item.id === destinationId
-  );
-
-  const botToken = destination?.kind === 'bot' ? destination.token : undefined;
-
   const chatShown =
     settings.history.mode === 'full' && settings.history.showInChat;
 
   return (
     <div className="flex h-[540px] w-[360px] flex-col">
-      {view === 'send' ? (
+      {/* One header for the chat and its search, so opening search swaps
+          what's in it and nothing else. */}
+      {view === 'settings' ? null : (
         <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
-          <ChatPicker
-            settings={settings}
-            value={destinationId}
-            onChange={setDestinationId}
-          />
-          {chatShown ? (
-            <HeaderButton
-              label="Search"
-              icon={Search01Icon}
-              onClick={() => show('search')}
+          {view === 'search' ? (
+            <ChatSearchField
+              query={query}
+              onQueryChange={setQuery}
+              onClose={closeSearch}
             />
-          ) : null}
-          <HeaderButton
-            label="Settings"
-            icon={Settings01Icon}
-            onClick={() => show('settings')}
-          />
+          ) : (
+            <>
+              <ChatPicker
+                settings={settings}
+                value={destinationId}
+                onChange={setDestinationId}
+              />
+              {chatShown ? (
+                <HeaderButton
+                  label="Search"
+                  icon={Search01Icon}
+                  onClick={() => show('search')}
+                />
+              ) : null}
+              <HeaderButton
+                label="Settings"
+                icon={Settings01Icon}
+                onClick={() => show('settings')}
+              />
+            </>
+          )}
         </header>
-      ) : null}
+      )}
 
       {view === 'settings' ? (
         <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
@@ -242,17 +262,8 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
         </header>
       ) : null}
 
-      {view === 'search' ? (
-        <ChatSearchField
-          query={query}
-          onQueryChange={setQuery}
-          onClose={closeSearch}
-        />
-      ) : null}
-
       {/* Kept mounted so a half-written note survives a search or a look at
-          settings. Search draws its results in the chat's place, with the
-          note field still showing, so nothing moves when it opens. */}
+          settings. Search filters this same chat in place. */}
       <div hidden={view === 'settings'} className="min-h-0 flex-1">
         <Composer
           page={page}
@@ -262,23 +273,20 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           onOpenChatSettings={() => show('settings', 'chats')}
           onOpenTagSettings={() => show('settings', 'hashtags')}
           noteRef={noteRef}
-          overlay={
-            view === 'search' ? (
-              <ChatSearchResults
-                query={query}
-                onQueryChange={setQuery}
-                settings={settings}
-                destinationId={destinationId}
-                botToken={botToken}
-                onShow={(key) => {
-                  // Closing renders at once, with enough of the chat to hold
-                  // the message, so it can be scrolled to right away.
-                  setFocusKey(key);
-                  closeSearch();
-                  revealMessage(key);
-                }}
-              />
-            ) : undefined
+          search={
+            view === 'search'
+              ? {
+                  query,
+                  onClear: () => setQuery(''),
+                  onShow: (key) => {
+                    // Closing renders at once, with enough of the chat to
+                    // hold the message, so it can be scrolled to right away.
+                    setFocusKey(key);
+                    closeSearch();
+                    revealMessage(key);
+                  },
+                }
+              : undefined
           }
         />
       </div>
@@ -403,7 +411,7 @@ function Composer({
   onOpenChatSettings,
   onOpenTagSettings,
   noteRef,
-  overlay,
+  search,
 }: {
   page: PageContext;
   settings: Settings;
@@ -413,8 +421,8 @@ function Composer({
   onOpenChatSettings: () => void;
   onOpenTagSettings: () => void;
   noteRef: RefObject<HTMLTextAreaElement | null>;
-  /** Drawn in the chat's place, such as search results; the note field waits. */
-  overlay: ReactNode;
+  /** While searching, the chat shows only what matches and the note waits. */
+  search: ChatSearch | undefined;
 }) {
   const noteId = useId();
   const [time] = useState(() => Date.now());
@@ -477,7 +485,19 @@ function Composer({
     });
   }
 
-  const covered = overlay !== undefined;
+  const searching = search !== undefined;
+
+  const typed = useDeferredValue(
+    search?.query.trim().toLocaleLowerCase() ?? ''
+  );
+
+  // Not deferred on close, so the full chat is back in the same render and a
+  // picked message can be scrolled to.
+  const term = searching ? typed : '';
+
+  const matches = useMemo(() => matchChatItems(earlier, term), [earlier, term]);
+
+  const noMatches = term !== '' && matches.length === 0;
 
   /** Enter sends, as in Telegram; Shift+Enter starts a new line. */
   function onNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -496,91 +516,118 @@ function Composer({
       {/* Reversed around a single child, so it opens scrolled to the newest
           message and stays there as the draft grows. Keyed so another chat
           opens at its newest message too. */}
-      {covered ? <div className="min-h-0 flex-1">{overlay}</div> : null}
-      {/* Hidden rather than removed, so it keeps its scroll position. */}
       <div
         key={destinationId}
-        hidden={covered}
         className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-chat p-3"
       >
-        <div className="flex flex-col gap-3">
+        <div
+          className={
+            noMatches ? 'my-auto flex flex-col gap-3' : 'flex flex-col gap-3'
+          }
+        >
+          {noMatches && search ? (
+            <NoMatches query={search.query} onClear={search.onClear} />
+          ) : null}
+
           <ChatHistory
-            items={earlier}
+            items={matches}
             delivery={settings.delivery}
             botToken={
               destination?.kind === 'bot' ? destination.token : undefined
             }
             now={time}
-            draftBelow
+            draftBelow={!term}
             focusKey={focusKey}
+            onPick={search?.onShow}
           />
 
-          {page.selection ? (
-            <ToggleGroup
-              variant="segmented"
-              size="sm"
-              aria-label="What to send"
-              value={[mode]}
-              onValueChange={([next]) => {
-                if (next === 'page' || next === 'selection') setMode(next);
-              }}
-              className="self-center"
-            >
-              <ToggleGroupItem value="selection">Selected text</ToggleGroupItem>
-              <ToggleGroupItem value="page">Page link</ToggleGroupItem>
-            </ToggleGroup>
-          ) : null}
+          {term && !noMatches ? <MatchCount count={matches.length} /> : null}
 
-          {phase.name === 'failed' ? null : (
-            <LastFailure
-              inChat={(id) =>
-                earlier.some(
-                  (item) => item.direction === 'out' && item.entry.id === id
-                )
-              }
-            />
-          )}
-
-          <MessagePreview
-            kind={mode}
-            pageUrl={attachPage ? page.url : undefined}
-            pageTitle={attachPage ? page.title : undefined}
-            favIconUrl={page.favIconUrl}
-            text={page.selection}
-            note={note}
-            tag={tag}
-            delivery={settings.delivery}
-            status={statusOf[phase.name]}
-            time={time}
-            standOut={earlier.length > 0}
-          />
-
-          {phase.name === 'failed' ? (
-            <Alert variant="destructive">
-              <AlertTitle>Not sent</AlertTitle>
-              <AlertDescription>
-                {phase.message}{' '}
-                {phase.canSetUp ? (
-                  <Button
-                    variant="link"
-                    size="text"
-                    onClick={onOpenChatSettings}
-                  >
-                    Open chat settings
-                  </Button>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          <p role="status" className="sr-only">
-            {phase.name === 'sent' ? `Sent to ${phase.destination}` : ''}
+          <p aria-live="polite" className="sr-only">
+            {term
+              ? plural(matches.length, {
+                  one: '# message',
+                  other: '# messages',
+                })
+              : ''}
           </p>
+
+          {/* Always wrapped, so searching doesn't rebuild the draft: it dims
+              while you search and steps aside once you type. */}
+          <div
+            inert={searching}
+            hidden={term !== ''}
+            className="flex flex-col gap-3 transition-opacity duration-150 inert:opacity-50"
+          >
+            {page.selection ? (
+              <ToggleGroup
+                variant="segmented"
+                size="sm"
+                aria-label="What to send"
+                value={[mode]}
+                onValueChange={([next]) => {
+                  if (next === 'page' || next === 'selection') setMode(next);
+                }}
+                className="self-center"
+              >
+                <ToggleGroupItem value="selection">
+                  Selected text
+                </ToggleGroupItem>
+                <ToggleGroupItem value="page">Page link</ToggleGroupItem>
+              </ToggleGroup>
+            ) : null}
+
+            {phase.name === 'failed' ? null : (
+              <LastFailure
+                inChat={(id) =>
+                  earlier.some(
+                    (item) => item.direction === 'out' && item.entry.id === id
+                  )
+                }
+              />
+            )}
+
+            <MessagePreview
+              kind={mode}
+              pageUrl={attachPage ? page.url : undefined}
+              pageTitle={attachPage ? page.title : undefined}
+              favIconUrl={page.favIconUrl}
+              text={page.selection}
+              note={note}
+              tag={tag}
+              delivery={settings.delivery}
+              status={statusOf[phase.name]}
+              time={time}
+              standOut={earlier.length > 0}
+            />
+
+            {phase.name === 'failed' ? (
+              <Alert variant="destructive">
+                <AlertTitle>Not sent</AlertTitle>
+                <AlertDescription>
+                  {phase.message}{' '}
+                  {phase.canSetUp ? (
+                    <Button
+                      variant="link"
+                      size="text"
+                      onClick={onOpenChatSettings}
+                    >
+                      Open chat settings
+                    </Button>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <p role="status" className="sr-only">
+              {phase.name === 'sent' ? `Sent to ${phase.destination}` : ''}
+            </p>
+          </div>
         </div>
       </div>
 
       <div
-        inert={covered}
+        inert={searching}
         className="flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5 transition-opacity duration-150 inert:opacity-50"
       >
         {page.url ? (

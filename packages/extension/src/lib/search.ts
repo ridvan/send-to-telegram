@@ -1,3 +1,4 @@
+import type { ChatItem } from '../hooks/use-chat-items.ts';
 import { entryTitle } from './format.ts';
 import type { HistoryEntry, InboxEntry } from './settings.ts';
 
@@ -26,4 +27,19 @@ export function receivedText(message: InboxEntry): string {
     .filter(Boolean)
     .join('\n')
     .toLocaleLowerCase();
+}
+
+/**
+ * Searches a chat both ways, as Telegram searches inside a chat: everything
+ * until you type, then only what matches. `term` is lowercased.
+ */
+export function matchChatItems(items: ChatItem[], term: string): ChatItem[] {
+  if (!term) return items;
+
+  return items.filter((item) =>
+    (item.direction === 'out'
+      ? sentText(item.entry)
+      : receivedText(item.message)
+    ).includes(term)
+  );
 }

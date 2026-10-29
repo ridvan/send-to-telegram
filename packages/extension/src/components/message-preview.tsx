@@ -456,16 +456,15 @@ export function SentMessage({
 
   return (
     <li id={id} className={cn(outgoing, pick && 'relative')}>
-      {pick ? (
-        <>
-          <div inert className="flex flex-col items-stretch gap-1">
-            {body}
-          </div>
-          <PickButton pick={pick} />
-        </>
-      ) : (
-        body
-      )}
+      {/* The same wrapper either way, so starting a search doesn't rebuild
+          the message. */}
+      <div
+        inert={pick !== undefined}
+        className="flex flex-col items-stretch gap-1"
+      >
+        {body}
+      </div>
+      {pick ? <PickButton pick={pick} /> : null}
     </li>
   );
 }

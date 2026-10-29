@@ -279,11 +279,6 @@
   }
 }
 
-/* Something drawn in place of what was there, such as search over a header. */
-@utility animate-fade {
-  animation: fade 150ms ease-out both;
-}
-
 /* A view that slides over the composer, such as History. */
 @utility animate-enter {
   animation: enter 200ms var(--ease-out-strong) both;

@@ -87,7 +87,8 @@ export function ChatHistory({
   botToken: string | undefined;
   now: number;
   draftBelow: boolean;
-  onPick?: (key: string) => void;
+  /** Set while searching: a message is picked, not used. */
+  onPick?: ((key: string) => void) | undefined;
   /** A message picked in search, which must be on the page to scroll to. */
   focusKey?: string | undefined;
 }) {
@@ -135,12 +136,13 @@ export function ChatHistory({
             {messages.map((item) => {
               const key = chatKey(item);
 
-              // Search results pick; the chat's own rows can be scrolled to.
-              const row = onPick
-                ? {
-                    pick: { label: pickLabel(item), onPick: () => onPick(key) },
-                  }
-                : { id: chatRowId(key) };
+              // Rows can be scrolled to; while searching, they're picked.
+              const row = {
+                id: chatRowId(key),
+                ...(onPick && {
+                  pick: { label: pickLabel(item), onPick: () => onPick(key) },
+                }),
+              };
 
               return item.direction === 'out' ? (
                 <SentMessage
