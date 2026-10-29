@@ -48,12 +48,78 @@ export const sentMessageSchema = z.object({
   chat: chatSchema,
 });
 
+/** Marks part of a message's text; offsets count UTF-16 code units, as in JS. */
+const entitySchema = z.object({
+  type: z.string(),
+  offset: z.number(),
+  length: z.number(),
+  /** Set for `text_link`, a link behind other text. */
+  url: z.string().optional(),
+});
+
+export type MessageEntity = z.infer<typeof entitySchema>;
+
+/**
+ * A file a message carries. Only `file_id` is required: one update that fails
+ * to parse would lose every other update read with it.
+ */
+const fileFields = {
+  /** Downloads the file with this bot; see `getFile`. */
+  file_id: z.string(),
+  /** The same for every bot and over time, so it names a cached copy. */
+  file_unique_id: z.string().optional(),
+  file_size: z.number().optional(),
+};
+
+const photoSizeSchema = z.object({
+  ...fileFields,
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+export type PhotoSize = z.infer<typeof photoSizeSchema>;
+
+const playableSchema = z.object({
+  ...fileFields,
+  width: z.number().optional(),
+  height: z.number().optional(),
+  /** Seconds. */
+  duration: z.number().optional(),
+  mime_type: z.string().optional(),
+  file_name: z.string().optional(),
+  thumbnail: photoSizeSchema.optional(),
+});
+
 const incomingMessageSchema = z.object({
   message_id: z.number(),
   chat: chatSchema,
   from: userSchema.optional(),
+  /** Unix time in seconds. */
+  date: z.number().optional(),
   text: z.string().optional(),
+  entities: z.array(entitySchema).optional(),
+  /** Text under a photo, video or file. */
+  caption: z.string().optional(),
+  caption_entities: z.array(entitySchema).optional(),
+  /** One photo in several sizes, smallest first. */
+  photo: z.array(photoSizeSchema).optional(),
+  video: playableSchema.optional(),
+  /** A GIF, which Telegram turns into a silent video. */
+  animation: playableSchema.optional(),
+  voice: playableSchema.optional(),
+  audio: playableSchema
+    .extend({
+      title: z.string().optional(),
+      performer: z.string().optional(),
+    })
+    .optional(),
+  document: playableSchema.optional(),
+  sticker: z
+    .object({ file_id: z.string(), emoji: z.string().optional() })
+    .optional(),
 });
+
+export type IncomingMessage = z.infer<typeof incomingMessageSchema>;
 
 export const updateSchema = z.object({
   update_id: z.number(),
@@ -89,6 +155,12 @@ const webhookInfoSchema = z.object({
 const resultSchemas = {
   getMe: userSchema,
   getChat: chatSchema,
+  getFile: z.object({
+    file_id: z.string(),
+    file_size: z.number().optional(),
+    /** Valid for about an hour; see `fileUrl`. */
+    file_path: z.string().optional(),
+  }),
   getUpdates: z.array(updateSchema),
   getWebhookInfo: webhookInfoSchema,
   sendMessage: sentMessageSchema,
@@ -113,6 +185,7 @@ type DeliveryOptions = {
 type MethodParams = {
   getMe: undefined;
   getChat: { chat_id: ChatId };
+  getFile: { file_id: string };
   getUpdates: { offset?: number; timeout?: number; allowed_updates?: string[] };
   getWebhookInfo: undefined;
   sendMessage: DeliveryOptions & {
@@ -227,6 +300,17 @@ export function createBotClient(token: string, fetchImpl: Fetch = fetch) {
   }
 
   return { call } satisfies BotClient;
+}
+
+/** Bots can download files up to this size with `getFile`. */
+export const DOWNLOAD_LIMIT = 20 * 1024 * 1024;
+
+/**
+ * Where to download a file `getFile` described. The URL carries the bot's
+ * token, so fetch it and never put it in a page.
+ */
+export function fileUrl(token: string, filePath: string): string {
+  return `${TELEGRAM_API_ORIGIN}/file/bot${token}/${filePath}`;
 }
 
 /** Bot tokens look like `123456789:AA…`; checking locally avoids a wasted request. */
