@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "extension",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "extension",
+        "dev:pages"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "extension-pages",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3001",
+        "--directory",
+        "packages/extension/.output/chrome-mv3-dev"
+      ],
+      "port": 3001
+    }
+  ]
+}

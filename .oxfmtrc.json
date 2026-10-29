@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "endOfLine": "lf",
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    "**/.output/**",
+    "**/.wxt/**",
+    "**/.wrangler/**",
+    "**/coverage/**",
+    "**/node_modules/**",
+    "tools/oxlint/anti-slop/**",
+    "packages/relay/worker-configuration.d.ts",
+    "pnpm-lock.yaml",
+    "skills-lock.json"
+  ]
+}
