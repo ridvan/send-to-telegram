@@ -1,0 +1,41 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "send-to-telegram-relay",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-10-20",
+    // Console logs only. Invocation logs are off because they record request
+    // metadata, and requests carry device tokens.
+    "observability": {
+        "enabled": true,
+        "logs": { "invocation_logs": false },
+    },
+    "vars": {
+        // The bot's username without the @, as BotFather shows it.
+        "BOT_USERNAME": "SendToTelegramRelayBot",
+    },
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "send-to-telegram",
+            // Replace with the id printed by `wrangler d1 create send-to-telegram`.
+            "database_id": "00000000-0000-0000-0000-000000000000",
+            "migrations_dir": "migrations",
+        },
+    ],
+    "ratelimits": [
+        {
+            // Per linked browser.
+            "name": "SEND_LIMITER",
+            "namespace_id": "1001",
+            "simple": { "limit": 30, "period": 60 },
+        },
+        {
+            // Per IP address, for new pairing links.
+            "name": "PAIR_LIMITER",
+            "namespace_id": "1002",
+            "simple": { "limit": 10, "period": 60 },
+        },
+    ],
+    // Daily cleanup of pairing links nobody used.
+    "triggers": { "crons": ["17 3 * * *"] },
+}

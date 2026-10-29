@@ -1,0 +1,28 @@
+{
+  "name": "relay",
+  "description": "Optional hosted bot for Send to Telegram: links a browser to a chat without a personal bot.",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply send-to-telegram --remote",
+    "db:migrate:local": "wrangler d1 migrations apply send-to-telegram --local",
+    "webhook": "node --env-file=.dev.vars scripts/setup-webhook.ts",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@send-to-telegram/core": "workspace:*",
+    "hono": "^4.13.14",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "~4.153.0"
+  }
+}
