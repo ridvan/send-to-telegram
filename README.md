@@ -1,4 +1,4 @@
-<p align="center"><img src="./packages/extension/public/icon/128.png" height="64" width="64" alt=""></p>
+<p align="center"><img src="./packages/extension/public/icon/logo.svg" height="64" width="64" alt=""></p>
 
 <h3 align="center">Send to Telegram</h3>
 
@@ -74,7 +74,6 @@ Pull requests are welcome. Run `pnpm check` before opening one, and describe how
 
 ## Credits
 
-- Extension icon: [Telegram](https://icons8.com/icon/jZ1z64hEYYLW/telegram) by [Icons8](https://icons8.com)
 - Icons: [Hugeicons](https://hugeicons.com)
 - Fonts: [Inter](https://rsms.me/inter/) and [Geist Mono](https://vercel.com/font)
 

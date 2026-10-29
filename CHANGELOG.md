@@ -28,6 +28,7 @@ A rewrite from the ground up. Existing settings, chats, hashtags and history mov
 - The "Source" button is now "Open page", and isn't added when it would point at the content itself.
 - Hashtags are limited to letters, numbers and underscores, the characters Telegram links.
 - Failed sends show a red badge until the popup is opened, with the reason and how to fix it.
+- A new icon: Telegram's paper plane on a floppy disk, in grays that hold up on light and dark toolbars.
 
 ### Removed
 

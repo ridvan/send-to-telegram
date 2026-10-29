@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-7.143 -7.143 114.286 114.286">
+  <!-- Drawn for 32px: rounder corners and a slightly bigger plane. Export at 32px to public/icon/32.png. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#383838"/><stop offset="1" stop-color="#1a1a1a"/></linearGradient>
+    <linearGradient id="shutter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#525252"/><stop offset="1" stop-color="#4a4a4a"/></linearGradient>
+    <linearGradient id="wing" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="20" y2="80"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6d6d6"/></linearGradient>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="80" y1="15" x2="30" y2="80"><stop offset="0" stop-color="#bdbdbd"/><stop offset="1" stop-color="#a2a2a2"/></linearGradient>
+    <clipPath id="disk"><path d="M18 0 H77 Q81 0 83.83 2.83 L97.17 16.17 Q100 19 100 23 V82 A18 18 0 0 1 82 100 H18 A18 18 0 0 1 0 82 V18 A18 18 0 0 1 18 0 Z"/></clipPath>
+  </defs>
+  <path d="M18 0 H77 Q81 0 83.83 2.83 L97.17 16.17 Q100 19 100 23 V82 A18 18 0 0 1 82 100 H18 A18 18 0 0 1 0 82 V18 A18 18 0 0 1 18 0 Z" fill="url(#body)"/>
+  <path d="M27 0 H71 V25 A5 5 0 0 1 66 30 H32 A5 5 0 0 1 27 25 Z" fill="url(#shutter)"/>
+  <rect x="55" y="5" width="9" height="17" rx="2.5" fill="#2f2f2f"/>
+  <path d="M18 0 H77 Q81 0 83.83 2.83 L97.17 16.17 Q100 19 100 23 V82 A18 18 0 0 1 82 100 H18 A18 18 0 0 1 0 82 V18 A18 18 0 0 1 18 0 Z" fill="none" stroke="#505050" stroke-width="6" clip-path="url(#disk)"/>
+  <g transform="translate(14 32.76) scale(0.72)" stroke-linejoin="round" stroke-width="6">
+    <polygon points="26,48 80,15 39,56 36,80" fill="url(#fold)" stroke="url(#fold)"/>
+    <polygon points="39,56 56,68.2 36,80" fill="#8c8c8c" stroke="#8c8c8c"/>
+    <polygon points="0,39 100,0 78,84 39,56 80,15 26,48" fill="url(#wing)" stroke="url(#wing)"/>
+  </g>
+</svg>
