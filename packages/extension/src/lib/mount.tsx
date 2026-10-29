@@ -3,12 +3,8 @@ import { createRoot } from 'react-dom/client';
 
 import { AppProviders } from '@/components/app-providers';
 
-import {
-  historyStore,
-  onboardingStore,
-  settingsStore,
-  statsStore,
-} from './settings.ts';
+import './settings.ts';
+import { loadStores } from './storage.ts';
 import { applyRememberedTheme } from './theme.ts';
 
 /**
@@ -17,12 +13,7 @@ import { applyRememberedTheme } from './theme.ts';
  */
 export async function mount(page: () => ReactNode) {
   applyRememberedTheme();
-  await Promise.all([
-    settingsStore.get(),
-    historyStore.get(),
-    statsStore.get(),
-    onboardingStore.get(),
-  ]);
+  await loadStores();
 
   const container = document.getElementById('root');
 

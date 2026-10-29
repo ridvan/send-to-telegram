@@ -18,6 +18,17 @@ export type Store<T> = {
   subscribe: (listener: Listener<T>) => () => void;
 };
 
+/** Loads each store defined so far, so pages can read them all before rendering. */
+const loaders = new Set<() => Promise<void>>();
+
+/**
+ * Reads every defined store into its snapshot. A store left out would render
+ * its default until something wrote to it, hiding what was already saved.
+ */
+export async function loadStores() {
+  await Promise.all([...loaders].map((load) => load()));
+}
+
 export function defineStore<S extends z.ZodType>(
   key: string,
   schema: S,
@@ -65,6 +76,10 @@ export function defineStore<S extends z.ZodType>(
     publish(value);
     await browser.storage.local.set({ [key]: value });
   }
+
+  loaders.add(async () => {
+    await get();
+  });
 
   return {
     key,
