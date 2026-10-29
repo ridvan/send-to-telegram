@@ -3,14 +3,28 @@ import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
 
+// `pnpm dev:pages` builds and serves without opening a browser, for previewing
+// the pages on their own.
+const pagesOnly = process.env.PAGES_ONLY === 'true';
+
 export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-react'],
   manifestVersion: 3,
+  // Every build starts by deleting its output folder. If `dev:pages` shared
+  // `chrome-mv3-dev` with `pnpm dev`, starting it would delete the extension
+  // out from under the dev browser, which then drops it without an error.
+  ...(pagesOnly && {
+    outDirTemplate: '{{browser}}-mv{{manifestVersion}}-pages',
+  }),
+  dev: {
+    // Fixed ports, so a second dev server fails to listen (which happens
+    // before it builds) instead of moving to the next port and wiping the
+    // first one's output.
+    server: { port: pagesOnly ? 3002 : 3000, strictPort: true },
+  },
   webExt: {
-    // `pnpm dev:pages` builds and serves without opening a browser, for
-    // previewing the pages on their own.
-    disabled: process.env.PAGES_ONLY === 'true',
+    disabled: pagesOnly,
     // Keeps the dev browser's profile between runs, so a connected chat and
     // its history survive restarting `pnpm dev`. Firefox starts fresh.
     chromiumProfile: resolve('.wxt/chrome-data'),

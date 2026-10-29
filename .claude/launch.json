@@ -9,7 +9,7 @@
         "extension",
         "dev:pages"
       ],
-      "port": 3000
+      "port": 3002
     },
     {
       "name": "extension-pages",
@@ -19,7 +19,7 @@
         "http.server",
         "3001",
         "--directory",
-        "packages/extension/.output/chrome-mv3-dev"
+        "packages/extension/.output/chrome-mv3-pages"
       ],
       "port": 3001
     }
