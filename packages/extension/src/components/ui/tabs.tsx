@@ -4,19 +4,30 @@ import { Tabs as TabsPrimitive } from '@base-ui/react/tabs';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
 
+const tabsVariants = cva('group/tabs flex data-horizontal:flex-col', {
+  variants: {
+    spacing: {
+      default: 'gap-2',
+      /** For a list that sits in its own bar, flush against the panels. */
+      none: 'gap-0',
+    },
+  },
+  defaultVariants: {
+    spacing: 'default',
+  },
+});
+
 function Tabs({
   className,
   orientation = 'horizontal',
+  spacing = 'default',
   ...props
-}: TabsPrimitive.Root.Props) {
+}: TabsPrimitive.Root.Props & VariantProps<typeof tabsVariants>) {
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
       data-orientation={orientation}
-      className={cn(
-        'group/tabs flex gap-2 data-horizontal:flex-col',
-        className
-      )}
+      className={cn(tabsVariants({ spacing }), className)}
       {...props}
     />
   );
@@ -78,4 +89,11 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   );
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants };
+export {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  tabsListVariants,
+  tabsVariants,
+};

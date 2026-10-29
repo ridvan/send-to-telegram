@@ -4,14 +4,14 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { ChatsSection } from './chats-section';
-import { HistoryView } from './history-view';
+import { HistoryView } from '@/components/history-view';
+import { ChatsSection } from '@/components/settings/chats-section';
 import {
   GeneralSection,
   HistorySection,
   MessagesSection,
   TagsSection,
-} from './preferences';
+} from '@/components/settings/preferences';
 
 function subscribeToHash(onChange: () => void) {
   addEventListener('hashchange', onChange);
@@ -20,6 +20,13 @@ function subscribeToHash(onChange: () => void) {
 }
 
 const readHash = () => location.hash.slice(1);
+
+/** The popup links here with `#add-chat`, since connecting would close it. */
+const addOnOpen = readHash() === 'add-chat';
+
+function restart() {
+  location.assign(browser.runtime.getURL('/welcome.html'));
+}
 
 function navigate(hash: string) {
   history.replaceState(null, '', `#${hash}`);
@@ -52,7 +59,7 @@ export function Options() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-6 py-10">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-6 py-10 [--sticky-top:3.5rem]">
         {view === 'history' ? (
           <HistoryView
             onOpenSettings={() => {
@@ -64,11 +71,11 @@ export function Options() {
           />
         ) : (
           <>
-            <ChatsSection />
+            <ChatsSection addOnOpen={addOnOpen} />
             <MessagesSection />
             <TagsSection />
             <HistorySection />
-            <GeneralSection />
+            <GeneralSection onReset={restart} />
           </>
         )}
       </main>

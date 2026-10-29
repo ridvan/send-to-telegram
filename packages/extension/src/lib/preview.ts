@@ -233,14 +233,28 @@ function install() {
           emit(changes);
         },
         remove: async (keys: string | string[]) => {
+          const changes: Changes = {};
+
           for (const key of Array.isArray(keys) ? keys : [keys]) {
+            changes[key] = { oldValue: read(key) };
             localStorage.removeItem(PREFIX + key);
           }
+
+          emit(changes);
         },
         clear: async () => {
+          const changes: Changes = {};
+
           for (const key of Object.keys(localStorage)) {
-            if (key.startsWith(PREFIX)) localStorage.removeItem(key);
+            if (!key.startsWith(PREFIX)) continue;
+
+            changes[key.slice(PREFIX.length)] = {
+              oldValue: read(key.slice(PREFIX.length)),
+            };
+            localStorage.removeItem(key);
           }
+
+          emit(changes);
         },
       },
     },

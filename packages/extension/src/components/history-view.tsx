@@ -281,7 +281,7 @@ export function HistoryView({
           >
             <h2
               id={`day-${day}`}
-              className="sticky top-14 z-1 bg-background/90 px-3 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm"
+              className="sticky top-[var(--sticky-top,0px)] z-1 bg-background/90 px-3 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm"
             >
               {formatDay(day, now)}
             </h2>

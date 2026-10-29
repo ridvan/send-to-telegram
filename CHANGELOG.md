@@ -11,7 +11,7 @@ A rewrite from the ground up. Existing settings, chats, hashtags and history mov
 
 ### Added
 
-- A popup that sends the current page or the selected text, with an optional note and hashtag.
+- A popup that sends the current page or the selected text, with an optional note and hashtag. History and settings are tabs in the popup; only connecting a new chat opens a page.
 - More than one chat. Send to yourself, a group or a channel, and choose from the right-click menu.
 - The Send to Telegram bot: connect by pressing Start in Telegram instead of creating a bot. Optional, and backed by an open-source relay in `packages/relay`.
 - Automatic chat detection when connecting your own bot, so finding a chat ID by hand is no longer needed.

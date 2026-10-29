@@ -267,15 +267,30 @@ function ChatRow({
   );
 }
 
-export function ChatsSection() {
+/**
+ * Connecting opens Telegram in a tab, which closes the popup, so the popup
+ * passes `onAdd` to hand off to the options page instead of the dialog here.
+ */
+export function ChatsSection({
+  onAdd,
+  addOnOpen = false,
+}: {
+  onAdd?: () => void;
+  /** Opens the add dialog right away, for the popup's hand-off. */
+  addOnOpen?: boolean;
+}) {
   const settings = useStore(settingsStore);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(addOnOpen);
   const [editing, setEditing] = useState<Editing>();
   const destinations = settings.destinations;
   const defaultId = settings.defaultDestinationId ?? destinations[0]?.id;
 
   const addButton = (
-    <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => (onAdd ? onAdd() : setAdding(true))}
+    >
       <HugeiconsIcon
         icon={Add01Icon}
         strokeWidth={2}

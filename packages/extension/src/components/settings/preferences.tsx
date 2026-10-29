@@ -128,6 +128,7 @@ export function MessagesSection() {
       />
       <SettingRow
         label="Send images as"
+        wide
         description={imageModes[delivery.imageMode].description}
         control={
           <ToggleGroup
@@ -221,6 +222,7 @@ export function HistorySection() {
     >
       <SettingRow
         label="Keep"
+        wide
         description={historyModes[mode].description}
         control={
           <ToggleGroup
@@ -293,7 +295,7 @@ const themes = {
   dark: { label: 'Dark', icon: Moon02Icon },
 } satisfies Record<Theme, { label: string; icon: typeof Sun03Icon }>;
 
-function ResetRow() {
+function ResetRow({ onReset }: { onReset: () => void }) {
   const settings = useStore(settingsStore);
   const history = useStore(historyStore);
   const [resetting, setResetting] = useState(false);
@@ -324,7 +326,7 @@ function ResetRow() {
                 onClick={async () => {
                   setResetting(true);
                   await browser.storage.local.clear();
-                  location.assign(browser.runtime.getURL('/welcome.html'));
+                  onReset();
                 }}
               >
                 Reset everything
@@ -337,7 +339,8 @@ function ResetRow() {
   );
 }
 
-export function GeneralSection() {
+/** `onReset` runs once storage is cleared, to leave a page that needs chats. */
+export function GeneralSection({ onReset }: { onReset: () => void }) {
   const { appearance } = useStore(settingsStore);
   const shortcuts = useShortcuts();
 
@@ -345,6 +348,7 @@ export function GeneralSection() {
     <SettingsSection id="general" title="General">
       <SettingRow
         label="Appearance"
+        wide
         control={
           <ToggleGroup
             variant="outline"
@@ -413,7 +417,7 @@ export function GeneralSection() {
           </dl>
         ) : null}
       </SettingRow>
-      <ResetRow />
+      <ResetRow onReset={onReset} />
     </SettingsSection>
   );
 }
