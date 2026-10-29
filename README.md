@@ -17,7 +17,7 @@
 - **Send from the toolbar.** The popup sends the current page or your selection, with an optional note and hashtag. <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> sends the page without opening anything.
 - **More than one chat.** Send to yourself, a group or a channel. With several chats, the menu asks which one.
 - **Hashtags.** Pick one as you send, so messages are easy to find in Telegram later.
-- **History.** Search what you sent and send it again. Keep everything, only times, or nothing. Private windows never leave a trace.
+- **Your chat, both ways.** The popup shows what you sent to each chat, and with your own bot what was sent back, including photos, videos and files. Search it, or send a failed message again. The settings page lists everything you sent across chats. Keep everything, only times, or nothing. Private windows never leave a trace.
 - **Light and dark.** Follows your system, or pick one.
 
 ## Connecting a chat

@@ -11,7 +11,7 @@
 
 ## Constraints
 
-- Permissions: 1.x shipped `contextMenus` and `storage`. Adding a permission with an install warning (such as `tabs`, `notifications` or any host permission) disables the extension for existing users until they re-approve. Telegram's API allows cross-origin requests, so none is needed.
+- Permissions: 1.x shipped `contextMenus` and `storage`. Adding a permission with an install warning (such as `tabs`, `notifications` or any host permission) disables the extension for existing users until they re-approve. Telegram's Bot API allows cross-origin requests, so none is needed for it. Its file host doesn't send `Access-Control-Allow-Origin` on successful downloads, so showing media sent to your bot asks for the optional `https://api.telegram.org/*` host permission on first use; optional permissions carry no install warning. Keep the token out of pages: download files as blobs, never put a file URL in `src` or `href`.
 - Storage: every key is parsed with a zod schema in `src/lib/settings.ts`. Changing a schema must keep old stored data readable. 1.x data is migrated in `src/lib/legacy.ts`; keep its tests passing against the real 1.x shapes.
 - Relay: never log or store message content, or request headers (they carry device tokens).
 - UI: compose shadcn components and extend their variants in `src/components/ui` instead of restyling them at the call site; `shadcn/no-restyle` enforces this. Copy follows the `better-writing` skill: verb-first buttons, errors that say how to fix the problem, sentence case.

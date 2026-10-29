@@ -20,6 +20,9 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
+        // A note from the chat itself, as Telegram draws dates between messages.
+        service:
+          'rounded-full bg-service text-service-foreground backdrop-blur-sm hover:bg-[color-mix(in_oklch,var(--service),var(--foreground)_6%)]',
       },
       size: {
         // Inline with text, such as a link at the end of a sentence.

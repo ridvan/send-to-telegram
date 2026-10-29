@@ -3,7 +3,8 @@ import { createBotClient } from '@send-to-telegram/core';
 import { TEST_MESSAGE } from './bot-setup.ts';
 import { toSendFailure } from './failure.ts';
 import { relaySend, unlinkDevice } from './relay.ts';
-import { type Destination, settingsStore } from './settings.ts';
+import { forgetFiles } from './telegram-files.ts';
+import { type Destination, inboxStore, settingsStore } from './settings.ts';
 
 function sameChat(a: Destination, b: Destination) {
   if (a.kind === 'bot' && b.kind === 'bot') {
@@ -51,6 +52,19 @@ export async function removeDestination(destination: Destination) {
         : (destinations[0]?.id ?? null),
     };
   });
+  // What was sent to the bot there goes with the chat; history stays.
+  const inbox = await inboxStore.get();
+
+  const files = inbox.flatMap((entry) =>
+    entry.destinationId === destination.id && entry.file
+      ? [entry.file.uniqueId, entry.file.preview?.uniqueId ?? []].flat()
+      : []
+  );
+
+  await inboxStore.set(
+    inbox.filter((entry) => entry.destinationId !== destination.id)
+  );
+  await forgetFiles(files);
 }
 
 export function updateDestination(id: string, change: { label?: string }) {

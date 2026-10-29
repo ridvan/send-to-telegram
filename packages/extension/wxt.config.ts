@@ -23,6 +23,11 @@ export default defineConfig({
     // 1.x shipped contextMenus and storage. activeTab and scripting add no
     // install warning, so updating users are not asked to re-approve.
     permissions: ['contextMenus', 'storage', 'activeTab', 'scripting'],
+    // Telegram's file host leaves out Access-Control-Allow-Origin on
+    // successful downloads (only its errors carry it), so showing media sent
+    // to your bot needs this. Optional: asked for when media first shows, with
+    // no install warning.
+    optional_host_permissions: ['https://api.telegram.org/*'],
     action: { default_title: 'Send to Telegram' },
     commands: {
       _execute_action: {

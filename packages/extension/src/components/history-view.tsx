@@ -31,40 +31,9 @@ import {
 import { useStore } from '@/hooks/use-store';
 import { draftFromEntry, requestSend } from '@/lib/client';
 import { isHttpUrl } from '@/lib/compose';
-import { dayKey, entryTitle, formatDay, plural } from '@/lib/format';
+import { formatDay, groupByDay, plural } from '@/lib/format';
+import { sentText } from '@/lib/search';
 import { type HistoryEntry, historyStore, settingsStore } from '@/lib/settings';
-
-function searchableText(entry: HistoryEntry) {
-  const content = entry.content;
-
-  return [
-    entryTitle(entry),
-    content?.text,
-    content?.note,
-    content?.url,
-    content?.pageUrl,
-    content?.pageTitle,
-    entry.tag && `#${entry.tag}`,
-    entry.destinationName,
-  ]
-    .filter(Boolean)
-    .join('\n')
-    .toLocaleLowerCase();
-}
-
-function groupByDay(entries: HistoryEntry[]) {
-  const groups = new Map<number, HistoryEntry[]>();
-
-  for (const entry of entries) {
-    const key = dayKey(entry.sentAt);
-    const group = groups.get(key);
-
-    if (group) group.push(entry);
-    else groups.set(key, [entry]);
-  }
-
-  return [...groups];
-}
 
 function removeEntry(entry: HistoryEntry) {
   void historyStore.update((history) =>
@@ -192,9 +161,7 @@ export function HistoryView({
   const results = useMemo(
     () =>
       deferredQuery
-        ? history.filter((entry) =>
-            searchableText(entry).includes(deferredQuery)
-          )
+        ? history.filter((entry) => sentText(entry).includes(deferredQuery))
         : history,
     [history, deferredQuery]
   );
@@ -273,7 +240,7 @@ export function HistoryView({
           </Empty>
         </div>
       ) : (
-        groupByDay(results).map(([day, entries]) => (
+        groupByDay(results, (entry) => entry.sentAt).map(([day, entries]) => (
           <section
             key={day}
             aria-labelledby={`day-${day}`}

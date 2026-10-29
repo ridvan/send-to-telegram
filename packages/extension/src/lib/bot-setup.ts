@@ -48,6 +48,12 @@ function chatsIn(update: Update): Chat[] {
   return chats;
 }
 
+/**
+ * Telegram remembers the last list a bot asked for, so every read passes the
+ * same one; `my_chat_member` reports groups the bot joined before anyone wrote.
+ */
+export const BOT_UPDATES = ['message', 'channel_post', 'my_chat_member'];
+
 export type ChatLookup =
   | { status: 'ok'; chats: Chat[] }
   /** The bot has a webhook, so Telegram keeps its updates from us. */
@@ -60,7 +66,7 @@ export type ChatLookup =
 export async function findChats(token: string): Promise<ChatLookup> {
   try {
     const updates = await createBotClient(token).call('getUpdates', {
-      allowed_updates: ['message', 'channel_post', 'my_chat_member'],
+      allowed_updates: BOT_UPDATES,
     });
 
     const byId = new Map<number, Chat>();

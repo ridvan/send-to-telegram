@@ -11,11 +11,12 @@ A rewrite from the ground up. Existing settings, chats, hashtags and history mov
 
 ### Added
 
-- A popup that sends the current page or the selected text, with an optional note and hashtag. It's drawn like a Telegram chat and previews the message as it will arrive; Enter sends. History and settings open from its header; only connecting a new chat opens a page.
+- A popup that sends the current page or the selected text, with an optional note and hashtag. It's drawn like a Telegram chat, with earlier messages to that chat above, and previews the message as it will arrive; Enter sends. Search the chat and open settings from its header; failed messages have Send again right under them. Only connecting a new chat opens a page.
 - More than one chat. Send to yourself, a group or a channel, and choose from the right-click menu.
+- With your own bot, messages sent to it in a private chat or group show up in the popup's chat, so a link sent from your phone is a click away. Photos show in the chat and open full size, videos, GIFs and voice messages play in place, and files save with one click, up to Telegram's 20 MB limit for bots. The hosted bot doesn't do this, since its relay never keeps message content.
 - The Send to Telegram bot: connect by pressing Start in Telegram instead of creating a bot. Optional, and backed by an open-source relay in `packages/relay`.
 - Automatic chat detection when connecting your own bot, so finding a chat ID by hand is no longer needed.
-- Searchable history with Send again, Copy and Remove, grouped by day.
+- A searchable list of everything you sent on the settings page, with Send again, Copy and Remove, grouped by day.
 - Keyboard shortcuts to open the popup and to send the current page.
 - Dark mode, following the system or set by hand.
 - Firefox support.

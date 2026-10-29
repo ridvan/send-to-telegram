@@ -32,6 +32,38 @@ const fullDate = new Intl.DateTimeFormat(locale, {
 
 const count = new Intl.NumberFormat(locale);
 
+const sizeFormats = {
+  kilobyte: new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: 'kilobyte',
+    maximumFractionDigits: 0,
+  }),
+  megabyte: new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: 'megabyte',
+    maximumFractionDigits: 1,
+  }),
+};
+
+/** "840 kB", "12.4 MB". */
+export function formatBytes(bytes: number): string {
+  return bytes < 1024 * 1024
+    ? sizeFormats.kilobyte.format(Math.max(1, Math.round(bytes / 1024)))
+    : sizeFormats.megabyte.format(bytes / (1024 * 1024));
+}
+
+/** "0:42", "12:05", "1:02:09", as players show lengths. */
+export function formatDuration(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const rest = String(whole % 60).padStart(2, '0');
+
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}`
+    : `${minutes}:${rest}`;
+}
+
 export const formatCount = (value: number) => count.format(value);
 
 const plurals = new Intl.PluralRules(locale);
@@ -90,6 +122,21 @@ export function formatDay(time: number, now = Date.now()): string {
 
 export function dayKey(time: number) {
   return startOfDay(time);
+}
+
+/** Splits items into days by `timeOf`, keeping the order they're given in. */
+export function groupByDay<T>(items: T[], timeOf: (item: T) => number) {
+  const groups = new Map<number, T[]>();
+
+  for (const item of items) {
+    const key = dayKey(timeOf(item));
+    const group = groups.get(key);
+
+    if (group) group.push(item);
+    else groups.set(key, [item]);
+  }
+
+  return [...groups];
 }
 
 /** `example.com/path` without the protocol or a trailing slash. */

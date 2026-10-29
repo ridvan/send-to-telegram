@@ -1,5 +1,6 @@
 import {
   ArrowUpRight01Icon,
+  BubbleChatIcon,
   Clock01Icon,
   ComputerIcon,
   Delete02Icon,
@@ -43,11 +44,13 @@ import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStore } from '@/hooks/use-store';
 import { plural } from '@/lib/format';
+import { forgetFiles } from '@/lib/telegram-files';
 import {
   type HistoryMode,
   historyModeSchema,
   historyStore,
   type ImageMode,
+  inboxStore,
   imageModeSchema,
   type Settings,
   settingsStore,
@@ -75,11 +78,13 @@ function setDelivery<K extends keyof Settings['delivery']>(
 function SwitchRow({
   icon,
   label,
+  description,
   checked,
   onCheckedChange,
 }: {
   icon: SettingIcon;
   label: string;
+  description?: string | undefined;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
@@ -89,6 +94,7 @@ function SwitchRow({
     <SettingRow
       icon={icon}
       label={label}
+      description={description}
       htmlFor={id}
       control={
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
@@ -203,8 +209,16 @@ const historyModes = {
 export function HistorySection() {
   const settings = useStore(settingsStore);
   const history = useStore(historyStore);
+  const inbox = useStore(inboxStore);
   const stats = useStore(statsStore);
   const mode = settings.history.mode;
+
+  const hasOwnBot = settings.destinations.some(
+    (destination) => destination.kind === 'bot'
+  );
+
+  // Messages sent to your bot are kept with history and cleared with it.
+  const kept = history.length + inbox.length;
 
   return (
     <SettingsSection
@@ -229,7 +243,7 @@ export function HistorySection() {
               if (parsed.success) {
                 void update((current) => ({
                   ...current,
-                  history: { mode: parsed.data },
+                  history: { ...current.history, mode: parsed.data },
                 }));
               }
             }}
@@ -242,19 +256,34 @@ export function HistorySection() {
           </ToggleGroup>
         }
       />
+      {/* Other modes keep no content to draw. */}
+      {mode === 'full' ? (
+        <SwitchRow
+          icon={{ icon: BubbleChatIcon, tone: 'blue' }}
+          label="Show earlier messages in the chat"
+          description={
+            hasOwnBot
+              ? 'Includes what you send to your bot from Telegram.'
+              : undefined
+          }
+          checked={settings.history.showInChat}
+          onCheckedChange={(showInChat) =>
+            void update((current) => ({
+              ...current,
+              history: { ...current.history, showInChat },
+            }))
+          }
+        />
+      ) : null}
       <SettingRow
         icon={{ icon: Delete02Icon, tone: 'red' }}
         label="Clear history"
-        description={`${plural(history.length, { one: '# item', other: '# items' })}, ${plural(stats.sent, { one: '# sent in all', other: '# sent in all' })}`}
+        description={`${plural(kept, { one: '# item', other: '# items' })}, ${plural(stats.sent, { one: '# sent in all', other: '# sent in all' })}`}
         control={
           <AlertDialog>
             <AlertDialogTrigger
               render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={history.length === 0}
-                />
+                <Button variant="outline" size="sm" disabled={kept === 0} />
               }
             >
               Clear history
@@ -263,14 +292,20 @@ export function HistorySection() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Clear history?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {`This deletes ${plural(history.length, { one: '# item', other: '# items' })} from this browser. It can’t be undone. Messages in Telegram stay.`}
+                  {`This deletes ${plural(kept, { one: '# item', other: '# items' })} from this browser. It can’t be undone. Messages in Telegram stay.`}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
-                  onClick={() => void historyStore.set([])}
+                  onClick={() =>
+                    void Promise.all([
+                      historyStore.set([]),
+                      inboxStore.set([]),
+                      forgetFiles(),
+                    ])
+                  }
                 >
                   Clear history
                 </AlertDialogAction>
@@ -321,6 +356,8 @@ function ResetRow({ onReset }: { onReset: () => void }) {
                 onClick={async () => {
                   setResetting(true);
                   await browser.storage.local.clear();
+                  // Received photos are cached apart from storage.
+                  await forgetFiles();
                   onReset();
                 }}
               >

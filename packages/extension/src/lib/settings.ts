@@ -77,7 +77,13 @@ export const settingsSchema = z.object({
       list: z.array(tagSchema).max(MAX_TAGS).default(DEFAULT_TAGS),
     })
     .prefault({}),
-  history: z.object({ mode: historyModeSchema.default('full') }).prefault({}),
+  history: z
+    .object({
+      mode: historyModeSchema.default('full'),
+      /** Draws earlier messages to a chat above the one being written. */
+      showInChat: z.boolean().default(true),
+    })
+    .prefault({}),
   appearance: z.object({ theme: themeSchema.default('system') }).prefault({}),
 });
 
@@ -123,15 +129,81 @@ export type HistoryEntry = z.infer<typeof historyEntrySchema>;
 export const MAX_HISTORY = 1000;
 
 /** Drops unreadable entries one by one instead of losing the whole list. */
-const historySchema = z.array(z.json()).transform((entries) =>
-  entries.flatMap((entry) => {
-    const parsed = historyEntrySchema.safeParse(entry);
+function listOf<S extends z.ZodType>(entrySchema: S) {
+  return z.array(z.json()).transform((entries) =>
+    entries.flatMap((entry) => {
+      const parsed = entrySchema.safeParse(entry);
 
-    return parsed.success ? [parsed.data] : [];
-  })
+      return parsed.success ? [parsed.data] : [];
+    })
+  );
+}
+
+export const historyStore = defineStore(
+  'history',
+  listOf(historyEntrySchema),
+  () => []
 );
 
-export const historyStore = defineStore('history', historySchema, () => []);
+/** A picture Telegram sent with a message, in one size. */
+const inboxPictureSchema = z.object({
+  id: z.string(),
+  /** Names the cached copy; never a URL, which would carry the bot's token. */
+  uniqueId: z.string(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+export type InboxPicture = z.infer<typeof inboxPictureSchema>;
+
+/**
+ * A received message's file, downloaded only when shown. Telegram's download
+ * path expires within an hour, so only its lasting IDs are kept.
+ */
+const inboxFileSchema = inboxPictureSchema.extend({
+  size: z.number().optional(),
+  mimeType: z.string().optional(),
+  /** Seconds, for video and sound. */
+  duration: z.number().optional(),
+  /** What the bubble draws: a smaller photo, or a video's first frame. */
+  preview: inboxPictureSchema.optional(),
+  /** A song's title, as the performer named it. */
+  title: z.string().optional(),
+});
+
+export type InboxFile = z.infer<typeof inboxFileSchema>;
+
+/** A message someone sent to your own bot in a chat, shown in the popup. */
+export const inboxEntrySchema = z.object({
+  /** `chatId:messageId`, which Telegram keeps unique. */
+  id: z.string(),
+  destinationId: z.string(),
+  receivedAt: z.number(),
+  /** Who wrote it, in a group. */
+  from: z.string().optional(),
+  /** The text, a caption, or a sticker's emoji. */
+  text: z.string().optional(),
+  /** Parts of `text` that link somewhere, in UTF-16 offsets. */
+  links: z
+    .array(z.object({ offset: z.number(), length: z.number(), url: z.url() }))
+    .optional(),
+  media: z
+    .enum(['photo', 'video', 'animation', 'voice', 'audio', 'file'])
+    .optional(),
+  fileName: z.string().optional(),
+  /** Absent for messages kept before media could be shown. */
+  file: inboxFileSchema.optional(),
+});
+
+export type InboxEntry = z.infer<typeof inboxEntrySchema>;
+
+export const MAX_INBOX = 500;
+
+export const inboxStore = defineStore(
+  'inbox',
+  listOf(inboxEntrySchema),
+  () => []
+);
 
 export const statsSchema = z.object({
   sent: z.number().int().nonnegative().default(0),

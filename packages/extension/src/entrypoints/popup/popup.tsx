@@ -1,17 +1,19 @@
 import {
   ArrowLeft01Icon,
-  Clock01Icon,
+  Search01Icon,
   SentIcon,
   Settings01Icon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { browser } from 'wxt/browser';
 
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
-import { HistoryView } from '@/components/history-view';
+import { ChatHistory } from '@/components/chat-history';
+import { ChatSearch } from '@/components/chat-search';
 import {
   MessagePreview,
   type MessageStatus,
@@ -49,9 +51,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useChatItems } from '@/hooks/use-chat-items';
+import { useInbox } from '@/hooks/use-inbox';
 import { useStore } from '@/hooks/use-store';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
 import type { Draft } from '@/lib/compose';
+import { revealMessage } from '@/lib/reveal';
 import {
   avatarSeed,
   defaultDestination,
@@ -99,12 +104,7 @@ export function Popup({ page }: { page: PageContext }) {
   return <Shell page={page} settings={settings} />;
 }
 
-type View = 'send' | 'history' | 'settings';
-
-const viewTitles = {
-  history: 'History',
-  settings: 'Settings',
-} satisfies Record<Exclude<View, 'send'>, string>;
+type View = 'send' | 'search' | 'settings';
 
 /** Switches to a view and, once it renders, scrolls a section of it into view. */
 function useNavigation() {
@@ -126,13 +126,10 @@ function useNavigation() {
 function HeaderButton({
   label,
   icon,
-  alert,
   onClick,
 }: {
   label: string;
-  icon: typeof Clock01Icon;
-  /** Marks the button with a red dot, such as History after a failed send. */
-  alert?: string;
+  icon: typeof Search01Icon;
   onClick: () => void;
 }) {
   return (
@@ -143,16 +140,12 @@ function HeaderButton({
             variant="ghost"
             size="icon"
             tone="muted"
-            aria-label={alert ? `${label}, ${alert}` : label}
+            aria-label={label}
             onClick={onClick}
-            className="relative"
           />
         }
       >
         <HugeiconsIcon icon={icon} strokeWidth={1.8} />
-        {alert ? (
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
-        ) : null}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -160,19 +153,28 @@ function HeaderButton({
 }
 
 /**
- * Drawn like a Telegram chat: the chat you're sending to on top, your message
- * in the middle and the note field at the bottom. Fixed height so switching
- * views doesn't resize the popup window, which browsers animate poorly.
- * Chrome caps popups at 600px.
+ * Drawn like a Telegram chat: the chat you're sending to on top, earlier
+ * messages and yours in the middle, and the note field at the bottom. The
+ * chat is the history here; the full list lives on the settings page. Fixed
+ * height so switching views doesn't resize the popup window, which browsers
+ * animate poorly. Chrome caps popups at 600px.
  */
 function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
   const { view, show } = useNavigation();
-  const history = useStore(historyStore);
-  const lastFailed = history[0]?.status === 'failed';
+  const [focusKey, setFocusKey] = useState<string>();
 
   const [destinationId, setDestinationId] = useState(
     defaultDestination(settings)?.id
   );
+
+  const destination = settings.destinations.find(
+    (item) => item.id === destinationId
+  );
+
+  const botToken = destination?.kind === 'bot' ? destination.token : undefined;
+
+  const chatShown =
+    settings.history.mode === 'full' && settings.history.showInChat;
 
   return (
     <div className="flex h-[540px] w-[360px] flex-col">
@@ -183,19 +185,22 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
             value={destinationId}
             onChange={setDestinationId}
           />
-          <HeaderButton
-            label="History"
-            icon={Clock01Icon}
-            {...(lastFailed && { alert: 'last message not sent' })}
-            onClick={() => show('history')}
-          />
+          {chatShown ? (
+            <HeaderButton
+              label="Search"
+              icon={Search01Icon}
+              onClick={() => show('search')}
+            />
+          ) : null}
           <HeaderButton
             label="Settings"
             icon={Settings01Icon}
             onClick={() => show('settings')}
           />
         </header>
-      ) : (
+      ) : null}
+
+      {view === 'settings' ? (
         <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
           <Button
             variant="ghost"
@@ -206,31 +211,38 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
           </Button>
-          <h1 className="text-sm font-semibold">{viewTitles[view]}</h1>
+          <h1 className="text-sm font-semibold">Settings</h1>
         </header>
-      )}
+      ) : null}
 
-      {/* Kept mounted so a half-written note survives a look at settings. */}
+      {/* Kept mounted so a half-written note survives a search or a look at
+          settings. */}
       <div hidden={view !== 'send'} className="min-h-0 flex-1">
         <Composer
           page={page}
           settings={settings}
           destinationId={destinationId}
+          focusKey={focusKey}
           onOpenChatSettings={() => show('settings', 'chats')}
         />
       </div>
 
-      {view === 'history' ? (
-        <div className="min-h-0 flex-1 animate-enter">
-          <ScrollArea className="h-full">
-            {/* Relative, so sr-only text can't escape the scroll viewport. */}
-            <div className="relative p-4">
-              <HistoryView
-                onOpenSettings={() => show('settings', 'history-settings')}
-              />
-            </div>
-          </ScrollArea>
-        </div>
+      {view === 'search' ? (
+        <ChatSearch
+          settings={settings}
+          destinationId={destinationId}
+          botToken={botToken}
+          onClose={() => show('send')}
+          onShow={(key) => {
+            // Rendered at once, with enough of the chat to hold the message,
+            // so it can be scrolled to right away.
+            flushSync(() => {
+              setFocusKey(key);
+              show('send');
+            });
+            revealMessage(key);
+          }}
+        />
       ) : null}
 
       {view === 'settings' ? (
@@ -349,11 +361,14 @@ function Composer({
   page,
   settings,
   destinationId,
+  focusKey,
   onOpenChatSettings,
 }: {
   page: PageContext;
   settings: Settings;
   destinationId: string | undefined;
+  /** A message picked in search, kept on the page to scroll to. */
+  focusKey: string | undefined;
   onOpenChatSettings: () => void;
 }) {
   const noteId = useId();
@@ -368,6 +383,19 @@ function Composer({
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const tags = settings.tags.enabled ? settings.tags.list : [];
   const busy = phase.name === 'sending' || phase.name === 'sent';
+  const [firstSendAt, setFirstSendAt] = useState<number>();
+  const earlier = useChatItems(settings, destinationId, firstSendAt);
+
+  const destination = settings.destinations.find(
+    (item) => item.id === destinationId
+  );
+
+  useInbox(
+    destination,
+    !page.incognito &&
+      settings.history.mode === 'full' &&
+      settings.history.showInChat
+  );
 
   async function send() {
     if (busy) return;
@@ -383,6 +411,7 @@ function Composer({
     };
 
     setPhase({ name: 'sending' });
+    setFirstSendAt((current) => current ?? Date.now());
 
     const outcome = await requestSend(draft, { incognito: page.incognito });
 
@@ -416,25 +445,50 @@ function Composer({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-chat p-3">
-        {page.selection ? (
-          <ToggleGroup
-            variant="segmented"
-            size="sm"
-            aria-label="What to send"
-            value={[mode]}
-            onValueChange={([next]) => {
-              if (next === 'page' || next === 'selection') setMode(next);
-            }}
-            className="self-center"
-          >
-            <ToggleGroupItem value="selection">Selected text</ToggleGroupItem>
-            <ToggleGroupItem value="page">Page link</ToggleGroupItem>
-          </ToggleGroup>
-        ) : null}
+      {/* Reversed around a single child, so it opens scrolled to the newest
+          message and stays there as the draft grows. Keyed so another chat
+          opens at its newest message too. */}
+      <div
+        key={destinationId}
+        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-chat p-3"
+      >
+        <div className="flex flex-col gap-3">
+          <ChatHistory
+            items={earlier}
+            delivery={settings.delivery}
+            botToken={
+              destination?.kind === 'bot' ? destination.token : undefined
+            }
+            now={time}
+            draftBelow
+            focusKey={focusKey}
+          />
 
-        <div className="mt-auto flex flex-col gap-3">
-          {phase.name === 'failed' ? null : <LastFailure />}
+          {page.selection ? (
+            <ToggleGroup
+              variant="segmented"
+              size="sm"
+              aria-label="What to send"
+              value={[mode]}
+              onValueChange={([next]) => {
+                if (next === 'page' || next === 'selection') setMode(next);
+              }}
+              className="self-center"
+            >
+              <ToggleGroupItem value="selection">Selected text</ToggleGroupItem>
+              <ToggleGroupItem value="page">Page link</ToggleGroupItem>
+            </ToggleGroup>
+          ) : null}
+
+          {phase.name === 'failed' ? null : (
+            <LastFailure
+              inChat={(id) =>
+                earlier.some(
+                  (item) => item.direction === 'out' && item.entry.id === id
+                )
+              }
+            />
+          )}
 
           <MessagePreview
             kind={mode}
@@ -447,6 +501,7 @@ function Composer({
             delivery={settings.delivery}
             status={statusOf[phase.name]}
             time={time}
+            standOut={earlier.length > 0}
           />
 
           {phase.name === 'failed' ? (
@@ -521,15 +576,20 @@ function Composer({
 
 /**
  * The newest send failed, likely from the right-click menu: this is what the
- * red toolbar badge pointed at, so say why here rather than only in History.
+ * red toolbar badge pointed at, so say why. Left out when the failed message
+ * already shows in this chat, with its own way to send it again.
  */
-function LastFailure() {
+function LastFailure({ inChat }: { inChat: (entryId: string) => boolean }) {
   const settings = useStore(settingsStore);
   const history = useStore(historyStore);
   const [retrying, setRetrying] = useState(false);
   const entry = history[0];
 
-  if (settings.history.mode === 'off' || entry?.status !== 'failed') {
+  if (
+    settings.history.mode === 'off' ||
+    entry?.status !== 'failed' ||
+    inChat(entry.id)
+  ) {
     return null;
   }
 

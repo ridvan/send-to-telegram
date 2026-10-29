@@ -28,6 +28,11 @@
   --color-bubble-foreground: var(--bubble-foreground);
   --color-bubble-muted: var(--bubble-muted);
   --color-bubble-accent: var(--bubble-accent);
+  --color-service: var(--service);
+  --color-received: var(--received);
+  --color-received-foreground: var(--received-foreground);
+  --color-received-muted: var(--received-muted);
+  --color-service-foreground: var(--service-foreground);
   --color-tint-foreground: var(--tint-foreground);
   --color-tint-red: var(--tint-red);
   --color-tint-red-to: var(--tint-red-to);
@@ -114,6 +119,13 @@
   --bubble-foreground: oklch(0.2 0.02 245);
   --bubble-muted: oklch(0.48 0.04 240);
   --bubble-accent: oklch(0.5 0.14 245);
+  /* A message sent to your bot from Telegram. */
+  --received: oklch(1 0 0);
+  --received-foreground: oklch(0.2 0.01 250);
+  --received-muted: oklch(0.55 0.02 250);
+  /* Notes from the chat itself, such as a date between messages. */
+  --service: oklch(0.89 0.02 238 / 88%);
+  --service-foreground: oklch(0.4 0.03 245);
   /* Telegram's avatar colors, top to bottom of each gradient. */
   --tint-foreground: oklch(1 0 0);
   --tint-red: oklch(0.75 0.156 40);
@@ -175,6 +187,11 @@
   --bubble-foreground: oklch(0.985 0 0);
   --bubble-muted: oklch(0.8 0.04 245);
   --bubble-accent: oklch(0.83 0.1 230);
+  --received: oklch(0.27 0.012 250);
+  --received-foreground: oklch(0.985 0 0);
+  --received-muted: oklch(0.72 0.02 250);
+  --service: oklch(0.24 0.012 250 / 88%);
+  --service-foreground: oklch(0.82 0.02 245);
   --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.556 0 0);
