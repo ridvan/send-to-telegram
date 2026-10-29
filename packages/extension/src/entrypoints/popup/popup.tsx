@@ -8,14 +8,22 @@ import {
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { browser } from 'wxt/browser';
 
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
-import { ChatSearch } from '@/components/chat-search';
+import { ChatSearchField, ChatSearchResults } from '@/components/chat-search';
 import {
   MessagePreview,
   type MessageStatus,
@@ -170,6 +178,17 @@ function HeaderButton({
 function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
   const { view, show } = useNavigation();
   const [focusKey, setFocusKey] = useState<string>();
+  const [query, setQuery] = useState('');
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  /** Back from search, typing goes to the note again. */
+  function closeSearch() {
+    flushSync(() => {
+      setQuery('');
+      show('send');
+    });
+    noteRef.current?.focus();
+  }
 
   const [destinationId, setDestinationId] = useState(
     defaultDestination(settings)?.id
@@ -223,9 +242,18 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
         </header>
       ) : null}
 
+      {view === 'search' ? (
+        <ChatSearchField
+          query={query}
+          onQueryChange={setQuery}
+          onClose={closeSearch}
+        />
+      ) : null}
+
       {/* Kept mounted so a half-written note survives a search or a look at
-          settings. */}
-      <div hidden={view !== 'send'} className="min-h-0 flex-1">
+          settings. Search draws its results in the chat's place, with the
+          note field still showing, so nothing moves when it opens. */}
+      <div hidden={view === 'settings'} className="min-h-0 flex-1">
         <Composer
           page={page}
           settings={settings}
@@ -233,26 +261,27 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           focusKey={focusKey}
           onOpenChatSettings={() => show('settings', 'chats')}
           onOpenTagSettings={() => show('settings', 'hashtags')}
+          noteRef={noteRef}
+          overlay={
+            view === 'search' ? (
+              <ChatSearchResults
+                query={query}
+                onQueryChange={setQuery}
+                settings={settings}
+                destinationId={destinationId}
+                botToken={botToken}
+                onShow={(key) => {
+                  // Closing renders at once, with enough of the chat to hold
+                  // the message, so it can be scrolled to right away.
+                  setFocusKey(key);
+                  closeSearch();
+                  revealMessage(key);
+                }}
+              />
+            ) : undefined
+          }
         />
       </div>
-
-      {view === 'search' ? (
-        <ChatSearch
-          settings={settings}
-          destinationId={destinationId}
-          botToken={botToken}
-          onClose={() => show('send')}
-          onShow={(key) => {
-            // Rendered at once, with enough of the chat to hold the message,
-            // so it can be scrolled to right away.
-            flushSync(() => {
-              setFocusKey(key);
-              show('send');
-            });
-            revealMessage(key);
-          }}
-        />
-      ) : null}
 
       {view === 'settings' ? (
         <div className="min-h-0 flex-1 animate-enter">
@@ -373,6 +402,8 @@ function Composer({
   focusKey,
   onOpenChatSettings,
   onOpenTagSettings,
+  noteRef,
+  overlay,
 }: {
   page: PageContext;
   settings: Settings;
@@ -381,9 +412,11 @@ function Composer({
   focusKey: string | undefined;
   onOpenChatSettings: () => void;
   onOpenTagSettings: () => void;
+  noteRef: RefObject<HTMLTextAreaElement | null>;
+  /** Drawn in the chat's place, such as search results; the note field waits. */
+  overlay: ReactNode;
 }) {
   const noteId = useId();
-  const noteRef = useRef<HTMLTextAreaElement>(null);
   const [time] = useState(() => Date.now());
 
   const [mode, setMode] = useState<'page' | 'selection'>(
@@ -444,6 +477,8 @@ function Composer({
     });
   }
 
+  const covered = overlay !== undefined;
+
   /** Enter sends, as in Telegram; Shift+Enter starts a new line. */
   function onNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (
@@ -461,8 +496,11 @@ function Composer({
       {/* Reversed around a single child, so it opens scrolled to the newest
           message and stays there as the draft grows. Keyed so another chat
           opens at its newest message too. */}
+      {covered ? <div className="min-h-0 flex-1">{overlay}</div> : null}
+      {/* Hidden rather than removed, so it keeps its scroll position. */}
       <div
         key={destinationId}
+        hidden={covered}
         className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-chat p-3"
       >
         <div className="flex flex-col gap-3">
@@ -541,7 +579,10 @@ function Composer({
         </div>
       </div>
 
-      <div className="flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5">
+      <div
+        inert={covered}
+        className="flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5 transition-opacity duration-150 inert:opacity-50"
+      >
         {page.url ? (
           <PageLinkToggle
             pressed={attachPage}
