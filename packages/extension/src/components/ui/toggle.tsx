@@ -15,11 +15,15 @@ const toggleVariants = cva(
           'rounded-md bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-input/60',
         // A hashtag; chosen, it takes the message bubble's colors.
         chip: 'border border-input bg-transparent hover:bg-transparent not-aria-pressed:hover:bg-muted aria-pressed:border-bubble-accent/30 aria-pressed:bg-bubble aria-pressed:text-bubble-accent',
+        // An on/off icon beside a field; on, it takes the brand color.
+        accent:
+          'bg-transparent text-muted-foreground aria-pressed:bg-transparent aria-pressed:text-brand aria-pressed:hover:bg-muted',
       },
       size: {
         default:
           'h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
         sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        icon: 'size-8',
         lg: 'h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
       },
     },

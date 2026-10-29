@@ -1,12 +1,14 @@
 import {
   ArrowLeft01Icon,
+  HashtagIcon,
+  Link04Icon,
   Search01Icon,
   SentIcon,
   Settings01Icon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useEffect, useId, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { browser } from 'wxt/browser';
 
@@ -34,6 +36,11 @@ import {
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -45,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Tooltip,
@@ -224,6 +232,7 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           destinationId={destinationId}
           focusKey={focusKey}
           onOpenChatSettings={() => show('settings', 'chats')}
+          onOpenTagSettings={() => show('settings', 'hashtags')}
         />
       </div>
 
@@ -363,6 +372,7 @@ function Composer({
   destinationId,
   focusKey,
   onOpenChatSettings,
+  onOpenTagSettings,
 }: {
   page: PageContext;
   settings: Settings;
@@ -370,8 +380,10 @@ function Composer({
   /** A message picked in search, kept on the page to scroll to. */
   focusKey: string | undefined;
   onOpenChatSettings: () => void;
+  onOpenTagSettings: () => void;
 }) {
   const noteId = useId();
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const [time] = useState(() => Date.now());
 
   const [mode, setMode] = useState<'page' | 'selection'>(
@@ -382,6 +394,7 @@ function Composer({
   const [tag, setTag] = useState<string>();
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const tags = settings.tags.enabled ? settings.tags.list : [];
+  const attachPage = settings.composer.attachPage && page.url !== undefined;
   const busy = phase.name === 'sending' || phase.name === 'sent';
   const [firstSendAt, setFirstSendAt] = useState<number>();
   const earlier = useChatItems(settings, destinationId, firstSendAt);
@@ -402,8 +415,8 @@ function Composer({
 
     const draft: Draft = {
       kind: mode,
-      ...(page.url && { pageUrl: page.url }),
-      ...(page.title && { pageTitle: page.title }),
+      ...(attachPage && page.url && { pageUrl: page.url }),
+      ...(attachPage && page.title && { pageTitle: page.title }),
       ...(mode === 'selection' && page.selection && { text: page.selection }),
       ...(note.trim() && { note }),
       ...(tag && { tag }),
@@ -492,8 +505,8 @@ function Composer({
 
           <MessagePreview
             kind={mode}
-            pageUrl={page.url}
-            pageTitle={page.title}
+            pageUrl={attachPage ? page.url : undefined}
+            pageTitle={attachPage ? page.title : undefined}
             favIconUrl={page.favIconUrl}
             text={page.selection}
             note={note}
@@ -528,36 +541,34 @@ function Composer({
         </div>
       </div>
 
-      {tags.length > 0 ? (
-        <div className="scrollbar-none overflow-x-auto border-t px-3 pt-2">
-          <ToggleGroup
-            size="sm"
-            variant="chip"
-            spacing={1}
-            aria-label="Hashtag"
-            value={tag ? [tag] : []}
-            onValueChange={([next]) => setTag(next)}
-          >
-            {tags.map((item) => (
-              <ToggleGroupItem key={item} value={item}>
-                #{item}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-      ) : null}
-
-      <div
-        className={
-          tags.length > 0
-            ? 'flex items-end gap-2 px-3 pt-1 pb-2.5'
-            : 'flex items-end gap-2 border-t px-3 py-2.5'
-        }
-      >
+      <div className="flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5">
+        {page.url ? (
+          <PageLinkToggle
+            pressed={attachPage}
+            onPressedChange={(pressed) =>
+              void settingsStore.update((current) => ({
+                ...current,
+                composer: { ...current.composer, attachPage: pressed },
+              }))
+            }
+          />
+        ) : null}
+        {tags.length > 0 ? (
+          <TagPicker
+            tags={tags}
+            value={tag}
+            onChange={(next) => {
+              setTag(next);
+              noteRef.current?.focus();
+            }}
+            onManage={onOpenTagSettings}
+          />
+        ) : null}
         <label htmlFor={noteId} className="sr-only">
           Note
         </label>
         <Textarea
+          ref={noteRef}
           id={noteId}
           variant="bare"
           value={note}
@@ -571,6 +582,108 @@ function Composer({
         <SendButton phase={phase} onSend={() => void send()} />
       </div>
     </div>
+  );
+}
+
+/** Whether the page's link goes with the message; the choice is kept for next time. */
+function PageLinkToggle({
+  pressed,
+  onPressedChange,
+}: {
+  pressed: boolean;
+  onPressedChange: (pressed: boolean) => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Toggle
+            variant="accent"
+            size="icon"
+            aria-label="Attach page link"
+            pressed={pressed}
+            onPressedChange={onPressedChange}
+          />
+        }
+      >
+        <HugeiconsIcon icon={Link04Icon} strokeWidth={1.8} />
+      </TooltipTrigger>
+      <TooltipContent>
+        {pressed ? 'Page link attached' : 'Attach page link'}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A hashtag for the message, picked from a menu so the field keeps its room. */
+function TagPicker({
+  tags,
+  value,
+  onChange,
+  onManage,
+}: {
+  tags: string[];
+  value: string | undefined;
+  onChange: (tag: string | undefined) => void;
+  onManage: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Toggle
+                  variant="accent"
+                  size="icon"
+                  aria-label={value ? `Hashtag: #${value}` : 'Add a hashtag'}
+                  pressed={value !== undefined}
+                />
+              }
+            />
+          }
+        >
+          <HugeiconsIcon icon={HashtagIcon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>{value ? `#${value}` : 'Add a hashtag'}</TooltipContent>
+      </Tooltip>
+      <PopoverContent side="top" align="start" className="w-auto max-w-80">
+        <ToggleGroup
+          size="sm"
+          variant="chip"
+          spacing={1}
+          aria-label="Hashtag"
+          value={value ? [value] : []}
+          onValueChange={([next]) => {
+            onChange(next);
+            setOpen(false);
+          }}
+          className="flex-wrap"
+        >
+          {tags.map((item) => (
+            <ToggleGroupItem key={item} value={item}>
+              #{item}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <p className="text-xs">
+          <Button
+            variant="link"
+            size="text"
+            tone="muted"
+            onClick={() => {
+              setOpen(false);
+              onManage();
+            }}
+          >
+            Edit hashtags
+          </Button>
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -77,6 +77,12 @@ export const settingsSchema = z.object({
       list: z.array(tagSchema).max(MAX_TAGS).default(DEFAULT_TAGS),
     })
     .prefault({}),
+  composer: z
+    .object({
+      /** Sends the page's link, or its "Open page" button, with a note or selection. */
+      attachPage: z.boolean().default(true),
+    })
+    .prefault({}),
   history: z
     .object({
       mode: historyModeSchema.default('full'),
