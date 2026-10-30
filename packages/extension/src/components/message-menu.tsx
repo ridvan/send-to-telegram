@@ -1,5 +1,6 @@
 import {
   ArrowUpRight01Icon,
+  CheckmarkCircle02Icon,
   Copy01Icon,
   Delete02Icon,
   Link01Icon,
@@ -134,9 +135,12 @@ function ReceivedItems({ message }: { message: InboxEntry }) {
 export function MessageMenu({
   item,
   delivery,
+  onSelect,
 }: {
   item: ChatItem;
   delivery: Settings['delivery'];
+  /** Starts selecting messages, with this one selected. */
+  onSelect: () => void;
 }) {
   return (
     <ContextMenuContent>
@@ -145,6 +149,9 @@ export function MessageMenu({
       ) : (
         <ReceivedItems message={item.message} />
       )}
+      <MenuItem icon={CheckmarkCircle02Icon} onClick={onSelect}>
+        Select
+      </MenuItem>
       <ContextMenuSeparator />
       <MenuItem icon={Delete02Icon} destructive onClick={() => remove(item)}>
         Delete

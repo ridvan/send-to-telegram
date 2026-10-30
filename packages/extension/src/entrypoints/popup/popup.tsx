@@ -23,11 +23,13 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
+import { toast } from 'sonner';
 import { browser } from 'wxt/browser';
 
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
+import { SelectionBar } from '@/components/chat-selection';
 import { ChatName, ChatNameToggle } from '@/components/chat-name';
 import {
   ChatSearchField,
@@ -75,11 +77,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAttachment } from '@/hooks/use-attachment';
-import { useChatItems } from '@/hooks/use-chat-items';
+import { chatKey, useChatItems } from '@/hooks/use-chat-items';
 import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
 import { useStore } from '@/hooks/use-store';
 import { saveAttachment } from '@/lib/attachments';
+import { deleteMessages } from '@/lib/chat-actions';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
 import { plural } from '@/lib/format';
 import type { Draft } from '@/lib/compose';
@@ -133,7 +136,13 @@ export function Popup({ page }: { page: PageContext }) {
   return <Shell page={page} settings={settings} />;
 }
 
-type View = 'send' | 'search' | 'settings';
+type View = 'send' | 'search' | 'select' | 'settings';
+
+/** Messages checked to delete together, by `chatKey`. */
+type ChatSelection = {
+  selected: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+};
 
 type ChatSearch = {
   query: string;
@@ -217,10 +226,67 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
   const chatShown =
     settings.history.mode === 'full' && settings.history.showInChat;
 
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const items = useChatItems(settings, destinationId);
+  // Read from the chat, so a message deleted elsewhere no longer counts.
+  const chosen = items.filter((item) => selected.has(chatKey(item)));
+
+  function startSelecting(key: string) {
+    setSelected(new Set([key]));
+    show('select');
+  }
+
+  function toggleSelected(key: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+
+      if (!next.delete(key)) next.add(key);
+
+      return next;
+    });
+  }
+
+  function stopSelecting() {
+    flushSync(() => {
+      setSelected(new Set());
+      show('send');
+    });
+    noteRef.current?.focus();
+  }
+
+  async function deleteSelected() {
+    const count = chosen.length;
+
+    await deleteMessages(chosen);
+    stopSelecting();
+    toast(
+      plural(count, {
+        one: 'Deleted # message from this browser',
+        other: 'Deleted # messages from this browser',
+      })
+    );
+  }
+
+  /** Escape leaves selecting, unless it's closing the dialog that asks first. */
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (view !== 'select' || event.key !== 'Escape') return;
+
+    if (
+      event.target instanceof Element &&
+      event.target.closest('[role="alertdialog"]')
+    ) {
+      return;
+    }
+
+    // Never closes the popup.
+    event.preventDefault();
+    stopSelecting();
+  }
+
   return (
-    <div className="flex h-[540px] w-[360px] flex-col">
-      {/* One header for the chat and its search, so opening search swaps
-          what's in it and nothing else. */}
+    <div className="flex h-[540px] w-[360px] flex-col" onKeyDown={onKeyDown}>
+      {/* One header for the chat, its search and selecting messages, so each
+          swaps what's in it and nothing else. */}
       {view === 'settings' ? null : (
         <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
           {view === 'search' ? (
@@ -228,6 +294,12 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
               query={query}
               onQueryChange={setQuery}
               onClose={closeSearch}
+            />
+          ) : view === 'select' ? (
+            <SelectionBar
+              count={chosen.length}
+              onCancel={stopSelecting}
+              onDelete={() => void deleteSelected()}
             />
           ) : (
             <>
@@ -280,6 +352,12 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           onOpenChatSettings={() => show('settings', 'chats')}
           onOpenTagSettings={() => show('settings', 'hashtags')}
           noteRef={noteRef}
+          onStartSelecting={startSelecting}
+          selection={
+            view === 'select'
+              ? { selected, onToggle: toggleSelected }
+              : undefined
+          }
           search={
             view === 'search'
               ? {
@@ -418,6 +496,8 @@ function Composer({
   onOpenChatSettings,
   onOpenTagSettings,
   noteRef,
+  onStartSelecting,
+  selection,
   search,
 }: {
   page: PageContext;
@@ -428,6 +508,9 @@ function Composer({
   onOpenChatSettings: () => void;
   onOpenTagSettings: () => void;
   noteRef: RefObject<HTMLTextAreaElement | null>;
+  onStartSelecting: (key: string) => void;
+  /** While selecting, messages are checked and the note waits. */
+  selection: ChatSelection | undefined;
   /** While searching, the chat shows only what matches and the note waits. */
   search: ChatSearch | undefined;
 }) {
@@ -531,6 +614,8 @@ function Composer({
   }
 
   const searching = search !== undefined;
+  // Searching or selecting: the chat is looked through, not written to.
+  const browsing = searching || selection !== undefined;
 
   const typed = useDeferredValue(
     search?.query.trim().toLocaleLowerCase() ?? ''
@@ -559,24 +644,26 @@ function Composer({
   }
 
   // The draft's right-click menu, while it can still change.
-  const draftMenu =
-    !busy && !searching && (page.url !== undefined || attached) ? (
-      <ContextMenuContent>
-        {page.url === undefined ? null : (
-          <MenuItem
-            icon={attachPage ? Unlink04Icon : Link01Icon}
-            onClick={() => setAttachPage(!attachPage)}
-          >
-            {attachPage ? 'Remove page link' : 'Attach page link'}
-          </MenuItem>
-        )}
-        {attached ? (
-          <MenuItem icon={Cancel01Icon} onClick={removeAttachment}>
-            Remove file
-          </MenuItem>
-        ) : null}
-      </ContextMenuContent>
-    ) : undefined;
+  const draftMenu = (
+    <ContextMenuContent>
+      {page.url === undefined ? null : (
+        <MenuItem
+          icon={attachPage ? Unlink04Icon : Link01Icon}
+          onClick={() => setAttachPage(!attachPage)}
+        >
+          {attachPage ? 'Remove page link' : 'Attach page link'}
+        </MenuItem>
+      )}
+      {attached ? (
+        <MenuItem icon={Cancel01Icon} onClick={removeAttachment}>
+          Remove file
+        </MenuItem>
+      ) : null}
+    </ContextMenuContent>
+  );
+
+  const draftMenuDisabled =
+    busy || browsing || (page.url === undefined && !attached);
 
   /** A pasted screenshot or copied file goes with the message. */
   function onNotePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -593,8 +680,8 @@ function Composer({
     if (!event.dataTransfer.types.includes('Files')) return;
 
     event.preventDefault();
-    event.dataTransfer.dropEffect = busy || searching ? 'none' : 'copy';
-    setDropping(!busy && !searching);
+    event.dataTransfer.dropEffect = busy || browsing ? 'none' : 'copy';
+    setDropping(!busy && !browsing);
   }
 
   function onDragLeave(event: DragEvent<HTMLDivElement>) {
@@ -616,7 +703,7 @@ function Composer({
 
     const file = event.dataTransfer.files[0];
 
-    if (file && !busy && !searching) attachOrRefuse(file);
+    if (file && !busy && !browsing) attachOrRefuse(file);
   }
 
   const suggestions = useHashtagSuggestions({
@@ -683,6 +770,11 @@ function Composer({
             draftBelow={!term}
             focusKey={focusKey}
             onPick={search?.onShow}
+            select={{
+              selected: selection?.selected,
+              onToggle: (key) => selection?.onToggle(key),
+              onStart: onStartSelecting,
+            }}
           />
 
           {term && !noMatches ? <MatchCount count={matches.length} /> : null}
@@ -697,9 +789,9 @@ function Composer({
           </p>
 
           {/* Always wrapped, so searching doesn't rebuild the draft: it dims
-              while you search and steps aside once you type. */}
+              while you search or select, and steps aside once you type. */}
           <div
-            inert={searching}
+            inert={browsing}
             hidden={term !== ''}
             className="flex flex-col gap-3 transition-opacity duration-150 inert:opacity-50"
           >
@@ -746,6 +838,7 @@ function Composer({
               onRemoveAttachment={busy ? undefined : removeAttachment}
               onRemovePageLink={busy ? undefined : () => setAttachPage(false)}
               menu={draftMenu}
+              menuDisabled={draftMenuDisabled}
             />
 
             {problem ? (
@@ -781,7 +874,7 @@ function Composer({
       </div>
 
       <div
-        inert={searching}
+        inert={browsing}
         className={cn(
           'relative flex items-end gap-1 border-t py-2.5 pr-3 transition-opacity duration-150 inert:opacity-50',
           // Icon buttons carry their own inset; the bare field needs one.

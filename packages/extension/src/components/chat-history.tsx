@@ -13,16 +13,20 @@ import type { HistoryEntry, Settings } from '@/lib/settings';
 /** A day or two of messages at a time, so the popup opens fast. */
 const PAGE = 40;
 
-/** What a search result is called for screen readers. */
-function pickLabel(item: ChatItem) {
+/** A message's start, for screen readers to tell it apart. */
+function describe(item: ChatItem) {
   const text =
     item.direction === 'out'
       ? entryTitle(item.entry)
       : (item.message.text ?? item.message.fileName ?? item.message.media);
 
-  const short = text && text.length > 80 ? `${text.slice(0, 79)}…` : text;
+  return text && text.length > 80 ? `${text.slice(0, 79)}…` : text;
+}
 
-  return short ? `Show in chat: ${short}` : 'Show in chat';
+function label(action: string, item: ChatItem) {
+  const text = describe(item);
+
+  return text ? `${action}: ${text}` : action;
 }
 
 /** A date between messages, as Telegram marks where a day begins. */
@@ -79,6 +83,7 @@ export function ChatHistory({
   now,
   draftBelow,
   onPick,
+  select,
   focusKey,
 }: {
   /** From `useChatItems`, newest first. */
@@ -90,6 +95,15 @@ export function ChatHistory({
   draftBelow: boolean;
   /** Set while searching: a message is picked, not used. */
   onPick?: ((key: string) => void) | undefined;
+  /**
+   * Selecting messages: the keys checked and how one is toggled. Without it,
+   * a message's menu starts selecting with `onStart`.
+   */
+  select: {
+    selected: ReadonlySet<string> | undefined;
+    onToggle: (key: string) => void;
+    onStart: (key: string) => void;
+  };
   /** A message picked in search, which must be on the page to scroll to. */
   focusKey?: string | undefined;
 }) {
@@ -137,19 +151,31 @@ export function ChatHistory({
             {messages.map((item) => {
               const key = chatKey(item);
 
-              // Rows can be scrolled to; while searching, they're picked
-              // instead of used, so they have no menu.
+              // Rows can be scrolled to. While searching they're picked, and
+              // while selecting they're checked, instead of used. The menu
+              // stays mounted either way, so one closing can finish.
               const row = {
                 id: chatRowId(key),
+                menu: (
+                  <MessageMenu
+                    item={item}
+                    delivery={delivery}
+                    onSelect={() => select.onStart(key)}
+                  />
+                ),
                 ...(onPick
                   ? {
                       pick: {
-                        label: pickLabel(item),
+                        label: label('Show in chat', item),
                         onPick: () => onPick(key),
                       },
                     }
-                  : {
-                      menu: <MessageMenu item={item} delivery={delivery} />,
+                  : select.selected && {
+                      select: {
+                        selected: select.selected.has(key),
+                        label: label('Select', item),
+                        onToggle: () => select.onToggle(key),
+                      },
                     }),
               };
 

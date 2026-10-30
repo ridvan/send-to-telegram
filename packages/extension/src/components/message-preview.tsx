@@ -15,6 +15,7 @@ import { useState, type ReactNode } from 'react';
 import { IconTile } from '@/components/icon-tile';
 import { ReceivedMedia } from '@/components/received-media';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { isHttpUrl, sendsAsPhoto } from '@/lib/compose';
 import { splitHashtags } from '@/lib/hashtags';
@@ -573,6 +574,11 @@ const outgoing =
 /** A bubble and what goes under it, such as its source button. */
 const column = 'flex flex-col items-stretch gap-1';
 
+const outgoingColumn =
+  'ml-auto flex max-w-[85%] min-w-24 flex-col items-stretch gap-1';
+
+const incomingColumn = 'mr-auto flex max-w-[85%] min-w-24 flex-col';
+
 /** The message as it will arrive in Telegram, rebuilt from the draft. */
 export function MessagePreview({
   kind,
@@ -589,6 +595,7 @@ export function MessagePreview({
   onRemoveAttachment,
   onRemovePageLink,
   menu,
+  menuDisabled,
 }: {
   kind: 'page' | 'selection';
   pageUrl: string | undefined;
@@ -606,12 +613,14 @@ export function MessagePreview({
   onRemoveAttachment: (() => void) | undefined;
   /** Left out while sending, like `onRemoveAttachment`. */
   onRemovePageLink: (() => void) | undefined;
-  /** Its right-click menu, left out when there's nothing to offer. */
+  /** Its right-click menu, kept mounted so a closing one can finish. */
   menu: ReactNode;
+  /** While sending, searching or selecting, or with nothing to offer. */
+  menuDisabled: boolean;
 }) {
   return (
     <figure aria-label="Preview" className={outgoing}>
-      <ContextMenu disabled={!menu}>
+      <ContextMenu disabled={menuDisabled}>
         <ContextMenuTrigger>
           <div className={column}>
             <Bubble
@@ -636,10 +645,6 @@ export function MessagePreview({
 }
 
 /**
- * A message from history, drawn as it was sent. Delivery settings aren't kept
- * per message, so the link card and source button follow today's settings.
- */
-/**
  * In search results a message is picked, not used: its links and media go
  * inert, and one button over it shows it in the chat.
  */
@@ -656,6 +661,73 @@ function PickButton({ pick }: { pick: MessagePick }) {
   );
 }
 
+/** While selecting, a message is checked, not used, like a picked one. */
+export type MessageSelect = {
+  selected: boolean;
+  label: string;
+  onToggle: () => void;
+};
+
+/**
+ * A message's row in the chat. While selecting, a check sits at its left, as
+ * in Telegram, and a click anywhere on the row toggles it. The row reaches
+ * the chat's edges, so selected neighbours tint as one strip.
+ */
+function MessageRow({
+  id,
+  side,
+  pick,
+  select,
+  children,
+}: {
+  id: string | undefined;
+  side: 'out' | 'in';
+  pick: MessagePick | undefined;
+  select: MessageSelect | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <li
+      id={id}
+      className={cn(
+        '-mx-3 -my-1.5 flex items-center gap-3 px-3 py-1.5 transition-colors duration-150',
+        select && 'relative',
+        select?.selected && 'bg-brand/10'
+      )}
+    >
+      {select ? (
+        <>
+          {/* For the pointer only; the check is what the keyboard reaches. */}
+          <span
+            aria-hidden
+            onClick={select.onToggle}
+            className="absolute inset-0 cursor-pointer"
+          />
+          <Checkbox
+            variant="round"
+            checked={select.selected}
+            onCheckedChange={select.onToggle}
+            aria-label={select.label}
+          />
+        </>
+      ) : null}
+      <div
+        className={cn(
+          side === 'out' ? outgoingColumn : incomingColumn,
+          pick && 'relative'
+        )}
+      >
+        {children}
+        {pick ? <PickButton pick={pick} /> : null}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * A message from history, drawn as it was sent. Delivery settings aren't kept
+ * per message, so the link card and source button follow today's settings.
+ */
 export function SentMessage({
   entry,
   delivery,
@@ -663,6 +735,7 @@ export function SentMessage({
   footer,
   id,
   pick,
+  select,
   menu,
 }: {
   entry: HistoryEntry;
@@ -674,10 +747,13 @@ export function SentMessage({
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
-  /** Its right-click menu; left out while it's being picked. */
+  select?: MessageSelect | undefined;
+  /** Its right-click menu, off while it's picked or selected. */
   menu?: ReactNode;
 }) {
   const sent = entry.content?.sentMedia;
+  // Picked or checked instead of used: links, media and the menu rest.
+  const passive = pick !== undefined || select !== undefined;
 
   const body = (
     <>
@@ -703,19 +779,18 @@ export function SentMessage({
   );
 
   return (
-    <li id={id} className={cn(outgoing, pick && 'relative')}>
+    <MessageRow id={id} side="out" pick={pick} select={select}>
       {/* The same wrapper either way, so starting a search doesn't rebuild
           the message. The whole bubble opens the menu, links in it too. */}
-      <ContextMenu disabled={!menu}>
+      <ContextMenu disabled={!menu || passive}>
         <ContextMenuTrigger>
-          <div inert={pick !== undefined} className={column}>
+          <div inert={passive} className={column}>
             {body}
           </div>
         </ContextMenuTrigger>
         {menu}
       </ContextMenu>
-      {pick ? <PickButton pick={pick} /> : null}
-    </li>
+    </MessageRow>
   );
 }
 
@@ -781,6 +856,7 @@ export function ReceivedMessage({
   token,
   id,
   pick,
+  select,
   menu,
 }: {
   message: InboxEntry;
@@ -788,10 +864,12 @@ export function ReceivedMessage({
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
-  /** Its right-click menu; left out while it's being picked. */
+  select?: MessageSelect | undefined;
+  /** Its right-click menu, off while it's picked or selected. */
   menu?: ReactNode;
 }) {
   const { from, text, media, file } = message;
+  const passive = pick !== undefined || select !== undefined;
   const playable = token && file ? { token, file } : undefined;
 
   const visual =
@@ -799,17 +877,11 @@ export function ReceivedMessage({
     (media === 'photo' || media === 'video' || media === 'animation');
 
   return (
-    <li
-      id={id}
-      className={cn(
-        'flex max-w-[85%] min-w-24 flex-col self-start',
-        pick && 'relative'
-      )}
-    >
-      <ContextMenu disabled={!menu}>
+    <MessageRow id={id} side="in" pick={pick} select={select}>
+      <ContextMenu disabled={!menu || passive}>
         <ContextMenuTrigger>
           <div
-            inert={pick !== undefined}
+            inert={passive}
             className={cn(
               'overflow-hidden rounded-2xl rounded-bl-sm bg-received text-sm text-received-foreground shadow-xs',
               visual && 'w-64'
@@ -875,7 +947,6 @@ export function ReceivedMessage({
         </ContextMenuTrigger>
         {menu}
       </ContextMenu>
-      {pick ? <PickButton pick={pick} /> : null}
-    </li>
+    </MessageRow>
   );
 }
