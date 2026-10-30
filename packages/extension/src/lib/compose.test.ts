@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compose, ComposeError } from './compose.ts';
+import { compose, ComposeError, messageText } from './compose.ts';
 import { defaultSettings } from './settings.ts';
 
 const delivery = defaultSettings().delivery;
@@ -136,5 +136,47 @@ describe('compose', () => {
 
     expect(message).toHaveProperty('caption');
     expect('caption' in message && message.caption?.length).toBe(1024);
+  });
+});
+
+describe('messageText', () => {
+  it('joins the note, content and hashtag as compose does', () => {
+    expect(
+      messageText(
+        {
+          kind: 'selection',
+          text: ' Quoted \n',
+          note: 'Read this',
+          tag: 'work',
+        },
+        delivery
+      )
+    ).toBe('Read this\n\nQuoted\n\n#work');
+  });
+
+  it('leads a page with its title when a file goes with it', () => {
+    const page = { pageUrl: 'https://a.dev/', pageTitle: 'A' };
+
+    expect(messageText({ kind: 'page', ...page }, delivery)).toBe(
+      'https://a.dev/'
+    );
+    expect(
+      messageText(
+        {
+          kind: 'page',
+          ...page,
+          attachment: { id: 'f', name: 'f.txt', type: '', size: 1 },
+        },
+        delivery
+      )
+    ).toBe('A\nhttps://a.dev/');
+  });
+
+  it('reads an image as its address, never clipped', () => {
+    const note = 'n'.repeat(5000);
+
+    expect(
+      messageText({ kind: 'image', url: 'https://a.dev/x.png', note }, delivery)
+    ).toBe(`${note}\n\nhttps://a.dev/x.png`);
   });
 });

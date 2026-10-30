@@ -9,7 +9,11 @@ import {
   keep,
   toInboxEntry,
 } from './inbox.ts';
-import { type BotDestination, inboxStore } from './settings.ts';
+import {
+  type BotDestination,
+  inboxRemovedStore,
+  inboxStore,
+} from './settings.ts';
 
 const me = { id: 7, type: 'private', first_name: 'Rıdvan' } as const;
 
@@ -277,5 +281,23 @@ describe('keep', () => {
 
     expect(set).not.toHaveBeenCalled();
     set.mockRestore();
+  });
+
+  it('leaves out messages deleted from this browser', async () => {
+    const other = { ...fresh, id: '7:2' };
+
+    await inboxRemovedStore.set([{ id: fresh.id, removedAt: Date.now() }]);
+    await keep([fresh, other]);
+    await keep([fresh, other]);
+
+    expect(await inboxStore.get()).toEqual([other]);
+  });
+
+  it('drops a deleted message a read already under way put back', async () => {
+    await inboxStore.set([fresh]);
+    await inboxRemovedStore.set([{ id: fresh.id, removedAt: Date.now() }]);
+    await keep([]);
+
+    expect(await inboxStore.get()).toEqual([]);
   });
 });

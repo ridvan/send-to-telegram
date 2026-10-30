@@ -56,6 +56,8 @@ function demoData(now: number) {
       tags: { enabled: true, list: ['work', 'reading', 'ideas', 'recipes'] },
     },
     stats: { sent: 1284 },
+    // Sample messages deleted in an earlier look come back with the rest.
+    inboxRemoved: [],
     onboarding: { completedAt: now - 30 * 24 * 60 * minute },
     history: [
       {

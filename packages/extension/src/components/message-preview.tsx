@@ -15,6 +15,7 @@ import { useState, type ReactNode } from 'react';
 import { IconTile } from '@/components/icon-tile';
 import { ReceivedMedia } from '@/components/received-media';
 import { Button } from '@/components/ui/button';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { isHttpUrl, sendsAsPhoto } from '@/lib/compose';
 import { splitHashtags } from '@/lib/hashtags';
 import {
@@ -569,6 +570,9 @@ function Bubble({
 const outgoing =
   'flex max-w-[85%] min-w-24 flex-col items-stretch gap-1 self-end';
 
+/** A bubble and what goes under it, such as its source button. */
+const column = 'flex flex-col items-stretch gap-1';
+
 /** The message as it will arrive in Telegram, rebuilt from the draft. */
 export function MessagePreview({
   kind,
@@ -584,6 +588,7 @@ export function MessagePreview({
   attachment,
   onRemoveAttachment,
   onRemovePageLink,
+  menu,
 }: {
   kind: 'page' | 'selection';
   pageUrl: string | undefined;
@@ -601,22 +606,31 @@ export function MessagePreview({
   onRemoveAttachment: (() => void) | undefined;
   /** Left out while sending, like `onRemoveAttachment`. */
   onRemovePageLink: (() => void) | undefined;
+  /** Its right-click menu, left out when there's nothing to offer. */
+  menu: ReactNode;
 }) {
   return (
     <figure aria-label="Preview" className={outgoing}>
-      <Bubble
-        message={{ kind, pageUrl, pageTitle, text, note, attachment }}
-        onRemoveAttachment={onRemoveAttachment}
-        onRemovePageLink={onRemovePageLink}
-        delivery={delivery}
-        status={status}
-        time={time}
-        linked={false}
-        live
-        favIconUrl={favIconUrl}
-        empty="Write a note to send"
-        unsent={standOut && (status === 'draft' || status === 'failed')}
-      />
+      <ContextMenu disabled={!menu}>
+        <ContextMenuTrigger>
+          <div className={column}>
+            <Bubble
+              message={{ kind, pageUrl, pageTitle, text, note, attachment }}
+              onRemoveAttachment={onRemoveAttachment}
+              onRemovePageLink={onRemovePageLink}
+              delivery={delivery}
+              status={status}
+              time={time}
+              linked={false}
+              live
+              favIconUrl={favIconUrl}
+              empty="Write a note to send"
+              unsent={standOut && (status === 'draft' || status === 'failed')}
+            />
+          </div>
+        </ContextMenuTrigger>
+        {menu}
+      </ContextMenu>
     </figure>
   );
 }
@@ -649,6 +663,7 @@ export function SentMessage({
   footer,
   id,
   pick,
+  menu,
 }: {
   entry: HistoryEntry;
   delivery: Settings['delivery'];
@@ -659,6 +674,8 @@ export function SentMessage({
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
+  /** Its right-click menu; left out while it's being picked. */
+  menu?: ReactNode;
 }) {
   const sent = entry.content?.sentMedia;
 
@@ -688,13 +705,15 @@ export function SentMessage({
   return (
     <li id={id} className={cn(outgoing, pick && 'relative')}>
       {/* The same wrapper either way, so starting a search doesn't rebuild
-          the message. */}
-      <div
-        inert={pick !== undefined}
-        className="flex flex-col items-stretch gap-1"
-      >
-        {body}
-      </div>
+          the message. The whole bubble opens the menu, links in it too. */}
+      <ContextMenu disabled={!menu}>
+        <ContextMenuTrigger>
+          <div inert={pick !== undefined} className={column}>
+            {body}
+          </div>
+        </ContextMenuTrigger>
+        {menu}
+      </ContextMenu>
       {pick ? <PickButton pick={pick} /> : null}
     </li>
   );
@@ -762,12 +781,15 @@ export function ReceivedMessage({
   token,
   id,
   pick,
+  menu,
 }: {
   message: InboxEntry;
   token: string | undefined;
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
+  /** Its right-click menu; left out while it's being picked. */
+  menu?: ReactNode;
 }) {
   const { from, text, media, file } = message;
   const playable = token && file ? { token, file } : undefined;
@@ -784,70 +806,75 @@ export function ReceivedMessage({
         pick && 'relative'
       )}
     >
-      <div
-        inert={pick !== undefined}
-        className={cn(
-          'overflow-hidden rounded-2xl rounded-bl-sm bg-received text-sm text-received-foreground shadow-xs',
-          visual && 'w-64'
-        )}
-      >
-        {from ? (
-          <p className="truncate px-3 pt-1.5 text-xs font-semibold text-bubble-accent">
-            {from}
-          </p>
-        ) : null}
-        {visual ? (
-          <div className={from ? 'mt-1.5' : undefined}>
-            <ReceivedMedia
-              token={playable.token}
-              message={message}
-              file={playable.file}
-            />
-          </div>
-        ) : null}
-        <div className={cn('px-3', visual && !text ? 'py-0.5' : 'py-1.5')}>
-          {media && !visual ? (
-            playable ? (
-              <ReceivedMedia
-                token={playable.token}
-                message={message}
-                file={playable.file}
-              />
-            ) : (
-              // Kept before media could be shown, so only its kind is known.
-              <p className="flex items-center gap-1.5 text-received-muted">
-                <HugeiconsIcon
-                  icon={mediaIcons[media]}
-                  strokeWidth={1.8}
-                  aria-hidden
-                  className="size-4 shrink-0"
-                />
-                <span className="truncate">
-                  {message.fileName ?? mediaLabels[media]}
-                </span>
+      <ContextMenu disabled={!menu}>
+        <ContextMenuTrigger>
+          <div
+            inert={pick !== undefined}
+            className={cn(
+              'overflow-hidden rounded-2xl rounded-bl-sm bg-received text-sm text-received-foreground shadow-xs',
+              visual && 'w-64'
+            )}
+          >
+            {from ? (
+              <p className="truncate px-3 pt-1.5 text-xs font-semibold text-bubble-accent">
+                {from}
               </p>
-            )
-          ) : null}
-          {text ? (
-            <p className="break-words whitespace-pre-line not-first:mt-1">
-              <LinkedText text={text} links={message.links} />
-              <Meta
-                status="received"
-                time={message.receivedAt}
-                inline
-                live={false}
-              />
-            </p>
-          ) : (
-            <Meta
-              status="received"
-              time={message.receivedAt}
-              inline={false}
-              live={false}
-            />
-          )}
-        </div>
-      </div>
+            ) : null}
+            {visual ? (
+              <div className={from ? 'mt-1.5' : undefined}>
+                <ReceivedMedia
+                  token={playable.token}
+                  message={message}
+                  file={playable.file}
+                />
+              </div>
+            ) : null}
+            <div className={cn('px-3', visual && !text ? 'py-0.5' : 'py-1.5')}>
+              {media && !visual ? (
+                playable ? (
+                  <ReceivedMedia
+                    token={playable.token}
+                    message={message}
+                    file={playable.file}
+                  />
+                ) : (
+                  // Kept before media could be shown, so only its kind is known.
+                  <p className="flex items-center gap-1.5 text-received-muted">
+                    <HugeiconsIcon
+                      icon={mediaIcons[media]}
+                      strokeWidth={1.8}
+                      aria-hidden
+                      className="size-4 shrink-0"
+                    />
+                    <span className="truncate">
+                      {message.fileName ?? mediaLabels[media]}
+                    </span>
+                  </p>
+                )
+              ) : null}
+              {text ? (
+                <p className="break-words whitespace-pre-line not-first:mt-1">
+                  <LinkedText text={text} links={message.links} />
+                  <Meta
+                    status="received"
+                    time={message.receivedAt}
+                    inline
+                    live={false}
+                  />
+                </p>
+              ) : (
+                <Meta
+                  status="received"
+                  time={message.receivedAt}
+                  inline={false}
+                  live={false}
+                />
+              )}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        {menu}
+      </ContextMenu>
       {pick ? <PickButton pick={pick} /> : null}
     </li>
   );

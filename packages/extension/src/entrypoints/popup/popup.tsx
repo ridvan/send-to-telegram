@@ -1,10 +1,13 @@
 import {
   ArrowLeft01Icon,
   Attachment01Icon,
+  Cancel01Icon,
+  Link01Icon,
   Search01Icon,
   SentIcon,
   Settings01Icon,
   Tick02Icon,
+  Unlink04Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -32,6 +35,7 @@ import {
   NoMatches,
 } from '@/components/chat-search';
 import { HashtagSuggestions } from '@/components/hashtag-suggestions';
+import { MenuItem } from '@/components/message-menu';
 import {
   MessagePreview,
   type MessageStatus,
@@ -51,6 +55,7 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ContextMenuContent } from '@/components/ui/context-menu';
 import { Kbd } from '@/components/ui/kbd';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -539,14 +544,39 @@ function Composer({
 
   const noMatches = term !== '' && matches.length === 0;
 
-  /** Kept as the choice for next time; settings turn it back on. */
-  function removePageLink() {
+  /** Kept as the choice for next time, for every page. */
+  function setAttachPage(next: boolean) {
     void settingsStore.update((current) => ({
       ...current,
-      composer: { ...current.composer, attachPage: false },
+      composer: { ...current.composer, attachPage: next },
     }));
     noteRef.current?.focus();
   }
+
+  function removeAttachment() {
+    remove();
+    noteRef.current?.focus();
+  }
+
+  // The draft's right-click menu, while it can still change.
+  const draftMenu =
+    !busy && !searching && (page.url !== undefined || attached) ? (
+      <ContextMenuContent>
+        {page.url === undefined ? null : (
+          <MenuItem
+            icon={attachPage ? Unlink04Icon : Link01Icon}
+            onClick={() => setAttachPage(!attachPage)}
+          >
+            {attachPage ? 'Remove page link' : 'Attach page link'}
+          </MenuItem>
+        )}
+        {attached ? (
+          <MenuItem icon={Cancel01Icon} onClick={removeAttachment}>
+            Remove file
+          </MenuItem>
+        ) : null}
+      </ContextMenuContent>
+    ) : undefined;
 
   /** A pasted screenshot or copied file goes with the message. */
   function onNotePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -713,15 +743,9 @@ function Composer({
               time={time}
               standOut={earlier.length > 0}
               attachment={attached && { ...attached.info, url: attached.url }}
-              onRemoveAttachment={
-                busy
-                  ? undefined
-                  : () => {
-                      remove();
-                      noteRef.current?.focus();
-                    }
-              }
-              onRemovePageLink={busy ? undefined : removePageLink}
+              onRemoveAttachment={busy ? undefined : removeAttachment}
+              onRemovePageLink={busy ? undefined : () => setAttachPage(false)}
+              menu={draftMenu}
             />
 
             {problem ? (

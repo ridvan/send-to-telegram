@@ -15,6 +15,7 @@ import {
   type BotDestination,
   type InboxEntry,
   inboxEntrySchema,
+  inboxRemovedStore,
   type InboxFile,
   type InboxPicture,
   inboxStore,
@@ -185,10 +186,17 @@ export function inboxEntriesIn(
 
 /**
  * Adds new messages and replaces ones that read differently now, such as a
- * photo kept before media could be shown. Writes nothing when all match.
+ * photo kept before media could be shown. Messages deleted from this browser
+ * stay out, even when a read that started before the delete brings one back.
+ * Writes nothing when all match.
  */
 export async function keep(entries: InboxEntry[]) {
-  const inbox = await inboxStore.get();
+  const [inbox, removedList] = await Promise.all([
+    inboxStore.get(),
+    inboxRemovedStore.get(),
+  ]);
+
+  const removed = new Set(removedList.map((item) => item.id));
 
   const stored = new Map(
     inbox.map((entry) => [entry.id, JSON.stringify(entry)])
@@ -198,15 +206,25 @@ export async function keep(entries: InboxEntry[]) {
   const changed = entries.flatMap((fresh) => {
     const entry = inboxEntrySchema.parse(fresh);
 
-    return stored.get(entry.id) === JSON.stringify(entry) ? [] : [entry];
+    return removed.has(entry.id) ||
+      stored.get(entry.id) === JSON.stringify(entry)
+      ? []
+      : [entry];
   });
 
-  if (changed.length === 0) return;
+  const returned = inbox.some((entry) => removed.has(entry.id));
+
+  if (changed.length === 0 && !returned) return;
 
   const replaced = new Set(changed.map((entry) => entry.id));
 
   await inboxStore.set(
-    [...changed, ...inbox.filter((entry) => !replaced.has(entry.id))]
+    [
+      ...changed,
+      ...inbox.filter(
+        (entry) => !replaced.has(entry.id) && !removed.has(entry.id)
+      ),
+    ]
       .toSorted((a, b) => b.receivedAt - a.receivedAt)
       .slice(0, MAX_INBOX)
   );

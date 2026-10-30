@@ -240,6 +240,28 @@ export const inboxStore = defineStore(
   () => []
 );
 
+/**
+ * Received messages deleted from this browser. `getUpdates` is never
+ * confirmed, so Telegram keeps returning a message for 24 hours; these stop
+ * it coming back. Kept twice that long, then dropped.
+ */
+export const inboxRemovedSchema = z.object({
+  id: z.string(),
+  removedAt: z.number(),
+});
+
+export type InboxRemoved = z.infer<typeof inboxRemovedSchema>;
+
+export const INBOX_REMOVED_FOR = 48 * 60 * 60 * 1000;
+
+export const MAX_INBOX_REMOVED = 1000;
+
+export const inboxRemovedStore = defineStore(
+  'inboxRemoved',
+  listOf(inboxRemovedSchema),
+  () => []
+);
+
 export const statsSchema = z.object({
   sent: z.number().int().nonnegative().default(0),
 });

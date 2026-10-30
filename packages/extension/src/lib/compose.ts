@@ -99,6 +99,20 @@ function bodyOf(draft: Draft, delivery: Settings['delivery']) {
   }
 }
 
+/**
+ * The message's text as it reads in Telegram, unclipped: the note, then the
+ * content, then the hashtag. An image sent as a picture reads as its address.
+ */
+export function messageText(
+  draft: Draft,
+  delivery: Settings['delivery']
+): string {
+  const tag = draft.tag ? `#${draft.tag}` : undefined;
+  const body = draft.kind === 'image' ? draft.url : bodyOf(draft, delivery);
+
+  return paragraphs(draft.note, body, tag);
+}
+
 /** Turns a draft into one outgoing message, following the delivery settings. */
 export function compose(
   draft: Draft,

@@ -51,6 +51,7 @@ import {
   historyModeSchema,
   historyStore,
   type ImageMode,
+  inboxRemovedStore,
   inboxStore,
   imageModeSchema,
   type Settings,
@@ -317,6 +318,7 @@ export function HistorySection() {
                     void Promise.all([
                       historyStore.set([]),
                       inboxStore.set([]),
+                      inboxRemovedStore.set([]),
                       forgetFiles(),
                     ])
                   }

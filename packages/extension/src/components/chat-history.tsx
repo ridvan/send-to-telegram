@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 
+import { MessageMenu } from '@/components/message-menu';
 import { ReceivedMessage, SentMessage } from '@/components/message-preview';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -136,12 +137,20 @@ export function ChatHistory({
             {messages.map((item) => {
               const key = chatKey(item);
 
-              // Rows can be scrolled to; while searching, they're picked.
+              // Rows can be scrolled to; while searching, they're picked
+              // instead of used, so they have no menu.
               const row = {
                 id: chatRowId(key),
-                ...(onPick && {
-                  pick: { label: pickLabel(item), onPick: () => onPick(key) },
-                }),
+                ...(onPick
+                  ? {
+                      pick: {
+                        label: pickLabel(item),
+                        onPick: () => onPick(key),
+                      },
+                    }
+                  : {
+                      menu: <MessageMenu item={item} delivery={delivery} />,
+                    }),
               };
 
               return item.direction === 'out' ? (
