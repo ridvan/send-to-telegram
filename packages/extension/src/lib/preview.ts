@@ -50,6 +50,7 @@ function demoData(now: number) {
           chatTitle: 'Design crit',
           chatType: 'supergroup',
           botUsername: 'crit_bot',
+          avatar: { kind: 'pattern', style: 'marble' },
         },
       ],
       defaultDestinationId: 'me',

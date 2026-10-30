@@ -1037,6 +1037,7 @@ function ChatPicker({
         <ChatAvatar
           name={destinationName(current)}
           seed={avatarSeed(current)}
+          avatar={current.avatar}
         />
         <ChatName
           name={destinationName(current)}
@@ -1067,6 +1068,7 @@ function ChatPicker({
           <ChatAvatar
             name={destinationName(current)}
             seed={avatarSeed(current)}
+            avatar={current.avatar}
           />
           <SelectValue>
             {(id: string) => {
@@ -1085,6 +1087,7 @@ function ChatPicker({
                 <ChatAvatar
                   name={destinationName(item)}
                   seed={avatarSeed(item)}
+                  avatar={item.avatar}
                   size="sm"
                 />
                 <ChatName name={destinationName(item)} />

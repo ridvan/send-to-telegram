@@ -8,14 +8,14 @@ function Avatar({
   size = 'default',
   ...props
 }: AvatarPrimitive.Root.Props & {
-  size?: 'default' | 'sm' | 'lg';
+  size?: 'default' | 'sm' | 'lg' | 'xl';
 }) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
       className={cn(
-        'group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
+        'group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 data-[size=xl]:size-20 dark:after:mix-blend-lighten',
         className
       )}
       {...props}
@@ -37,9 +37,16 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
 }
 
 const avatarFallbackVariants = cva(
-  'flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs',
+  'flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs group-data-[size=xl]/avatar:text-2xl',
   {
     variants: {
+      // An emoji stands in for the initials, drawn larger to read as a picture,
+      // on a faint wash of the tone so the chat keeps its color.
+      glyph: {
+        initials: '',
+        emoji:
+          'text-lg leading-none group-data-[size=lg]/avatar:text-2xl group-data-[size=sm]/avatar:text-sm group-data-[size=xl]/avatar:text-5xl',
+      },
       // Telegram colors chats it has no photo for; `tone` does the same.
       tone: {
         none: 'bg-muted text-muted-foreground',
@@ -55,8 +62,46 @@ const avatarFallbackVariants = cva(
         pink: 'bg-linear-to-b from-tint-pink to-tint-pink-to font-semibold text-tint-foreground',
       },
     },
+    compoundVariants: [
+      {
+        glyph: 'emoji',
+        tone: 'red',
+        className: 'from-tint-red/30 to-tint-red-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'orange',
+        className: 'from-tint-orange/30 to-tint-orange-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'violet',
+        className: 'from-tint-violet/30 to-tint-violet-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'green',
+        className: 'from-tint-green/30 to-tint-green-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'cyan',
+        className: 'from-tint-cyan/30 to-tint-cyan-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'blue',
+        className: 'from-tint-blue/30 to-tint-blue-to/30',
+      },
+      {
+        glyph: 'emoji',
+        tone: 'pink',
+        className: 'from-tint-pink/30 to-tint-pink-to/30',
+      },
+    ],
     defaultVariants: {
       tone: 'none',
+      glyph: 'initials',
     },
   }
 );
@@ -64,13 +109,14 @@ const avatarFallbackVariants = cva(
 function AvatarFallback({
   className,
   tone,
+  glyph,
   ...props
 }: AvatarPrimitive.Fallback.Props &
   VariantProps<typeof avatarFallbackVariants>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
-      className={cn(avatarFallbackVariants({ tone }), className)}
+      className={cn(avatarFallbackVariants({ tone, glyph }), className)}
       {...props}
     />
   );

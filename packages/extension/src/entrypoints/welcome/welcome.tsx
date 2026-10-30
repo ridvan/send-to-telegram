@@ -253,6 +253,7 @@ function Upgraded() {
                 <ChatAvatar
                   name={destinationName(destination)}
                   seed={avatarSeed(destination)}
+                  avatar={destination.avatar}
                   size="sm"
                 />
                 <ChatName

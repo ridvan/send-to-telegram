@@ -14,12 +14,40 @@ export const MAX_TAGS = 12;
 
 export const tagSchema = z.string().regex(TAG_PATTERN);
 
+export const avatarPatternSchema = z.enum([
+  'beam',
+  'marble',
+  'pixel',
+  'sunset',
+  'ring',
+  'bauhaus',
+]);
+
+export type AvatarPattern = z.infer<typeof avatarPatternSchema>;
+
+/** What a chat shows instead of its initials. */
+export const chatAvatarSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('emoji'), emoji: z.string().min(1) }),
+  z.object({ kind: z.literal('pattern'), style: avatarPatternSchema }),
+  z.object({
+    kind: z.literal('image'),
+    dataUrl: z.string().regex(/^data:image\/[\w.+-]+;base64,/),
+  }),
+]);
+
+export type ChatAvatarChoice = z.infer<typeof chatAvatarSchema>;
+
 const destinationBase = z.object({
   id: z.string(),
   /** A name the person gave this destination; the chat title is used otherwise. */
   label: z.string().optional(),
   chatTitle: z.string().optional(),
   chatType: chatTypeSchema.optional(),
+  /**
+   * Absent shows initials. One this version can't read falls back to them
+   * too, rather than failing the whole settings key.
+   */
+  avatar: chatAvatarSchema.optional().catch(undefined),
 });
 
 export const botDestinationSchema = destinationBase.extend({

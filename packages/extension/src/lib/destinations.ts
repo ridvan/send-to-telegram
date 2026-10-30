@@ -4,7 +4,12 @@ import { TEST_MESSAGE } from './bot-setup.ts';
 import { toSendFailure } from './failure.ts';
 import { relaySend, unlinkDevice } from './relay.ts';
 import { forgetFiles } from './telegram-files.ts';
-import { type Destination, inboxStore, settingsStore } from './settings.ts';
+import {
+  type ChatAvatarChoice,
+  type Destination,
+  inboxStore,
+  settingsStore,
+} from './settings.ts';
 
 function sameChat(a: Destination, b: Destination) {
   if (a.kind === 'bot' && b.kind === 'bot') {
@@ -67,16 +72,35 @@ export async function removeDestination(destination: Destination) {
   await forgetFiles(files);
 }
 
-export function updateDestination(id: string, change: { label?: string }) {
+/**
+ * Changes only what `change` names: an empty `label` goes back to the chat's
+ * title, and `avatar: null` back to initials.
+ */
+export function updateDestination(
+  id: string,
+  change: { label?: string; avatar?: ChatAvatarChoice | null }
+) {
   return settingsStore.update((settings) => ({
     ...settings,
     destinations: settings.destinations.map((destination) => {
       if (destination.id !== id) return destination;
 
-      const { label: _previous, ...rest } = destination;
-      const label = change.label?.trim();
+      let next = destination;
 
-      return label ? { ...rest, label } : rest;
+      if (change.label !== undefined) {
+        const { label: _previous, ...rest } = next;
+        const label = change.label.trim();
+
+        next = label ? { ...rest, label } : rest;
+      }
+
+      if (change.avatar !== undefined) {
+        const { avatar: _previous, ...rest } = next;
+
+        next = change.avatar ? { ...rest, avatar: change.avatar } : rest;
+      }
+
+      return next;
     }),
   }));
 }

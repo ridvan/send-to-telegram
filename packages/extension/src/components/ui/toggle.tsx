@@ -18,6 +18,9 @@ const toggleVariants = cva(
         // An on/off icon beside a field; on, it takes the brand color.
         accent:
           'bg-transparent text-muted-foreground aria-pressed:bg-transparent aria-pressed:text-brand aria-pressed:hover:bg-muted',
+        // A picture to pick, such as an avatar; chosen, it gets a ring.
+        swatch:
+          'rounded-full bg-transparent p-0.5 hover:bg-transparent aria-pressed:bg-transparent aria-pressed:ring-2 aria-pressed:ring-primary',
       },
       size: {
         default:
@@ -25,11 +28,16 @@ const toggleVariants = cva(
         sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         icon: 'size-8',
         lg: 'h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
+        // An emoji to pick, drawn at the size it reads as a picture.
+        glyph: 'size-9 text-xl leading-none',
+        // Fits the avatar inside, whatever its size.
+        fit: 'size-auto',
       },
     },
     compoundVariants: [
       { variant: 'segmented', className: 'rounded-md' },
       { variant: 'chip', className: 'rounded-full' },
+      { variant: 'swatch', className: 'rounded-full' },
     ],
     defaultVariants: {
       variant: 'default',

@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ChatAvatar } from '@/components/chat-avatar';
+import { AvatarDialog } from '@/components/settings/avatar-dialog';
 import { ConnectFlow } from '@/components/connect/connect-flow';
 import { SettingsSection } from '@/components/setting-row';
 import {
@@ -178,7 +179,10 @@ function RemoveDialog({
   );
 }
 
-type Editing = { action: 'rename' | 'remove'; destination: Destination };
+type Editing = {
+  action: 'rename' | 'avatar' | 'remove';
+  destination: Destination;
+};
 
 function ChatRow({
   destination,
@@ -210,7 +214,11 @@ function ChatRow({
   return (
     <Item size="sm">
       <ItemMedia>
-        <ChatAvatar name={name} seed={avatarSeed(destination)} />
+        <ChatAvatar
+          name={name}
+          seed={avatarSeed(destination)}
+          avatar={destination.avatar}
+        />
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle>
@@ -250,6 +258,11 @@ function ChatRow({
                 onClick={() => onEdit({ action: 'rename', destination })}
               >
                 Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onEdit({ action: 'avatar', destination })}
+              >
+                Change avatar
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -351,6 +364,12 @@ export function ChatsSection({
 
       {editing?.action === 'rename' ? (
         <RenameDialog
+          destination={editing.destination}
+          onClose={() => setEditing(undefined)}
+        />
+      ) : null}
+      {editing?.action === 'avatar' ? (
+        <AvatarDialog
           destination={editing.destination}
           onClose={() => setEditing(undefined)}
         />

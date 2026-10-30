@@ -1,52 +1,49 @@
-import type { VariantProps } from 'class-variance-authority';
+import BoringAvatar from 'boring-avatars';
 
-import {
-  Avatar,
-  AvatarFallback,
-  type avatarFallbackVariants,
-} from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { patternColors, toneFor } from '@/lib/avatars';
 import { initials } from '@/lib/format';
-
-type Tone = NonNullable<VariantProps<typeof avatarFallbackVariants>['tone']>;
-
-const tones: Tone[] = [
-  'red',
-  'orange',
-  'violet',
-  'green',
-  'cyan',
-  'blue',
-  'pink',
-];
-
-/** The same chat gets the same color everywhere, like in Telegram. */
-function toneFor(seed: string): Tone {
-  // FNV-1a, which spreads short names over the colors more evenly.
-  let hash = 0x811c9dc5;
-
-  for (const char of seed) {
-    hash = Math.imul(hash ^ (char.codePointAt(0) ?? 0), 0x01000193) >>> 0;
-  }
-
-  return tones[hash % tones.length] ?? 'blue';
-}
+import type { ChatAvatarChoice } from '@/lib/settings';
 
 /**
- * `seed` picks the color; pass the chat's title from Telegram so renaming the
- * chat here doesn't change it.
+ * `seed` picks the color and pattern; pass the chat's title from Telegram so
+ * renaming the chat here doesn't change it. Without `avatar`, it's initials.
  */
 export function ChatAvatar({
   name,
   seed = name,
+  avatar,
   size = 'default',
 }: {
   name: string;
   seed?: string;
-  size?: 'sm' | 'default' | 'lg';
+  avatar?: ChatAvatarChoice | undefined;
+  size?: 'sm' | 'default' | 'lg' | 'xl';
 }) {
+  const tone = toneFor(seed);
+
   return (
     <Avatar size={size} aria-hidden>
-      <AvatarFallback tone={toneFor(seed)}>{initials(name)}</AvatarFallback>
+      {avatar?.kind === 'emoji' ? (
+        <AvatarFallback tone={tone} glyph="emoji">
+          {avatar.emoji}
+        </AvatarFallback>
+      ) : avatar?.kind === 'pattern' ? (
+        <BoringAvatar
+          variant={avatar.style}
+          name={seed}
+          colors={patternColors(seed)}
+          // A class, so a toggle's rule for icon sizes doesn't shrink it.
+          className="size-full"
+        />
+      ) : (
+        <>
+          {avatar?.kind === 'image' ? (
+            <AvatarImage src={avatar.dataUrl} alt="" />
+          ) : null}
+          <AvatarFallback tone={tone}>{initials(name)}</AvatarFallback>
+        </>
+      )}
     </Avatar>
   );
 }
