@@ -4,7 +4,6 @@ import {
   Cancel01Icon,
   Link01Icon,
   Search01Icon,
-  SentIcon,
   Settings01Icon,
   Tick02Icon,
   Unlink04Icon,
@@ -38,6 +37,7 @@ import {
 } from '@/components/chat-search';
 import { HashtagSuggestions } from '@/components/hashtag-suggestions';
 import { MenuItem } from '@/components/message-menu';
+import { PlaneIcon } from '@/components/plane-icon';
 import {
   MessagePreview,
   type MessageStatus,
@@ -468,17 +468,13 @@ function SendButton({ phase, onSend }: { phase: Phase; onSend: () => void }) {
           />
         ) : phase.name === 'sending' ? (
           <>
-            <HugeiconsIcon
-              icon={SentIcon}
-              strokeWidth={2}
-              className="absolute animate-depart"
-            />
+            <PlaneIcon className="absolute animate-depart" />
             <span className="animate-pop-late">
               <Spinner />
             </span>
           </>
         ) : (
-          <HugeiconsIcon icon={SentIcon} strokeWidth={2} />
+          <PlaneIcon />
         )}
       </TooltipTrigger>
       <TooltipContent>
