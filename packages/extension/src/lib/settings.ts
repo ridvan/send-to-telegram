@@ -97,6 +97,12 @@ export const settingsSchema = z.object({
       showChatNames: z.boolean().default(true),
     })
     .prefault({}),
+  privacy: z
+    .object({
+      /** Photos and videos stay blurred until clicked, one at a time. */
+      blurMedia: z.boolean().default(false),
+    })
+    .prefault({}),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

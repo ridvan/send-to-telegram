@@ -7,12 +7,14 @@ import {
   Globe02Icon,
   HashtagIcon,
   Image02Icon,
+  ImageOffIcon,
   KeyboardIcon,
   Link04Icon,
   Moon02Icon,
   NotificationOff01Icon,
   RotateLeft01Icon,
   Sun03Icon,
+  ViewOffSlashIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useId, useState } from 'react';
@@ -328,6 +330,43 @@ export function HistorySection() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        }
+      />
+    </SettingsSection>
+  );
+}
+
+export function PrivacySection() {
+  const { appearance, privacy } = useStore(settingsStore);
+
+  return (
+    <SettingsSection
+      id="privacy"
+      title="Privacy"
+      description="For screen sharing and onlookers. Nothing leaves this browser."
+    >
+      <SwitchRow
+        icon={{ icon: ViewOffSlashIcon, tone: 'orange' }}
+        label="Blur chat names"
+        description="Hover a name to read it."
+        checked={!appearance.showChatNames}
+        onCheckedChange={(blur) =>
+          void update((settings) => ({
+            ...settings,
+            appearance: { ...settings.appearance, showChatNames: !blur },
+          }))
+        }
+      />
+      <SwitchRow
+        icon={{ icon: ImageOffIcon, tone: 'cyan' }}
+        label="Blur photos and videos"
+        description="Click one to show it."
+        checked={privacy.blurMedia}
+        onCheckedChange={(blurMedia) =>
+          void update((settings) => ({
+            ...settings,
+            privacy: { ...settings.privacy, blurMedia },
+          }))
         }
       />
     </SettingsSection>

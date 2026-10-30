@@ -4,6 +4,7 @@ import {
   ImageNotFound01Icon,
   PauseIcon,
   PlayIcon,
+  ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { DOWNLOAD_LIMIT } from '@send-to-telegram/core';
@@ -18,15 +19,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { useStore } from '@/hooks/use-store';
 import { type FileState, useTelegramFile } from '@/hooks/use-telegram-file';
 import { formatBytes, formatDuration } from '@/lib/format';
-import type { InboxEntry, InboxFile, InboxPicture } from '@/lib/settings';
+import {
+  type InboxEntry,
+  type InboxFile,
+  type InboxPicture,
+  settingsStore,
+} from '@/lib/settings';
 import {
   allowDownloads,
   downloadFile,
   FileFailure,
   type FileFailureReason,
 } from '@/lib/telegram-files';
+import { cn } from '@/lib/utils';
 
 /** Sized before it loads, so the chat doesn't jump as pictures arrive. */
 function aspectOf(picture: InboxPicture | undefined) {
@@ -86,6 +94,30 @@ function Failure({
           Try again
         </Button>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * Blurs a picture until it's clicked once, like Telegram's spoiler media. The
+ * file still loads; only how it's drawn changes.
+ */
+function coverClass(covered: boolean) {
+  return cn(
+    'transition duration-300 ease-out motion-reduce:transition-none',
+    // Scaled up so the blur's soft edges stay outside the box.
+    covered && 'scale-110 blur-lg'
+  );
+}
+
+/** Says a blurred picture opens with a click. */
+function ShowPill() {
+  return (
+    <span className="absolute inset-0 flex items-center justify-center">
+      <span className="flex items-center gap-1 rounded-full bg-black/55 py-1 pr-2.5 pl-2 text-xs font-medium text-white backdrop-blur-sm">
+        <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="size-3.5" />
+        Show
+      </span>
     </span>
   );
 }
@@ -155,13 +187,19 @@ function PhotoMedia({
   token,
   message,
   file,
+  hidden,
 }: {
   token: string;
   message: InboxEntry;
   file: InboxFile;
+  /** Blurred until the first click, which only reveals it. */
+  hidden: boolean;
 }) {
   const preview = file.preview ?? file;
   const [open, setOpen] = useState(false);
+  // Until the popup closes, so a revealed photo stays revealed.
+  const [revealed, setRevealed] = useState(false);
+  const covered = hidden && !revealed;
 
   const { state, retry } = useTelegramFile(token, preview, {
     wanted: true,
@@ -190,14 +228,21 @@ function PhotoMedia({
     <>
       <button
         type="button"
-        aria-label="Open photo"
+        aria-label={covered ? 'Show photo' : 'Open photo'}
         disabled={state.status !== 'ready'}
-        onClick={() => setOpen(true)}
+        onClick={() => (covered ? setRevealed(true) : setOpen(true))}
         className="relative flex aspect-(--aspect) max-h-80 w-full items-center justify-center overflow-hidden bg-received-muted/10 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
         style={{ '--aspect': aspectOf(preview) }}
       >
         {state.status === 'ready' ? (
-          <img src={state.url} alt="" className="size-full object-cover" />
+          <>
+            <img
+              src={state.url}
+              alt=""
+              className={cn('size-full object-cover', coverClass(covered))}
+            />
+            {covered ? <ShowPill /> : null}
+          </>
         ) : (
           <span className="text-received-muted">
             <Spinner />
@@ -223,13 +268,18 @@ function VideoMedia({
   token,
   file,
   looped,
+  hidden,
 }: {
   token: string;
   file: InboxFile;
   /** A GIF: plays silently on a loop, without controls. */
   looped: boolean;
+  /** Its first frame is blurred until the first click, which only reveals it. */
+  hidden: boolean;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const covered = hidden && !revealed;
 
   const frame = useTelegramFile(token, file.preview, {
     wanted: !playing,
@@ -269,9 +319,16 @@ function VideoMedia({
     <span className="flex flex-col">
       <button
         type="button"
-        aria-label={looped ? 'Play GIF' : 'Play video'}
-        disabled={video.state.status === 'loading' || tooBig}
+        aria-label={`${covered ? 'Show' : 'Play'} ${looped ? 'GIF' : 'video'}`}
+        // A video too big to play can still be revealed.
+        disabled={!covered && (video.state.status === 'loading' || tooBig)}
         onClick={() => {
+          if (covered) {
+            setRevealed(true);
+
+            return;
+          }
+
           if (video.state.status === 'failed') video.retry();
 
           setPlaying(true);
@@ -283,10 +340,15 @@ function VideoMedia({
           <img
             src={frame.state.url}
             alt=""
-            className="absolute inset-0 size-full object-cover"
+            className={cn(
+              'absolute inset-0 size-full object-cover',
+              coverClass(covered)
+            )}
           />
         ) : null}
-        {tooBig ? null : (
+        {covered ? (
+          <ShowPill />
+        ) : tooBig ? null : (
           <span className="relative flex size-11 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm">
             {video.state.status === 'loading' ? (
               <Spinner />
@@ -511,9 +573,18 @@ export function ReceivedMedia({
   message: InboxEntry;
   file: InboxFile;
 }) {
+  const hidden = useStore(settingsStore).privacy.blurMedia;
+
   switch (message.media) {
     case 'photo':
-      return <PhotoMedia token={token} message={message} file={file} />;
+      return (
+        <PhotoMedia
+          token={token}
+          message={message}
+          file={file}
+          hidden={hidden}
+        />
+      );
     case 'video':
     case 'animation':
       return (
@@ -521,6 +592,7 @@ export function ReceivedMedia({
           token={token}
           file={file}
           looped={message.media === 'animation'}
+          hidden={hidden}
         />
       );
     case 'voice':

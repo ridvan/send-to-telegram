@@ -48,6 +48,7 @@ import {
   GeneralSection,
   HistorySection,
   MessagesSection,
+  PrivacySection,
   TagsSection,
 } from '@/components/settings/preferences';
 import {
@@ -400,6 +401,7 @@ function SettingsPanel() {
         <MessagesSection />
         <TagsSection />
         <HistorySection />
+        <PrivacySection />
         {/* Clearing storage empties the chats, so the popup shows setup. */}
         <GeneralSection onReset={() => undefined} />
         <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-2 pb-4 text-xs text-muted-foreground">

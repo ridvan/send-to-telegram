@@ -10,6 +10,7 @@ import {
   GeneralSection,
   HistorySection,
   MessagesSection,
+  PrivacySection,
   TagsSection,
 } from '@/components/settings/preferences';
 
@@ -75,6 +76,7 @@ export function Options() {
             <MessagesSection />
             <TagsSection />
             <HistorySection />
+            <PrivacySection />
             <GeneralSection onReset={restart} />
           </>
         )}
