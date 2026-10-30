@@ -1,7 +1,6 @@
 import {
   ArrowLeft01Icon,
   Attachment01Icon,
-  Link04Icon,
   Search01Icon,
   SentIcon,
   Settings01Icon,
@@ -64,7 +63,6 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Tooltip,
@@ -90,6 +88,7 @@ import {
   type Settings,
   settingsStore,
 } from '@/lib/settings';
+import { cn } from '@/lib/utils';
 
 import type { PageContext } from './page';
 
@@ -540,6 +539,15 @@ function Composer({
 
   const noMatches = term !== '' && matches.length === 0;
 
+  /** Kept as the choice for next time; settings turn it back on. */
+  function removePageLink() {
+    void settingsStore.update((current) => ({
+      ...current,
+      composer: { ...current.composer, attachPage: false },
+    }));
+    noteRef.current?.focus();
+  }
+
   /** A pasted screenshot or copied file goes with the message. */
   function onNotePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
     const file = event.clipboardData.files[0];
@@ -713,6 +721,7 @@ function Composer({
                       noteRef.current?.focus();
                     }
               }
+              onRemovePageLink={busy ? undefined : removePageLink}
             />
 
             {problem ? (
@@ -749,23 +758,16 @@ function Composer({
 
       <div
         inert={searching}
-        className="relative flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5 transition-opacity duration-150 inert:opacity-50"
+        className={cn(
+          'relative flex items-end gap-1 border-t py-2.5 pr-3 transition-opacity duration-150 inert:opacity-50',
+          // Icon buttons carry their own inset; the bare field needs one.
+          canAttach ? 'pl-1.5' : 'pl-2'
+        )}
       >
         {suggestions.list ? (
           <HashtagSuggestions
             {...suggestions.list}
             onManage={onOpenTagSettings}
-          />
-        ) : null}
-        {page.url ? (
-          <PageLinkToggle
-            pressed={attachPage}
-            onPressedChange={(pressed) =>
-              void settingsStore.update((current) => ({
-                ...current,
-                composer: { ...current.composer, attachPage: pressed },
-              }))
-            }
           />
         ) : null}
         {canAttach ? (
@@ -841,36 +843,6 @@ function AttachButton({
         }}
       />
     </>
-  );
-}
-
-/** Whether the page's link goes with the message; the choice is kept for next time. */
-function PageLinkToggle({
-  pressed,
-  onPressedChange,
-}: {
-  pressed: boolean;
-  onPressedChange: (pressed: boolean) => void;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Toggle
-            variant="accent"
-            size="icon"
-            aria-label="Attach page link"
-            pressed={pressed}
-            onPressedChange={onPressedChange}
-          />
-        }
-      >
-        <HugeiconsIcon icon={Link04Icon} strokeWidth={1.8} />
-      </TooltipTrigger>
-      <TooltipContent>
-        {pressed ? 'Page link attached' : 'Attach page link'}
-      </TooltipContent>
-    </Tooltip>
   );
 }
 

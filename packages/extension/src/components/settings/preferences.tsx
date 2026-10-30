@@ -4,6 +4,7 @@ import {
   Clock01Icon,
   ComputerIcon,
   Delete02Icon,
+  Globe02Icon,
   HashtagIcon,
   Image02Icon,
   KeyboardIcon,
@@ -113,10 +114,22 @@ const imageModes = {
 } satisfies Record<ImageMode, { label: string; description: string }>;
 
 export function MessagesSection() {
-  const { delivery } = useStore(settingsStore);
+  const { delivery, composer } = useStore(settingsStore);
 
   return (
     <SettingsSection id="messages" title="Messages">
+      <SwitchRow
+        icon={{ icon: Globe02Icon, tone: 'pink' }}
+        label="Attach the page link"
+        description="Sends the page’s link, or its “Open page” button, with your note."
+        checked={composer.attachPage}
+        onCheckedChange={(attachPage) =>
+          void update((settings) => ({
+            ...settings,
+            composer: { ...settings.composer, attachPage },
+          }))
+        }
+      />
       <SwitchRow
         icon={{ icon: NotificationOff01Icon, tone: 'orange' }}
         label="Send silently"

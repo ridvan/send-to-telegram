@@ -134,10 +134,12 @@ function LinkCard({
   url,
   title,
   favIconUrl,
+  onRemove,
 }: {
   url: string;
   title: string | undefined;
   favIconUrl: string | undefined;
+  onRemove: (() => void) | undefined;
 }) {
   const [iconFailed, setIconFailed] = useState(false);
 
@@ -158,6 +160,9 @@ function LinkCard({
           className="mt-0.5 size-8 shrink-0 rounded-sm object-contain"
           onError={() => setIconFailed(true)}
         />
+      ) : null}
+      {onRemove ? (
+        <RemoveButton label="Remove page link" onRemove={onRemove} />
       ) : null}
     </span>
   );
@@ -321,12 +326,18 @@ function SourceButton({ url, linked }: { url: string; linked: boolean }) {
   );
 }
 
-function RemoveButton({ onRemove }: { onRemove: () => void }) {
+function RemoveButton({
+  label = 'Remove file',
+  onRemove,
+}: {
+  label?: string;
+  onRemove: () => void;
+}) {
   return (
     <Button
       variant="service"
       size="icon-xs"
-      aria-label="Remove file"
+      aria-label={label}
       onClick={onRemove}
     >
       <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
@@ -454,6 +465,7 @@ function Bubble({
   empty,
   unsent = false,
   onRemoveAttachment,
+  onRemovePageLink,
   sentMedia,
 }: {
   message: MessageContent;
@@ -468,6 +480,8 @@ function Bubble({
   /** Outlined, to tell the message being written from those sent. */
   unsent?: boolean;
   onRemoveAttachment?: (() => void) | undefined;
+  /** Takes the page's link card off a draft. */
+  onRemovePageLink?: (() => void) | undefined;
   /** A file sent earlier, drawn from Telegram's copy in place of its name. */
   sentMedia?: { node: ReactNode; visual: boolean } | undefined;
 }) {
@@ -541,6 +555,7 @@ function Bubble({
               url={card.url}
               title={card.title}
               favIconUrl={favIconUrl}
+              onRemove={message.kind === 'page' ? onRemovePageLink : undefined}
             />
             {meta}
           </>
@@ -568,6 +583,7 @@ export function MessagePreview({
   standOut,
   attachment,
   onRemoveAttachment,
+  onRemovePageLink,
 }: {
   kind: 'page' | 'selection';
   pageUrl: string | undefined;
@@ -583,12 +599,15 @@ export function MessagePreview({
   attachment: AttachmentView | undefined;
   /** Left out while sending, when the file can no longer change. */
   onRemoveAttachment: (() => void) | undefined;
+  /** Left out while sending, like `onRemoveAttachment`. */
+  onRemovePageLink: (() => void) | undefined;
 }) {
   return (
     <figure aria-label="Preview" className={outgoing}>
       <Bubble
         message={{ kind, pageUrl, pageTitle, text, note, attachment }}
         onRemoveAttachment={onRemoveAttachment}
+        onRemovePageLink={onRemovePageLink}
         delivery={delivery}
         status={status}
         time={time}
