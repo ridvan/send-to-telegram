@@ -289,7 +289,15 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
       {/* One header for the chat, its search and selecting messages, so each
           swaps what's in it and nothing else. */}
       {view === 'settings' ? null : (
-        <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+        <header
+          className={cn(
+            // Edges on the chat's 12px gutter: icon buttons keep 8px around
+            // their glyph, so they get 4px; the search field and Delete are
+            // boxes that end at the gutter themselves.
+            'flex h-14 shrink-0 items-center gap-1 border-b pl-1',
+            view === 'search' || view === 'select' ? 'pr-3' : 'pr-1'
+          )}
+        >
           {view === 'search' ? (
             <ChatSearchField
               query={query}
@@ -327,7 +335,8 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
       )}
 
       {view === 'settings' ? (
-        <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+        // The back button's glyph on the chat's 12px gutter, as above.
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b px-1">
           <Button
             variant="ghost"
             size="icon"
@@ -874,8 +883,9 @@ function Composer({
         inert={browsing}
         className={cn(
           'relative flex items-end gap-1 border-t py-2.5 pr-3 transition-opacity duration-150 inert:opacity-50',
-          // Icon buttons carry their own inset; the bare field needs one.
-          canAttach ? 'pl-1.5' : 'pl-2'
+          // The first glyph or letter on the chat's 12px gutter: the attach
+          // button keeps 8px around its glyph, the bare field 4px.
+          canAttach ? 'pl-1' : 'pl-2'
         )}
       >
         {suggestions.list ? (
@@ -924,7 +934,9 @@ function AttachButton({
   const input = useRef<HTMLInputElement>(null);
 
   return (
-    <>
+    // As tall as the send button, so on a one-line note both glyphs share
+    // the line's centre.
+    <div className="flex h-9 shrink-0 items-center">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -956,7 +968,7 @@ function AttachButton({
           if (file) onPick(file);
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -1029,7 +1041,8 @@ function ChatPicker({
 
   if (destinations.length === 1) {
     return (
-      <div className="group/name flex min-w-0 flex-1 items-center gap-2.5 px-1.5">
+      // 8px in from the header's 4px, the avatar on the chat's 12px gutter.
+      <div className="group/name flex min-w-0 flex-1 items-center gap-2.5 px-2">
         <ChatAvatar
           name={destinationName(current)}
           seed={avatarSeed(current)}
