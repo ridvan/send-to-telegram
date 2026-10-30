@@ -1,23 +1,11 @@
-import { ViewIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
-
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useStore } from '@/hooks/use-store';
 import { settingsStore } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
-function useChatNamesShown() {
-  return useStore(settingsStore).appearance.showChatNames;
-}
-
 /**
- * A chat's name, blurred until revealed so it doesn't show on a shared screen.
- * The choice is remembered and applies on every page.
+ * A chat's name, blurred when the person asks so it doesn't show on a shared
+ * screen. Hovering it, or a `group/name` around it, reveals it; the delay keeps
+ * a passing cursor from flashing it, and keyboard focus reveals it at once.
  */
 export function ChatName({
   name,
@@ -26,54 +14,18 @@ export function ChatName({
   name: string;
   className?: string;
 }) {
-  const shown = useChatNamesShown();
+  const shown = useStore(settingsStore).appearance.showChatNames;
 
   return (
     <span
       className={cn(
         'transition duration-200 ease-out motion-reduce:transition-none',
-        !shown && 'blur-xs select-none',
+        !shown &&
+          'blur-xs select-none hover:blur-none hover:delay-300 group-hover/name:blur-none group-hover/name:delay-300 group-focus-visible/name:blur-none group-focus-visible/name:delay-0',
         className
       )}
     >
       {name}
     </span>
-  );
-}
-
-/** Shows or blurs chat names everywhere `ChatName` is used. */
-export function ChatNameToggle({
-  size = 'icon',
-}: {
-  size?: 'icon' | 'icon-xs';
-}) {
-  const shown = useChatNamesShown();
-  const label = shown ? 'Hide chat name' : 'Show chat name';
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            variant="ghost"
-            size={size}
-            tone="muted"
-            aria-label={label}
-            onClick={() =>
-              void settingsStore.update((settings) => ({
-                ...settings,
-                appearance: { ...settings.appearance, showChatNames: !shown },
-              }))
-            }
-          />
-        }
-      >
-        <HugeiconsIcon
-          icon={shown ? ViewOffSlashIcon : ViewIcon}
-          strokeWidth={1.8}
-        />
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
   );
 }

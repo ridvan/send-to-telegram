@@ -30,7 +30,7 @@ import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
 import { SelectionBar } from '@/components/chat-selection';
-import { ChatName, ChatNameToggle } from '@/components/chat-name';
+import { ChatName } from '@/components/chat-name';
 import {
   ChatSearchField,
   MatchCount,
@@ -308,7 +308,6 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
                 value={destinationId}
                 onChange={setDestinationId}
               />
-              {settings.destinations.length > 0 ? <ChatNameToggle /> : null}
               {chatShown ? (
                 <HeaderButton
                   label="Search"
@@ -1032,7 +1031,7 @@ function ChatPicker({
 
   if (destinations.length === 1) {
     return (
-      <div className="flex min-w-0 flex-1 items-center gap-2.5 px-1.5">
+      <div className="group/name flex min-w-0 flex-1 items-center gap-2.5 px-1.5">
         <ChatAvatar
           name={destinationName(current)}
           seed={avatarSeed(current)}

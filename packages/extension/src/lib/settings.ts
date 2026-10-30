@@ -93,8 +93,8 @@ export const settingsSchema = z.object({
   appearance: z
     .object({
       theme: themeSchema.default('system'),
-      /** Chat names are blurred until revealed, for screen sharing and onlookers. */
-      showChatNames: z.boolean().default(false),
+      /** Off blurs chat names until hovered, for screen sharing and onlookers. */
+      showChatNames: z.boolean().default(true),
     })
     .prefault({}),
 });

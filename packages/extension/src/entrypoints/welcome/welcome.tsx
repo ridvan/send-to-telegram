@@ -15,7 +15,7 @@ import { browser } from 'wxt/browser';
 
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
-import { ChatName, ChatNameToggle } from '@/components/chat-name';
+import { ChatName } from '@/components/chat-name';
 import { ConnectFlow } from '@/components/connect/connect-flow';
 import { IconTile, type TileTone } from '@/components/icon-tile';
 import { useShortcuts } from '@/components/shortcuts';
@@ -175,8 +175,7 @@ function Ready({ chat }: { chat: string }) {
       title="You’re all set"
       description={
         <>
-          Messages go to <ChatName name={chat} />.{' '}
-          <ChatNameToggle size="icon-xs" />
+          Messages go to <ChatName name={chat} />.
         </>
       }
     >
@@ -250,7 +249,7 @@ function Upgraded() {
           {destination ? (
             <>
               <dt className="text-muted-foreground">Chat</dt>
-              <dd className="flex min-w-0 items-center gap-2">
+              <dd className="group/name flex min-w-0 items-center gap-2">
                 <ChatAvatar
                   name={destinationName(destination)}
                   seed={avatarSeed(destination)}
@@ -260,7 +259,6 @@ function Upgraded() {
                   name={destinationName(destination)}
                   className="truncate"
                 />
-                <ChatNameToggle size="icon-xs" />
               </dd>
             </>
           ) : null}
