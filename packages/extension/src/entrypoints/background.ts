@@ -2,7 +2,12 @@ import { browser } from 'wxt/browser';
 
 import { migrateStoredLegacyData } from '@/lib/legacy';
 import { parseMenuId, rebuildMenus } from '@/lib/menus';
-import { clearFailureBadge, send, sendRequestSchema } from '@/lib/send';
+import {
+  clearFailureBadge,
+  pruneUnsentFiles,
+  send,
+  sendRequestSchema,
+} from '@/lib/send';
 import { settingsStore } from '@/lib/settings';
 import { activeTab, pageUrlOf, readSelection } from '@/lib/tabs';
 
@@ -32,6 +37,7 @@ export default defineBackground({
     browser.runtime.onStartup.addListener(async () => {
       await migrateStoredLegacyData(undefined);
       await refreshMenus();
+      await pruneUnsentFiles();
     });
 
     settingsStore.subscribe((settings) => void rebuildMenus(settings));

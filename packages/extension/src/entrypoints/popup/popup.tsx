@@ -1,5 +1,6 @@
 import {
   ArrowLeft01Icon,
+  Attachment01Icon,
   HashtagIcon,
   Link04Icon,
   Search01Icon,
@@ -16,6 +17,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
@@ -73,9 +76,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAttachment } from '@/hooks/use-attachment';
 import { useChatItems } from '@/hooks/use-chat-items';
 import { useInbox } from '@/hooks/use-inbox';
 import { useStore } from '@/hooks/use-store';
+import { saveAttachment } from '@/lib/attachments';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
 import { plural } from '@/lib/format';
 import type { Draft } from '@/lib/compose';
@@ -427,7 +432,7 @@ function Composer({
   search: ChatSearch | undefined;
 }) {
   const noteId = useId();
-  const [time] = useState(() => Date.now());
+  const [time, setTime] = useState(() => Date.now());
 
   const [mode, setMode] = useState<'page' | 'selection'>(
     page.selection ? 'selection' : 'page'
@@ -446,6 +451,20 @@ function Composer({
     (item) => item.id === destinationId
   );
 
+  const { attached, problem, attach, remove, refuse } = useAttachment();
+  const [dropping, setDropping] = useState(false);
+  // The relay takes JSON, so files go only to chats with your own bot.
+  const canAttach = destination?.kind === 'bot';
+
+  function attachOrRefuse(file: File) {
+    if (canAttach) attach(file);
+    else {
+      refuse(
+        'Files go only to chats connected with your own bot. Switch to one of those chats to attach it.'
+      );
+    }
+  }
+
   useInbox(
     destination,
     !page.incognito &&
@@ -463,17 +482,44 @@ function Composer({
       ...(mode === 'selection' && page.selection && { text: page.selection }),
       ...(note.trim() && { note }),
       ...(tag && { tag }),
+      ...(attached && { attachment: attached.info }),
       ...(destinationId && { destinationId }),
     };
 
     setPhase({ name: 'sending' });
     setFirstSendAt((current) => current ?? Date.now());
+    refuse(undefined);
+
+    if (attached) {
+      try {
+        await saveAttachment(attached.info.id, attached.file);
+      } catch (cause) {
+        console.error('Could not keep the file for sending', cause);
+        setPhase({
+          name: 'failed',
+          message: 'Couldn’t get the file ready to send. Try again.',
+          canSetUp: false,
+        });
+
+        return;
+      }
+    }
 
     const outcome = await requestSend(draft, { incognito: page.incognito });
 
     if (outcome.ok) {
       setPhase({ name: 'sent', destination: outcome.destination });
-      setTimeout(close, 1000);
+      // The draft shows its tick, then takes its place in the chat, and the
+      // field clears for the next message, as in Telegram.
+      setTimeout(() => {
+        setNote('');
+        setTag(undefined);
+        remove();
+        setTime(Date.now());
+        setFirstSendAt(undefined);
+        setPhase({ name: 'idle' });
+        noteRef.current?.focus();
+      }, 1000);
 
       return;
     }
@@ -501,6 +547,47 @@ function Composer({
 
   const noMatches = term !== '' && matches.length === 0;
 
+  /** A pasted screenshot or copied file goes with the message. */
+  function onNotePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const file = event.clipboardData.files[0];
+
+    if (!file || busy) return;
+
+    event.preventDefault();
+    attachOrRefuse(file);
+  }
+
+  /** Files dropped anywhere on the chat; the popup never opens them itself. */
+  function onDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = busy || searching ? 'none' : 'copy';
+    setDropping(!busy && !searching);
+  }
+
+  function onDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+
+    setDropping(false);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return;
+
+    event.preventDefault();
+    setDropping(false);
+
+    const file = event.dataTransfer.files[0];
+
+    if (file && !busy && !searching) attachOrRefuse(file);
+  }
+
   /** Enter sends, as in Telegram; Shift+Enter starts a new line. */
   function onNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (
@@ -514,7 +601,20 @@ function Composer({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="relative flex h-full flex-col"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dropping ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-brand/60 bg-background/85 text-sm font-medium text-brand backdrop-blur-sm"
+        >
+          {canAttach ? 'Drop to attach' : 'Files go only to your own bot'}
+        </div>
+      ) : null}
       {/* Reversed around a single child, so it opens scrolled to the newest
           message and stays there as the draft grows. Keyed so another chat
           opens at its newest message too. */}
@@ -601,7 +701,23 @@ function Composer({
               status={statusOf[phase.name]}
               time={time}
               standOut={earlier.length > 0}
+              attachment={attached && { ...attached.info, url: attached.url }}
+              onRemoveAttachment={
+                busy
+                  ? undefined
+                  : () => {
+                      remove();
+                      noteRef.current?.focus();
+                    }
+              }
             />
+
+            {problem ? (
+              <Alert variant="destructive">
+                <AlertTitle>Can’t attach this file</AlertTitle>
+                <AlertDescription>{problem}</AlertDescription>
+              </Alert>
+            ) : null}
 
             {phase.name === 'failed' ? (
               <Alert variant="destructive">
@@ -643,6 +759,9 @@ function Composer({
             }
           />
         ) : null}
+        {canAttach ? (
+          <AttachButton disabled={busy} onPick={attachOrRefuse} />
+        ) : null}
         {tags.length > 0 ? (
           <TagPicker
             tags={tags}
@@ -664,6 +783,7 @@ function Composer({
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onKeyDown={onNoteKeyDown}
+          onPaste={onNotePaste}
           readOnly={busy}
           placeholder="Add a note"
           rows={1}
@@ -672,6 +792,53 @@ function Composer({
         <SendButton phase={phase} onSend={() => void send()} />
       </div>
     </div>
+  );
+}
+
+/** Opens the file picker; pasting or dropping a file does the same. */
+function AttachButton({
+  disabled,
+  onPick,
+}: {
+  disabled: boolean;
+  onPick: (file: File) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              tone="muted"
+              aria-label="Attach a file"
+              disabled={disabled}
+              onClick={() => input.current?.click()}
+            />
+          }
+        >
+          <HugeiconsIcon icon={Attachment01Icon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>Attach a file</TooltipContent>
+      </Tooltip>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+
+          // Cleared, so picking the same file again still counts.
+          event.target.value = '';
+
+          if (file) onPick(file);
+        }}
+      />
+    </>
   );
 }
 

@@ -36,6 +36,10 @@ export const failureCopy = {
     'The bot can’t post to this chat. Open the chat in Telegram and press Start, or add the bot back to the group.',
   rate_limited: 'Telegram is limiting messages. Try again in a few seconds.',
   network: 'Couldn’t reach Telegram. Check your connection and try again.',
+  relay_attachment:
+    'Files go only to chats connected with your own bot. Pick one of those chats, or remove the file.',
+  attachment_missing:
+    'The file is no longer saved. Attach it again from the popup.',
 } as const;
 
 function telegramFailure(error: TelegramError): SendFailure {

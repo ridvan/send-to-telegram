@@ -113,50 +113,6 @@ export const contentKindSchema = z.enum(['selection', 'link', 'image', 'page']);
 
 export type ContentKind = z.infer<typeof contentKindSchema>;
 
-export const historyEntrySchema = z.object({
-  id: z.string(),
-  sentAt: z.number(),
-  kind: contentKindSchema,
-  status: z.enum(['sent', 'failed']),
-  destinationId: z.string().optional(),
-  /** Kept so entries still read well after a destination is removed. */
-  destinationName: z.string().optional(),
-  tag: z.string().optional(),
-  via: deliveredViaSchema.optional(),
-  error: z.string().optional(),
-  /** Present only when history is set to keep content. */
-  content: z
-    .object({
-      text: z.string().optional(),
-      url: z.string().optional(),
-      note: z.string().optional(),
-      pageUrl: z.string().optional(),
-      pageTitle: z.string().optional(),
-    })
-    .optional(),
-});
-
-export type HistoryEntry = z.infer<typeof historyEntrySchema>;
-
-export const MAX_HISTORY = 1000;
-
-/** Drops unreadable entries one by one instead of losing the whole list. */
-function listOf<S extends z.ZodType>(entrySchema: S) {
-  return z.array(z.json()).transform((entries) =>
-    entries.flatMap((entry) => {
-      const parsed = entrySchema.safeParse(entry);
-
-      return parsed.success ? [parsed.data] : [];
-    })
-  );
-}
-
-export const historyStore = defineStore(
-  'history',
-  listOf(historyEntrySchema),
-  () => []
-);
-
 /** A picture Telegram sent with a message, in one size. */
 const inboxPictureSchema = z.object({
   id: z.string(),
@@ -185,6 +141,75 @@ const inboxFileSchema = inboxPictureSchema.extend({
 
 export type InboxFile = z.infer<typeof inboxFileSchema>;
 
+export const mediaKindSchema = z.enum([
+  'photo',
+  'video',
+  'animation',
+  'voice',
+  'audio',
+  'file',
+]);
+
+/** A file sent from the popup. Its bytes live in IndexedDB, under `id`. */
+export const attachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** The MIME type, empty when the browser doesn't know it. */
+  type: z.string(),
+  size: z.number(),
+});
+
+export type Attachment = z.infer<typeof attachmentSchema>;
+
+export const historyEntrySchema = z.object({
+  id: z.string(),
+  sentAt: z.number(),
+  kind: contentKindSchema,
+  status: z.enum(['sent', 'failed']),
+  destinationId: z.string().optional(),
+  /** Kept so entries still read well after a destination is removed. */
+  destinationName: z.string().optional(),
+  tag: z.string().optional(),
+  via: deliveredViaSchema.optional(),
+  error: z.string().optional(),
+  /** Present only when history is set to keep content. */
+  content: z
+    .object({
+      text: z.string().optional(),
+      url: z.string().optional(),
+      note: z.string().optional(),
+      pageUrl: z.string().optional(),
+      pageTitle: z.string().optional(),
+      attachment: attachmentSchema.optional(),
+      /** The attachment as Telegram keeps it, so the chat can show it again. */
+      sentMedia: z
+        .object({ media: mediaKindSchema, file: inboxFileSchema })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type HistoryEntry = z.infer<typeof historyEntrySchema>;
+
+export const MAX_HISTORY = 1000;
+
+/** Drops unreadable entries one by one instead of losing the whole list. */
+function listOf<S extends z.ZodType>(entrySchema: S) {
+  return z.array(z.json()).transform((entries) =>
+    entries.flatMap((entry) => {
+      const parsed = entrySchema.safeParse(entry);
+
+      return parsed.success ? [parsed.data] : [];
+    })
+  );
+}
+
+export const historyStore = defineStore(
+  'history',
+  listOf(historyEntrySchema),
+  () => []
+);
+
 /** A message someone sent to your own bot in a chat, shown in the popup. */
 export const inboxEntrySchema = z.object({
   /** `chatId:messageId`, which Telegram keeps unique. */
@@ -199,9 +224,7 @@ export const inboxEntrySchema = z.object({
   links: z
     .array(z.object({ offset: z.number(), length: z.number(), url: z.url() }))
     .optional(),
-  media: z
-    .enum(['photo', 'video', 'animation', 'voice', 'audio', 'file'])
-    .optional(),
+  media: mediaKindSchema.optional(),
   fileName: z.string().optional(),
   /** Absent for messages kept before media could be shown. */
   file: inboxFileSchema.optional(),

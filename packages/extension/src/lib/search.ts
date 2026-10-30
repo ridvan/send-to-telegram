@@ -13,6 +13,7 @@ export function sentText(entry: HistoryEntry): string {
     content?.url,
     content?.pageUrl,
     content?.pageTitle,
+    content?.attachment?.name,
     entry.tag && `#${entry.tag}`,
     entry.destinationName,
   ]

@@ -177,11 +177,19 @@ export function entryTitle(entry: HistoryEntry): string {
 
   switch (entry.kind) {
     case 'selection':
-      return content.text ?? content.note ?? kindLabel.selection;
+      return (
+        content.text ??
+        content.note ??
+        content.attachment?.name ??
+        kindLabel.selection
+      );
     case 'page':
       return (
         content.pageTitle ??
-        (content.pageUrl ? displayUrl(content.pageUrl) : kindLabel.page)
+        (content.pageUrl ? displayUrl(content.pageUrl) : undefined) ??
+        content.note ??
+        content.attachment?.name ??
+        kindLabel.page
       );
     case 'link':
     case 'image':

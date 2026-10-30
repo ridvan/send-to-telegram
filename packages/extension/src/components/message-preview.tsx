@@ -1,6 +1,7 @@
 import {
   AlertCircleIcon,
   ArrowUpRight01Icon,
+  Cancel01Icon,
   Clock01Icon,
   File01Icon,
   Image02Icon,
@@ -11,10 +12,19 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useState, type ReactNode } from 'react';
 
+import { IconTile } from '@/components/icon-tile';
 import { ReceivedMedia } from '@/components/received-media';
-import { isHttpUrl } from '@/lib/compose';
-import { displayUrl, formatClock, hostname, kindLabel } from '@/lib/format';
+import { Button } from '@/components/ui/button';
+import { isHttpUrl, sendsAsPhoto } from '@/lib/compose';
+import {
+  displayUrl,
+  formatBytes,
+  formatClock,
+  hostname,
+  kindLabel,
+} from '@/lib/format';
 import type {
+  Attachment,
   ContentKind,
   HistoryEntry,
   InboxEntry,
@@ -45,6 +55,7 @@ function Meta({
   time,
   inline,
   live,
+  onPhoto = false,
 }: {
   status: MessageStatus | 'received';
   time: number;
@@ -52,13 +63,20 @@ function Meta({
   inline: boolean;
   /** Pops a new status icon in; earlier messages draw theirs still. */
   live: boolean;
+  /** Sits on a photo with no caption, in a dark pill, as Telegram draws it. */
+  onPhoto?: boolean;
 }) {
   return (
     <span
       className={cn(
         'flex items-center gap-1 text-xs leading-5 tabular-nums select-none',
-        inline ? 'relative top-1.5 float-right ml-3' : 'justify-end pt-1',
-        status === 'received' ? 'text-received-muted' : 'text-bubble-muted'
+        onPhoto
+          ? 'pointer-events-none absolute right-1.5 bottom-1.5 rounded-full bg-black/45 px-1.5 text-white'
+          : inline
+            ? 'relative top-1.5 float-right ml-3'
+            : 'justify-end pt-1',
+        !onPhoto &&
+          (status === 'received' ? 'text-received-muted' : 'text-bubble-muted')
       )}
     >
       {formatClock(time)}
@@ -73,7 +91,7 @@ function Meta({
             className={cn(
               'size-3.5',
               status === 'failed' && 'text-destructive',
-              status === 'sent' && 'text-bubble-accent',
+              status === 'sent' && !onPhoto && 'text-bubble-accent',
               live && status !== 'sending' && 'animate-pop'
             )}
           />
@@ -158,6 +176,12 @@ type MessageContent = {
   pageUrl?: string | undefined;
   pageTitle?: string | undefined;
   tag?: string | undefined;
+  attachment?: AttachmentView | undefined;
+};
+
+/** An attached file; `url` shows its contents while it's still on this device. */
+export type AttachmentView = Pick<Attachment, 'name' | 'type' | 'size'> & {
+  url?: string | undefined;
 };
 
 type Block = { key: string; content: ReactNode };
@@ -173,6 +197,8 @@ function messageParts(
 ) {
   const { kind, pageUrl, pageTitle, tag } = message;
   const note = message.note?.trim();
+  // A caption under a file has no link preview, so the title goes in the text.
+  const withTitle = !delivery.linkPreview || message.attachment !== undefined;
   const blocks: Block[] = [];
 
   if (note) blocks.push({ key: 'note', content: note });
@@ -224,7 +250,7 @@ function messageParts(
     blocks.push({
       key: 'url',
       content:
-        delivery.linkPreview || !pageTitle ? (
+        !withTitle || !pageTitle ? (
           url
         ) : (
           <>
@@ -242,7 +268,7 @@ function messageParts(
     kind === 'page' ? pageUrl : kind === 'link' ? message.url : undefined;
 
   const card =
-    delivery.linkPreview && isHttpUrl(cardUrl)
+    !withTitle && isHttpUrl(cardUrl)
       ? { url: cardUrl, title: kind === 'page' ? pageTitle : undefined }
       : undefined;
 
@@ -287,6 +313,127 @@ function SourceButton({ url, linked }: { url: string; linked: boolean }) {
   );
 }
 
+function RemoveButton({ onRemove }: { onRemove: () => void }) {
+  return (
+    <Button
+      variant="service"
+      size="icon-xs"
+      aria-label="Remove file"
+      onClick={onRemove}
+    >
+      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+    </Button>
+  );
+}
+
+/**
+ * Photos and videos fill the bubble's width, as Telegram shows them. With no
+ * caption, the time sits on the picture.
+ */
+function MediaFrame({
+  children,
+  meta,
+}: {
+  children: ReactNode;
+  meta: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        'relative -mx-3 -mt-1.5 block min-w-64 bg-bubble-muted/10',
+        meta ? '-mb-1.5' : 'mb-1.5'
+      )}
+    >
+      {children}
+      {meta}
+    </span>
+  );
+}
+
+function AttachedPhoto({
+  url,
+  name,
+  onRemove,
+}: {
+  url: string;
+  name: string;
+  onRemove: (() => void) | undefined;
+}) {
+  return (
+    <>
+      <img
+        src={url}
+        alt={name}
+        className="block max-h-80 w-full object-cover"
+      />
+      {onRemove ? (
+        <span className="absolute top-1.5 right-1.5">
+          <RemoveButton onRemove={onRemove} />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** Media kinds that fill the bubble rather than sit inside it. */
+const visualMedia = new Set(['photo', 'video', 'animation']);
+
+/** A file sent earlier, downloaded from Telegram as received media is. */
+function SentMedia({
+  entry,
+  sent,
+  token,
+}: {
+  entry: HistoryEntry;
+  sent: NonNullable<NonNullable<HistoryEntry['content']>['sentMedia']>;
+  token: string;
+}) {
+  const name = entry.content?.attachment?.name;
+
+  const message: InboxEntry = {
+    id: entry.id,
+    destinationId: entry.destinationId ?? '',
+    receivedAt: entry.sentAt,
+    media: sent.media,
+    file: sent.file,
+    ...(name && { fileName: name }),
+  };
+
+  return <ReceivedMedia token={token} message={message} file={sent.file} />;
+}
+
+/** Any other file: a thumbnail or icon, its name and size. */
+function AttachedFile({
+  attachment,
+  onRemove,
+}: {
+  attachment: AttachmentView;
+  onRemove: (() => void) | undefined;
+}) {
+  const image = attachment.type.startsWith('image/');
+
+  return (
+    <span className="flex items-center gap-2.5 py-1">
+      {image && attachment.url ? (
+        <img
+          src={attachment.url}
+          alt=""
+          className="size-8 shrink-0 rounded-lg object-cover"
+        />
+      ) : (
+        <IconTile icon={image ? Image02Icon : File01Icon} tone="blue" />
+      )}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium">{attachment.name}</span>
+        <span className="text-xs text-bubble-muted tabular-nums">
+          {formatBytes(attachment.size)}
+        </span>
+      </span>
+      {onRemove ? <RemoveButton onRemove={onRemove} /> : null}
+    </span>
+  );
+}
+
 /** One outgoing bubble with its optional link card and source button. */
 function Bubble({
   message,
@@ -298,6 +445,8 @@ function Bubble({
   favIconUrl,
   empty,
   unsent = false,
+  onRemoveAttachment,
+  sentMedia,
 }: {
   message: MessageContent;
   delivery: Settings['delivery'];
@@ -310,8 +459,24 @@ function Bubble({
   empty: ReactNode;
   /** Outlined, to tell the message being written from those sent. */
   unsent?: boolean;
+  onRemoveAttachment?: (() => void) | undefined;
+  /** A file sent earlier, drawn from Telegram's copy in place of its name. */
+  sentMedia?: { node: ReactNode; visual: boolean } | undefined;
 }) {
   const { blocks, card, sourceUrl } = messageParts(message, delivery, linked);
+  const { attachment } = message;
+
+  const photoUrl =
+    attachment?.url && sendsAsPhoto(attachment, delivery.imageMode)
+      ? attachment.url
+      : undefined;
+
+  const framed = photoUrl !== undefined || sentMedia?.visual === true;
+
+  const photoMeta =
+    framed && blocks.length === 0 ? (
+      <Meta status={status} time={time} inline={false} live={live} onPhoto />
+    ) : null;
 
   // Telegram draws the time after the last line of text, or under the card.
   const meta = <Meta status={status} time={time} inline={!card} live={live} />;
@@ -321,11 +486,33 @@ function Bubble({
       <div
         className={cn(
           'rounded-2xl rounded-br-sm bg-bubble px-3 pt-1.5 pb-1.5 text-sm text-bubble-foreground shadow-xs',
+          framed && 'overflow-hidden',
           unsent &&
             'outline-1 outline-offset-2 outline-bubble-accent/50 outline-dashed'
         )}
       >
-        {blocks.length === 0 ? (
+        {sentMedia?.visual ? (
+          <MediaFrame meta={photoMeta}>{sentMedia.node}</MediaFrame>
+        ) : null}
+        {sentMedia && !sentMedia.visual ? (
+          <div className="py-1">{sentMedia.node}</div>
+        ) : null}
+        {attachment && photoUrl && !sentMedia ? (
+          <MediaFrame meta={photoMeta}>
+            <AttachedPhoto
+              url={photoUrl}
+              name={attachment.name}
+              onRemove={onRemoveAttachment}
+            />
+          </MediaFrame>
+        ) : null}
+        {attachment && !photoUrl && !sentMedia ? (
+          <AttachedFile attachment={attachment} onRemove={onRemoveAttachment} />
+        ) : null}
+        {blocks.length === 0 && attachment && !framed ? (
+          <Meta status={status} time={time} inline={false} live={live} />
+        ) : null}
+        {blocks.length === 0 && !attachment ? (
           <p className="text-bubble-muted">
             {empty}
             {meta}
@@ -372,6 +559,8 @@ export function MessagePreview({
   status,
   time,
   standOut,
+  attachment,
+  onRemoveAttachment,
 }: {
   kind: 'page' | 'selection';
   pageUrl: string | undefined;
@@ -385,11 +574,15 @@ export function MessagePreview({
   time: number;
   /** Earlier messages show above, so mark this one as not sent yet. */
   standOut: boolean;
+  attachment: AttachmentView | undefined;
+  /** Left out while sending, when the file can no longer change. */
+  onRemoveAttachment: (() => void) | undefined;
 }) {
   return (
     <figure aria-label="Preview" className={outgoing}>
       <Bubble
-        message={{ kind, pageUrl, pageTitle, text, note, tag }}
+        message={{ kind, pageUrl, pageTitle, text, note, tag, attachment }}
+        onRemoveAttachment={onRemoveAttachment}
         delivery={delivery}
         status={status}
         time={time}
@@ -427,22 +620,35 @@ function PickButton({ pick }: { pick: MessagePick }) {
 export function SentMessage({
   entry,
   delivery,
+  token,
   footer,
   id,
   pick,
 }: {
   entry: HistoryEntry;
   delivery: Settings['delivery'];
+  /** The bot's, to show a file it sent; absent for relay chats. */
+  token?: string | undefined;
   /** Under the bubble, such as a way to send a failed message again. */
   footer?: ReactNode;
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
 }) {
+  const sent = entry.content?.sentMedia;
+
   const body = (
     <>
       <Bubble
         message={{ kind: entry.kind, tag: entry.tag, ...entry.content }}
+        sentMedia={
+          sent && token
+            ? {
+                node: <SentMedia entry={entry} sent={sent} token={token} />,
+                visual: visualMedia.has(sent.media),
+              }
+            : undefined
+        }
         delivery={delivery}
         status={entry.status}
         time={entry.sentAt}

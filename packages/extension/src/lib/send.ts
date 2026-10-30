@@ -2,17 +2,30 @@ import {
   createBotClient,
   deliver,
   type Delivery,
+  type OutgoingMessage,
+  Upload,
 } from '@send-to-telegram/core';
 import { browser } from 'wxt/browser';
 import { z } from 'zod';
 
-import { compose, type Draft, draftSchema } from './compose.ts';
+import {
+  deleteAttachment,
+  loadAttachment,
+  pruneAttachments,
+} from './attachments.ts';
+import {
+  compose,
+  type ComposedUpload,
+  type Draft,
+  draftSchema,
+} from './compose.ts';
 import {
   failureCopy,
   failureReasonSchema,
   SendFailure,
   toSendFailure,
 } from './failure.ts';
+import { attachmentOf } from './inbox.ts';
 import { relaySend } from './relay.ts';
 import {
   type Destination,
@@ -47,10 +60,30 @@ export const sendOutcomeSchema = z.discriminatedUnion('ok', [
 
 export type SendOutcome = z.infer<typeof sendOutcomeSchema>;
 
-export function transmit(
+export async function transmit(
   destination: Destination,
-  message: ReturnType<typeof compose>
+  message: OutgoingMessage | ComposedUpload
 ): Promise<Delivery> {
+  if ('attachment' in message) {
+    // The relay takes JSON, so files go only to chats with your own bot.
+    if (destination.kind === 'relay') {
+      throw new SendFailure('unsendable', failureCopy.relay_attachment);
+    }
+
+    const blob = await loadAttachment(message.attachment.id);
+
+    if (!blob) {
+      throw new SendFailure('unsendable', failureCopy.attachment_missing);
+    }
+
+    const { attachment, ...rest } = message;
+
+    return deliver(createBotClient(destination.token), destination.chatId, {
+      ...rest,
+      upload: new Upload(blob, attachment.name),
+    });
+  }
+
   if (destination.kind === 'relay') {
     return relaySend(destination.relayUrl, destination.deviceToken, message);
   }
@@ -84,6 +117,12 @@ function historyEntry(
   }
 ): HistoryEntry {
   const keepContent = settings.history.mode === 'full';
+  const sent = result.delivery?.sent && attachmentOf(result.delivery.sent);
+
+  const sentMedia =
+    sent?.media && sent.file
+      ? { media: sent.media, file: sent.file }
+      : undefined;
 
   return {
     id: crypto.randomUUID(),
@@ -104,6 +143,8 @@ function historyEntry(
         ...(draft.note && { note: draft.note }),
         ...(draft.pageUrl && { pageUrl: draft.pageUrl }),
         ...(draft.pageTitle && { pageTitle: draft.pageTitle }),
+        ...(draft.attachment && { attachment: draft.attachment }),
+        ...(sentMedia && { sentMedia }),
       },
     }),
   };
@@ -116,6 +157,19 @@ function record(entry: HistoryEntry, replaces: string | undefined) {
       MAX_HISTORY
     )
   );
+}
+
+/** Keeps the files that failed messages in history could send again. */
+export async function pruneUnsentFiles() {
+  const history = await historyStore.get();
+
+  const retryable = history.flatMap((entry) =>
+    entry.status === 'failed' && entry.content?.attachment
+      ? [entry.content.attachment.id]
+      : []
+  );
+
+  await pruneAttachments(new Set(retryable));
 }
 
 const action = browser.action ?? browser.browserAction;
@@ -169,12 +223,23 @@ export async function send(request: SendRequest): Promise<SendOutcome> {
       await record(entry, request.retryOf);
     }
 
+    if (draft.attachment) await deleteAttachment(draft.attachment.id);
+
+    void pruneUnsentFiles().catch((cause: unknown) => {
+      console.error('Could not clear unsent files', cause);
+    });
+
     return { ok: true, destination: destinationName(destination) };
   } catch (cause) {
     const failure = toSendFailure(cause);
 
     console.error('Send failed', cause);
     await showBadge(false);
+
+    // Nothing in history can send it again, and private windows leave no trace.
+    if (draft.attachment && !remember) {
+      await deleteAttachment(draft.attachment.id);
+    }
 
     if (remember) {
       const entry = historyEntry(draft, settings, {

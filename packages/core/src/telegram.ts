@@ -6,6 +6,10 @@ export const TELEGRAM_API_ORIGIN = 'https://api.telegram.org';
 export const TEXT_LIMIT = 4096;
 export const CAPTION_LIMIT = 1024;
 
+/** The largest files a bot may upload: photos, and anything sent as a file. */
+export const PHOTO_UPLOAD_LIMIT = 10 * 1024 * 1024;
+export const UPLOAD_LIMIT = 50 * 1024 * 1024;
+
 export const chatIdSchema = z.union([
   z.number().int(),
   z
@@ -164,8 +168,9 @@ const resultSchemas = {
   getUpdates: z.array(updateSchema),
   getWebhookInfo: webhookInfoSchema,
   sendMessage: sentMessageSchema,
-  sendPhoto: sentMessageSchema,
-  sendDocument: sentMessageSchema,
+  // The whole message, so an uploaded file can be downloaded again.
+  sendPhoto: incomingMessageSchema,
+  sendDocument: incomingMessageSchema,
   editMessageText: z.union([sentMessageSchema, z.literal(true)]),
   answerCallbackQuery: z.literal(true),
   setWebhook: z.literal(true),
@@ -182,6 +187,53 @@ type DeliveryOptions = {
   reply_markup?: InlineKeyboard;
 };
 
+/** A URL Telegram fetches, or a file uploaded with the request. */
+export type InputFile = string | Upload;
+
+/** A file sent with the request itself, under its own name. */
+export class Upload {
+  readonly blob: Blob;
+  readonly fileName: string;
+
+  constructor(blob: Blob, fileName: string) {
+    this.blob = blob;
+    this.fileName = fileName;
+  }
+}
+
+/**
+ * JSON, unless a parameter is a file: then multipart, with strings as they
+ * are and everything else, such as `reply_markup`, as JSON. The browser sets
+ * the multipart boundary, so no Content-Type here.
+ */
+function requestBody(params: MethodParams[BotMethod]): RequestInit {
+  const entries = Object.entries(params ?? {});
+
+  if (!entries.some(([, value]) => value instanceof Upload)) {
+    return {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params ?? {}),
+    };
+  }
+
+  const form = new FormData();
+
+  for (const [name, value] of entries) {
+    if (value === undefined) continue;
+
+    if (value instanceof Upload) {
+      form.append(name, value.blob, value.fileName);
+      continue;
+    }
+
+    const text = z.string().safeParse(value);
+
+    form.append(name, text.success ? text.data : JSON.stringify(value));
+  }
+
+  return { body: form };
+}
+
 type MethodParams = {
   getMe: undefined;
   getChat: { chat_id: ChatId };
@@ -192,8 +244,8 @@ type MethodParams = {
     text: string;
     link_preview_options?: { is_disabled: boolean };
   };
-  sendPhoto: DeliveryOptions & { photo: string; caption?: string };
-  sendDocument: DeliveryOptions & { document: string; caption?: string };
+  sendPhoto: DeliveryOptions & { photo: InputFile; caption?: string };
+  sendDocument: DeliveryOptions & { document: InputFile; caption?: string };
   editMessageText: {
     chat_id: ChatId;
     message_id: number;
@@ -265,11 +317,7 @@ export function createBotClient(token: string, fetchImpl: Fetch = fetch) {
     try {
       response = await fetchImpl(
         `${TELEGRAM_API_ORIGIN}/bot${token}/${method}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params ?? {}),
-        }
+        { method: 'POST', ...requestBody(params) }
       );
     } catch (cause) {
       throw new TelegramError(0, 'Could not reach Telegram', undefined, {

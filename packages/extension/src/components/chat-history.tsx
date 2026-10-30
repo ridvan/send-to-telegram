@@ -149,6 +149,7 @@ export function ChatHistory({
                   key={key}
                   entry={item.entry}
                   delivery={delivery}
+                  token={botToken}
                   footer={
                     item.entry.status === 'failed' ? (
                       <SendAgain entry={item.entry} />

@@ -72,6 +72,34 @@ function demoData(now: number) {
         },
       },
       {
+        id: 'h1b',
+        sentAt: now - 20 * minute,
+        kind: 'page',
+        status: 'sent',
+        destinationId: 'team',
+        destinationName: 'Design crit',
+        via: 'photo',
+        content: {
+          note: 'My take on the grid',
+          attachment: {
+            id: 'a1',
+            name: 'image.png',
+            type: 'image/png',
+            size: 412_000,
+          },
+          sentMedia: {
+            media: 'photo',
+            file: {
+              id: 'photo',
+              uniqueId: 'P',
+              width: 800,
+              height: 533,
+              preview: { id: 'photo', uniqueId: 'P', width: 800, height: 533 },
+            },
+          },
+        },
+      },
+      {
         id: 'h2',
         sentAt: now - 26 * minute,
         kind: 'image',

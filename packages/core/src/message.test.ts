@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { deliver, splitText } from './message.ts';
-import { TelegramError, type BotClient, type BotMethod } from './telegram.ts';
+import {
+  TelegramError,
+  Upload,
+  type BotClient,
+  type BotMethod,
+} from './telegram.ts';
 
 type Call = { method: BotMethod; params: Parameters<BotClient['call']>[1] };
 
@@ -113,5 +118,26 @@ describe('deliver', () => {
       })
     ).rejects.toMatchObject({ code: 403 });
     expect(calls).toHaveLength(1);
+  });
+
+  it('uploads a file as a document when the photo is refused, and stops there', async () => {
+    const upload = new Upload(new Blob(['x']), 'a.png');
+    const { bot, calls } = fakeBot({ sendPhoto: rejected });
+
+    await expect(
+      deliver(bot, 42, { kind: 'photo', upload, silent: false })
+    ).resolves.toEqual({
+      messageId: 1,
+      via: 'document',
+      sent: { message_id: 1, chat: { id: 1, type: 'private' } },
+    });
+    expect(calls[1]?.params).toMatchObject({ document: upload });
+
+    const refused = fakeBot({ sendPhoto: rejected, sendDocument: rejected });
+
+    await expect(
+      deliver(refused.bot, 42, { kind: 'photo', upload, silent: false })
+    ).rejects.toBe(rejected);
+    expect(refused.calls).toHaveLength(2);
   });
 });

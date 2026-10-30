@@ -2,10 +2,18 @@ import {
   CAPTION_LIMIT,
   MAX_TEXT_LENGTH,
   type OutgoingMessage,
+  PHOTO_UPLOAD_LIMIT,
+  type UploadMessage,
 } from '@send-to-telegram/core';
 import { z } from 'zod';
 
-import { contentKindSchema, type Settings, tagSchema } from './settings.ts';
+import {
+  type Attachment,
+  attachmentSchema,
+  contentKindSchema,
+  type Settings,
+  tagSchema,
+} from './settings.ts';
 
 /** What the person chose to send, before settings turn it into a Telegram message. */
 export const draftSchema = z.object({
@@ -18,6 +26,8 @@ export const draftSchema = z.object({
   url: z.string().optional(),
   note: z.string().optional(),
   tag: tagSchema.optional(),
+  /** A file from this device; the message's text becomes its caption. */
+  attachment: attachmentSchema.optional(),
   destinationId: z.string().optional(),
 });
 
@@ -50,11 +60,50 @@ function clip(text: string, limit: number): string {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
+/** Types Telegram shows as photos; others, GIFs and WebP included, go as files. */
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
+
+export function sendsAsPhoto(
+  attachment: Pick<Attachment, 'type' | 'size'>,
+  imageMode: Settings['delivery']['imageMode']
+): boolean {
+  return (
+    imageMode !== 'document' &&
+    PHOTO_TYPES.has(attachment.type) &&
+    attachment.size <= PHOTO_UPLOAD_LIMIT
+  );
+}
+
+/** An upload waiting for its file, which the background reads by `attachment.id`. */
+export type ComposedUpload = Omit<UploadMessage, 'upload'> & {
+  attachment: Attachment;
+};
+
+/**
+ * The text that goes with a page or selection. A caption has no link preview,
+ * so an attached file always takes the page title with the link.
+ */
+function bodyOf(draft: Draft, delivery: Settings['delivery']) {
+  switch (draft.kind) {
+    case 'selection':
+      return draft.text?.trim();
+    case 'link':
+      return draft.url;
+    case 'page':
+      // Without a preview the URL alone says little, so lead with the title.
+      return (delivery.linkPreview && !draft.attachment) || !draft.pageTitle
+        ? draft.pageUrl
+        : `${draft.pageTitle.trim()}\n${draft.pageUrl}`;
+    case 'image':
+      return undefined;
+  }
+}
+
 /** Turns a draft into one outgoing message, following the delivery settings. */
 export function compose(
   draft: Draft,
   delivery: Settings['delivery']
-): OutgoingMessage {
+): OutgoingMessage | ComposedUpload {
   const tag = draft.tag ? `#${draft.tag}` : undefined;
   const note = draft.note?.trim() || undefined;
 
@@ -67,6 +116,19 @@ export function compose(
       : undefined;
 
   const common = { silent: delivery.silent, ...(sourceUrl && { sourceUrl }) };
+
+  if (draft.attachment) {
+    const caption = paragraphs(note, bodyOf(draft, delivery), tag);
+
+    return {
+      kind: sendsAsPhoto(draft.attachment, delivery.imageMode)
+        ? 'photo'
+        : 'document',
+      attachment: draft.attachment,
+      ...(caption && { caption: clip(caption, CAPTION_LIMIT) }),
+      ...common,
+    };
+  }
 
   if (draft.kind === 'image') {
     const url = draft.url;
@@ -103,19 +165,7 @@ export function compose(
     };
   }
 
-  const body = (() => {
-    switch (draft.kind) {
-      case 'selection':
-        return draft.text?.trim();
-      case 'link':
-        return draft.url;
-      case 'page':
-        // Without a preview the URL alone says little, so lead with the title.
-        return delivery.linkPreview || !draft.pageTitle
-          ? draft.pageUrl
-          : `${draft.pageTitle.trim()}\n${draft.pageUrl}`;
-    }
-  })();
+  const body = bodyOf(draft, delivery);
 
   if (!body && !note) {
     throw new ComposeError('There is nothing to send.');

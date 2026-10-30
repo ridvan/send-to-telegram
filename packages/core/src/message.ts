@@ -5,7 +5,9 @@ import {
   TelegramError,
   type BotClient,
   type ChatId,
+  type IncomingMessage,
   TEXT_LIMIT,
+  type Upload,
 } from './telegram.ts';
 
 const httpUrlSchema = z.url({ protocol: /^https?$/ });
@@ -35,6 +37,16 @@ export const outgoingMessageSchema = z.discriminatedUnion('kind', [
 /** What the extension asks to deliver; the transport turns it into Bot API calls. */
 export type OutgoingMessage = z.infer<typeof outgoingMessageSchema>;
 
+/**
+ * A file uploaded from this device instead of fetched from a URL. Only the
+ * extension sends these, straight to the Bot API: the relay takes JSON.
+ */
+export type UploadMessage = z.infer<typeof deliverySchema> & {
+  kind: 'photo' | 'document';
+  upload: Upload;
+  caption?: string;
+};
+
 export const deliveredViaSchema = z.enum(['text', 'photo', 'document', 'link']);
 
 export type DeliveredVia = z.infer<typeof deliveredViaSchema>;
@@ -43,6 +55,8 @@ export type Delivery = {
   messageId: number;
   /** How Telegram finally accepted it, after any fallbacks. */
   via: DeliveredVia;
+  /** An upload as Telegram keeps it, with the IDs to download it again. */
+  sent?: IncomingMessage;
 };
 
 export const SOURCE_BUTTON_LABEL = 'Open page';
@@ -116,11 +130,12 @@ async function sendText(
 /**
  * Delivers one message. Media that Telegram cannot fetch or render falls back
  * from photo to document to a plain link, so a send never silently disappears.
+ * An upload has no link to fall back to, so its last rejection stands.
  */
 export async function deliver(
   bot: BotClient,
   chatId: ChatId,
-  message: OutgoingMessage
+  message: OutgoingMessage | UploadMessage
 ): Promise<Delivery> {
   if (message.kind === 'text') {
     return { messageId: await sendText(bot, chatId, message), via: 'text' };
@@ -135,28 +150,32 @@ export async function deliver(
     ...(keyboard && { reply_markup: keyboard }),
   };
 
+  const file = 'upload' in message ? message.upload : message.url;
+
   if (message.kind === 'photo') {
     try {
-      const sent = await bot.call('sendPhoto', {
-        ...common,
-        photo: message.url,
-      });
+      const sent = await bot.call('sendPhoto', { ...common, photo: file });
 
-      return { messageId: sent.message_id, via: 'photo' };
+      return {
+        messageId: sent.message_id,
+        via: 'photo',
+        ...('upload' in message && { sent }),
+      };
     } catch (error) {
       if (!isMediaRejection(error)) throw error;
     }
   }
 
   try {
-    const sent = await bot.call('sendDocument', {
-      ...common,
-      document: message.url,
-    });
+    const sent = await bot.call('sendDocument', { ...common, document: file });
 
-    return { messageId: sent.message_id, via: 'document' };
+    return {
+      messageId: sent.message_id,
+      via: 'document',
+      ...('upload' in message && { sent }),
+    };
   } catch (error) {
-    if (!isMediaRejection(error)) throw error;
+    if ('upload' in message || !isMediaRejection(error)) throw error;
   }
 
   const text = message.caption

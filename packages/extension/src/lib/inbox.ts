@@ -79,7 +79,7 @@ function toFile(item: Playable): InboxFile {
 const PREVIEW_WIDTH = 640;
 
 /** What a message carries besides text, and how to download it. */
-function attachmentOf(
+export function attachmentOf(
   message: IncomingMessage
 ): Pick<InboxEntry, 'media' | 'file' | 'fileName'> | undefined {
   const largest = message.photo?.at(-1);
