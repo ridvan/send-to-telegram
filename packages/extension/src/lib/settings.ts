@@ -90,7 +90,13 @@ export const settingsSchema = z.object({
       showInChat: z.boolean().default(true),
     })
     .prefault({}),
-  appearance: z.object({ theme: themeSchema.default('system') }).prefault({}),
+  appearance: z
+    .object({
+      theme: themeSchema.default('system'),
+      /** Chat names are blurred until revealed, for screen sharing and onlookers. */
+      showChatNames: z.boolean().default(false),
+    })
+    .prefault({}),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

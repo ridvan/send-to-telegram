@@ -24,6 +24,7 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
+import { ChatName, ChatNameToggle } from '@/components/chat-name';
 import {
   ChatSearchField,
   MatchCount,
@@ -230,6 +231,7 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
                 value={destinationId}
                 onChange={setDestinationId}
               />
+              {settings.destinations.length > 0 ? <ChatNameToggle /> : null}
               {chatShown ? (
                 <HeaderButton
                   label="Search"
@@ -849,9 +851,10 @@ function ChatPicker({
           name={destinationName(current)}
           seed={avatarSeed(current)}
         />
-        <span className="truncate text-sm font-medium">
-          {destinationName(current)}
-        </span>
+        <ChatName
+          name={destinationName(current)}
+          className="truncate text-sm font-medium"
+        />
       </div>
     );
   }
@@ -878,7 +881,15 @@ function ChatPicker({
             name={destinationName(current)}
             seed={avatarSeed(current)}
           />
-          <SelectValue />
+          <SelectValue>
+            {(id: string) => {
+              const item = destinations.find((each) => each.id === id);
+
+              return item ? (
+                <ChatName name={destinationName(item)} className="truncate" />
+              ) : null;
+            }}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -889,7 +900,7 @@ function ChatPicker({
                   seed={avatarSeed(item)}
                   size="sm"
                 />
-                {destinationName(item)}
+                <ChatName name={destinationName(item)} />
               </SelectItem>
             ))}
           </SelectGroup>

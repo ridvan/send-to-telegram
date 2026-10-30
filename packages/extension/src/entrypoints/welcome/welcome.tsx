@@ -15,6 +15,7 @@ import { browser } from 'wxt/browser';
 
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
+import { ChatName, ChatNameToggle } from '@/components/chat-name';
 import { ConnectFlow } from '@/components/connect/connect-flow';
 import { IconTile, type TileTone } from '@/components/icon-tile';
 import { useShortcuts } from '@/components/shortcuts';
@@ -170,7 +171,15 @@ function Ready({ chat }: { chat: string }) {
   const sendPage = shortcuts.find((shortcut) => shortcut.name === 'send-page');
 
   return (
-    <Page title="You’re all set" description={`Messages go to ${chat}.`}>
+    <Page
+      title="You’re all set"
+      description={
+        <>
+          Messages go to <ChatName name={chat} />.{' '}
+          <ChatNameToggle size="icon-xs" />
+        </>
+      }
+    >
       <div className="flex animate-rise flex-col gap-8">
         <FlowIllustration />
         <ul className="flex flex-col gap-3">
@@ -247,7 +256,11 @@ function Upgraded() {
                   seed={avatarSeed(destination)}
                   size="sm"
                 />
-                <span className="truncate">{destinationName(destination)}</span>
+                <ChatName
+                  name={destinationName(destination)}
+                  className="truncate"
+                />
+                <ChatNameToggle size="icon-xs" />
               </dd>
             </>
           ) : null}

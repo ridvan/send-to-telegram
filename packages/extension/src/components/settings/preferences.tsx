@@ -394,7 +394,7 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
               if (theme.success) {
                 void update((settings) => ({
                   ...settings,
-                  appearance: { theme: theme.data },
+                  appearance: { ...settings.appearance, theme: theme.data },
                 }));
               }
             }}
