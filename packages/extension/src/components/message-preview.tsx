@@ -16,6 +16,7 @@ import { IconTile } from '@/components/icon-tile';
 import { ReceivedMedia } from '@/components/received-media';
 import { Button } from '@/components/ui/button';
 import { isHttpUrl, sendsAsPhoto } from '@/lib/compose';
+import { splitHashtags } from '@/lib/hashtags';
 import {
   displayUrl,
   formatBytes,
@@ -166,6 +167,13 @@ function Hashtag({ tag }: { tag: string }) {
   return <span className="text-bubble-accent">{`#${tag}`}</span>;
 }
 
+/** A note with the hashtags in it colored, as Telegram links them. */
+function NoteText({ text }: { text: string }) {
+  return splitHashtags(text).map((part, index) =>
+    part.hashtag ? <Hashtag key={index} tag={part.text.slice(1)} /> : part.text
+  );
+}
+
 type MessageContent = {
   kind: ContentKind;
   note?: string | undefined;
@@ -201,7 +209,7 @@ function messageParts(
   const withTitle = !delivery.linkPreview || message.attachment !== undefined;
   const blocks: Block[] = [];
 
-  if (note) blocks.push({ key: 'note', content: note });
+  if (note) blocks.push({ key: 'note', content: <NoteText text={note} /> });
 
   if (kind === 'selection' && message.text) {
     blocks.push({
@@ -554,7 +562,6 @@ export function MessagePreview({
   favIconUrl,
   text,
   note,
-  tag,
   delivery,
   status,
   time,
@@ -568,7 +575,6 @@ export function MessagePreview({
   favIconUrl: string | undefined;
   text: string | undefined;
   note: string;
-  tag: string | undefined;
   delivery: Settings['delivery'];
   status: MessageStatus;
   time: number;
@@ -581,7 +587,7 @@ export function MessagePreview({
   return (
     <figure aria-label="Preview" className={outgoing}>
       <Bubble
-        message={{ kind, pageUrl, pageTitle, text, note, tag, attachment }}
+        message={{ kind, pageUrl, pageTitle, text, note, attachment }}
         onRemoveAttachment={onRemoveAttachment}
         delivery={delivery}
         status={status}

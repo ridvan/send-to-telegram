@@ -1,7 +1,6 @@
 import {
   ArrowLeft01Icon,
   Attachment01Icon,
-  HashtagIcon,
   Link04Icon,
   Search01Icon,
   SentIcon,
@@ -33,6 +32,7 @@ import {
   MatchCount,
   NoMatches,
 } from '@/components/chat-search';
+import { HashtagSuggestions } from '@/components/hashtag-suggestions';
 import {
   MessagePreview,
   type MessageStatus,
@@ -53,11 +53,6 @@ import {
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -78,6 +73,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useAttachment } from '@/hooks/use-attachment';
 import { useChatItems } from '@/hooks/use-chat-items';
+import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
 import { useStore } from '@/hooks/use-store';
 import { saveAttachment } from '@/lib/attachments';
@@ -439,7 +435,6 @@ function Composer({
   );
 
   const [note, setNote] = useState('');
-  const [tag, setTag] = useState<string>();
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const tags = settings.tags.enabled ? settings.tags.list : [];
   const attachPage = settings.composer.attachPage && page.url !== undefined;
@@ -481,7 +476,6 @@ function Composer({
       ...(attachPage && page.title && { pageTitle: page.title }),
       ...(mode === 'selection' && page.selection && { text: page.selection }),
       ...(note.trim() && { note }),
-      ...(tag && { tag }),
       ...(attached && { attachment: attached.info }),
       ...(destinationId && { destinationId }),
     };
@@ -513,7 +507,6 @@ function Composer({
       // field clears for the next message, as in Telegram.
       setTimeout(() => {
         setNote('');
-        setTag(undefined);
         remove();
         setTime(Date.now());
         setFirstSendAt(undefined);
@@ -588,8 +581,19 @@ function Composer({
     if (file && !busy && !searching) attachOrRefuse(file);
   }
 
+  const suggestions = useHashtagSuggestions({
+    tags,
+    value: note,
+    onValueChange: setNote,
+    textarea: noteRef,
+    disabled: busy,
+  });
+
   /** Enter sends, as in Telegram; Shift+Enter starts a new line. */
   function onNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // An open hashtag list takes Enter to pick a tag instead.
+    if (suggestions.onKeyDown(event)) return;
+
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
@@ -696,7 +700,6 @@ function Composer({
               favIconUrl={page.favIconUrl}
               text={page.selection}
               note={note}
-              tag={tag}
               delivery={settings.delivery}
               status={statusOf[phase.name]}
               time={time}
@@ -746,8 +749,14 @@ function Composer({
 
       <div
         inert={searching}
-        className="flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5 transition-opacity duration-150 inert:opacity-50"
+        className="relative flex items-end gap-1 border-t py-2.5 pr-3 pl-1.5 transition-opacity duration-150 inert:opacity-50"
       >
+        {suggestions.list ? (
+          <HashtagSuggestions
+            {...suggestions.list}
+            onManage={onOpenTagSettings}
+          />
+        ) : null}
         {page.url ? (
           <PageLinkToggle
             pressed={attachPage}
@@ -762,17 +771,6 @@ function Composer({
         {canAttach ? (
           <AttachButton disabled={busy} onPick={attachOrRefuse} />
         ) : null}
-        {tags.length > 0 ? (
-          <TagPicker
-            tags={tags}
-            value={tag}
-            onChange={(next) => {
-              setTag(next);
-              noteRef.current?.focus();
-            }}
-            onManage={onOpenTagSettings}
-          />
-        ) : null}
         <label htmlFor={noteId} className="sr-only">
           Note
         </label>
@@ -781,7 +779,11 @@ function Composer({
           id={noteId}
           variant="bare"
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          {...suggestions.fieldProps}
+          onChange={(event) => {
+            setNote(event.target.value);
+            suggestions.sync(event.target);
+          }}
           onKeyDown={onNoteKeyDown}
           onPaste={onNotePaste}
           readOnly={busy}
@@ -869,78 +871,6 @@ function PageLinkToggle({
         {pressed ? 'Page link attached' : 'Attach page link'}
       </TooltipContent>
     </Tooltip>
-  );
-}
-
-/** A hashtag for the message, picked from a menu so the field keeps its room. */
-function TagPicker({
-  tags,
-  value,
-  onChange,
-  onManage,
-}: {
-  tags: string[];
-  value: string | undefined;
-  onChange: (tag: string | undefined) => void;
-  onManage: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <PopoverTrigger
-              render={
-                <Toggle
-                  variant="accent"
-                  size="icon"
-                  aria-label={value ? `Hashtag: #${value}` : 'Add a hashtag'}
-                  pressed={value !== undefined}
-                />
-              }
-            />
-          }
-        >
-          <HugeiconsIcon icon={HashtagIcon} strokeWidth={1.8} />
-        </TooltipTrigger>
-        <TooltipContent>{value ? `#${value}` : 'Add a hashtag'}</TooltipContent>
-      </Tooltip>
-      <PopoverContent side="top" align="start" className="w-auto max-w-80">
-        <ToggleGroup
-          size="sm"
-          variant="chip"
-          spacing={1}
-          aria-label="Hashtag"
-          value={value ? [value] : []}
-          onValueChange={([next]) => {
-            onChange(next);
-            setOpen(false);
-          }}
-          className="flex-wrap"
-        >
-          {tags.map((item) => (
-            <ToggleGroupItem key={item} value={item}>
-              #{item}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        <p className="text-xs">
-          <Button
-            variant="link"
-            size="text"
-            tone="muted"
-            onClick={() => {
-              setOpen(false);
-              onManage();
-            }}
-          >
-            Edit hashtags
-          </Button>
-        </p>
-      </PopoverContent>
-    </Popover>
   );
 }
 

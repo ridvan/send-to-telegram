@@ -171,7 +171,8 @@ export function TagsSection() {
     <SettingsSection id="hashtags" title="Hashtags">
       <SwitchRow
         icon={{ icon: HashtagIcon, tone: 'cyan' }}
-        label="Offer hashtags when sending"
+        label="Suggest hashtags"
+        description="In the right-click menu, and as you type # in a note."
         checked={tags.enabled}
         onCheckedChange={(enabled) =>
           void update((settings) => ({
