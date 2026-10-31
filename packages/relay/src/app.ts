@@ -18,7 +18,7 @@ import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
-import { pairingCode, sha256 } from './crypto.ts';
+import { pairingCode, sha256, WEBHOOK_SECRET_PATTERN } from './crypto.ts';
 import type { Device, DeviceStore } from './store.ts';
 
 export const RELAY_VERSION = '2.0.0';
@@ -142,7 +142,16 @@ export async function handleUpdate(deps: Deps, update: Update) {
 
   const callback = update.callback_query;
 
-  if (callback?.data?.startsWith('unlink:') && callback.message) {
+  if (callback && !(callback.data?.startsWith('unlink:') && callback.message)) {
+    // A button this relay doesn't handle; answer so the client stops waiting.
+    await deps.bot.call('answerCallbackQuery', {
+      callback_query_id: callback.id,
+    });
+
+    return;
+  }
+
+  if (callback?.data && callback.message) {
     const chatId = callback.message.chat.id;
     const prefix = callback.data.slice('unlink:'.length);
     const devices = await deps.store.listForChat(chatId);
@@ -167,6 +176,12 @@ export async function handleUpdate(deps: Deps, update: Update) {
   }
 
   const message = update.message;
+
+  if (message?.migrate_to_chat_id) {
+    await deps.store.moveChat(message.chat.id, message.migrate_to_chat_id);
+
+    return;
+  }
 
   const parsed = message?.text
     ? parseCommand(message.text, deps.botUsername)
@@ -394,6 +409,16 @@ export function createApp(makeDeps: (env: Env) => Deps) {
         );
       }
 
+      // Code 0 is a network failure; 5xx is Telegram having trouble.
+      if (cause.code === 0 || cause.code >= 500) {
+        return fail(
+          c,
+          502,
+          'telegram_error',
+          'The relay couldn’t reach Telegram. Try again in a moment.'
+        );
+      }
+
       return fail(
         c,
         502,
@@ -407,7 +432,13 @@ export function createApp(makeDeps: (env: Env) => Deps) {
     const { deps } = c.var;
     const secret = c.req.header('X-Telegram-Bot-Api-Secret-Token') ?? '';
 
-    if (!sameSecret(secret, deps.webhookSecret)) return c.body(null, 401);
+    // A missing or malformed WEBHOOK_SECRET would match an empty header.
+    if (
+      !WEBHOOK_SECRET_PATTERN.test(deps.webhookSecret) ||
+      !sameSecret(secret, deps.webhookSecret)
+    ) {
+      return c.body(null, 401);
+    }
 
     const update = updateSchema.safeParse(await readJson(c));
 

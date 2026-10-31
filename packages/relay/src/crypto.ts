@@ -10,6 +10,12 @@ export async function sha256(value: string): Promise<string> {
   ).join('');
 }
 
+/**
+ * What Telegram accepts as a webhook secret (1–256 of [A-Za-z0-9_-]), with a
+ * floor of 16 so a short or missing secret never opens the webhook.
+ */
+export const WEBHOOK_SECRET_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
+
 /** A random code that fits Telegram's /start payload: 32 characters of [A-Za-z0-9_-]. */
 export function pairingCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(24));

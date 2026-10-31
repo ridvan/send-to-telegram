@@ -298,6 +298,9 @@ importers:
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
+      miniflare:
+        specifier: 5.20261023.0-beta
+        version: 5.20261023.0-beta(@types/node@24.19.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

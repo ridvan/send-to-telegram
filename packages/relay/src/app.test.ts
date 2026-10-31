@@ -2,6 +2,9 @@ import {
   type BotClient,
   type BotMethod,
   pairingSchema,
+  type Chat,
+  TelegramError,
+  type Update,
 } from '@send-to-telegram/core';
 import { describe, expect, it } from 'vitest';
 
@@ -57,20 +60,31 @@ function memoryStore(): DeviceStore {
         if (device.chatId === chatId) devices.delete(device.tokenHash);
       }
     },
+    async moveChat(fromChatId, toChatId) {
+      for (const device of devices.values()) {
+        if (device.chatId === fromChatId) {
+          device.chatId = toChatId;
+          device.chatType = 'supergroup';
+        }
+      }
+    },
     async purgeExpired() {},
   };
 }
 
 type Sent = { method: BotMethod; params: Parameters<BotClient['call']>[1] };
 
-function setup() {
+function setup({ webhookSecret = 'secret-secret-secret' } = {}) {
   const sent: Sent[] = [];
   let clock = 1_000_000;
   let allowed = true;
+  let failure: TelegramError | undefined;
   const store = memoryStore();
 
   const bot: BotClient = {
     async call(method, params) {
+      if (failure) throw failure;
+
       sent.push({ method, params });
 
       // SAFETY: tests only read message_id from these results.
@@ -85,7 +99,7 @@ function setup() {
     store,
     bot,
     botUsername: 'RelayBot',
-    webhookSecret: 'secret-secret-secret',
+    webhookSecret,
     allow: async () => allowed,
     now: () => clock,
   };
@@ -102,6 +116,9 @@ function setup() {
     block: () => {
       allowed = false;
     },
+    failWith: (error: TelegramError) => {
+      failure = error;
+    },
   };
 }
 
@@ -112,25 +129,26 @@ const auth = {
   'Content-Type': 'application/json',
 };
 
-function webhook(app: ReturnType<typeof setup>['app'], text: string) {
+type App = ReturnType<typeof setup>['app'];
+
+function update(app: App, body: Omit<Update, 'update_id'>) {
   return app.request('/telegram/webhook', {
     method: 'POST',
     headers: {
       'X-Telegram-Bot-Api-Secret-Token': 'secret-secret-secret',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      update_id: 1,
-      message: {
-        message_id: 1,
-        text,
-        chat: { id: 7, type: 'private', first_name: 'Ada' },
-      },
-    }),
+    body: JSON.stringify({ update_id: 1, ...body }),
   });
 }
 
-async function pair(app: ReturnType<typeof setup>['app']) {
+const privateChat = { id: 7, type: 'private', first_name: 'Ada' } as const;
+
+function webhook(app: App, text: string, chat: Chat = privateChat) {
+  return update(app, { message: { message_id: 1, text, chat } });
+}
+
+async function pair(app: App) {
   const response = await app.request('/v1/pairings', {
     method: 'POST',
     headers: auth,
@@ -276,5 +294,157 @@ describe('relay', () => {
     expect((await app.request('/v1/device', { headers: auth })).status).toBe(
       401
     );
+  });
+
+  it('refuses webhooks when the relay has no usable secret', async () => {
+    const { app } = setup({ webhookSecret: '' });
+
+    const response = await app.request('/telegram/webhook', {
+      method: 'POST',
+      body: '{}',
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it('links a group through /start addressed to the bot', async () => {
+    const { app } = setup();
+    const { code } = await pair(app);
+
+    await webhook(app, `/start@RelayBot ${code}`, {
+      id: -42,
+      type: 'group',
+      title: 'Reading list',
+    });
+
+    expect(
+      await (await app.request('/v1/device', { headers: auth })).json()
+    ).toEqual({
+      status: 'linked',
+      chat: { title: 'Reading list', type: 'group' },
+    });
+  });
+
+  it('lists linked browsers and unlinks one from its button', async () => {
+    const { app, sent, store } = setup();
+    const { code } = await pair(app);
+
+    await webhook(app, `/start ${code}`);
+    await webhook(app, '/devices');
+
+    const list = sent.at(-1);
+    const hash = await sha256(token);
+
+    expect(list?.params).toMatchObject({
+      chat_id: 7,
+      text: 'Linked browsers:\n• Chrome on macOS',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: 'Unlink Chrome on macOS',
+              callback_data: `unlink:${hash.slice(0, 16)}`,
+            },
+          ],
+        ],
+      },
+    });
+
+    await update(app, {
+      callback_query: {
+        id: 'q1',
+        from: { id: 7, is_bot: false, first_name: 'Ada' },
+        data: `unlink:${hash.slice(0, 16)}`,
+        message: { message_id: 9, chat: privateChat },
+      },
+    });
+
+    expect(await store.findByToken(hash)).toBeUndefined();
+    expect(sent.slice(-2)).toMatchObject([
+      {
+        method: 'answerCallbackQuery',
+        params: { text: 'Unlinked Chrome on macOS' },
+      },
+      {
+        method: 'editMessageText',
+        params: { message_id: 9, text: 'No browsers are linked to this chat.' },
+      },
+    ]);
+  });
+
+  it('answers buttons it does not handle', async () => {
+    const { app, sent } = setup();
+
+    await update(app, {
+      callback_query: {
+        id: 'q2',
+        from: { id: 7, is_bot: false, first_name: 'Ada' },
+        data: 'unknown',
+      },
+    });
+
+    expect(sent).toEqual([
+      { method: 'answerCallbackQuery', params: { callback_query_id: 'q2' } },
+    ]);
+  });
+
+  it('unlinks every browser when the bot is removed or blocked', async () => {
+    const { app } = setup();
+    const { code } = await pair(app);
+
+    await webhook(app, `/start ${code}`);
+    await update(app, {
+      my_chat_member: {
+        chat: privateChat,
+        from: { id: 7, is_bot: false, first_name: 'Ada' },
+        new_chat_member: { status: 'kicked' },
+      },
+    });
+
+    expect((await app.request('/v1/device', { headers: auth })).status).toBe(
+      401
+    );
+  });
+
+  it('follows a group that became a supergroup', async () => {
+    const { app } = setup();
+    const { code } = await pair(app);
+    const oldGroup = { id: -42, type: 'group', title: 'Reading list' } as const;
+
+    await webhook(app, `/start ${code}`, oldGroup);
+    await update(app, {
+      message: { message_id: 2, chat: oldGroup, migrate_to_chat_id: -1001 },
+    });
+
+    expect(
+      await (await app.request('/v1/device', { headers: auth })).json()
+    ).toMatchObject({ chat: { type: 'supergroup' } });
+  });
+
+  it('says when Telegram is unreachable rather than rejecting', async () => {
+    const { app, failWith } = setup();
+    const { code } = await pair(app);
+
+    await webhook(app, `/start ${code}`);
+    failWith(new TelegramError(0, 'Could not reach Telegram'));
+
+    const response = await app.request('/v1/messages', {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({
+        kind: 'text',
+        text: 'hi',
+        linkPreview: false,
+        silent: true,
+      }),
+    });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'telegram_error',
+        message: 'The relay couldn’t reach Telegram. Try again in a moment.',
+      },
+    });
   });
 });

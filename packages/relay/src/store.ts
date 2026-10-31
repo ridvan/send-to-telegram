@@ -31,6 +31,8 @@ export type DeviceStore = {
   remove: (tokenHash: string) => Promise<void>;
   listForChat: (chatId: number) => Promise<Device[]>;
   removeForChat: (chatId: number) => Promise<void>;
+  /** Follows a group that Telegram upgraded to a supergroup with a new ID. */
+  moveChat: (fromChatId: number, toChatId: number) => Promise<void>;
   purgeExpired: (now: number) => Promise<void>;
 };
 
@@ -125,6 +127,14 @@ export function d1Store(db: D1Database): DeviceStore {
       await db
         .prepare('DELETE FROM devices WHERE chat_id = ?')
         .bind(chatId)
+        .run();
+    },
+    async moveChat(fromChatId, toChatId) {
+      await db
+        .prepare(
+          "UPDATE devices SET chat_id = ?, chat_type = 'supergroup' WHERE chat_id = ?"
+        )
+        .bind(toChatId, fromChatId)
         .run();
     },
     async purgeExpired(now) {

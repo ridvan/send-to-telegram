@@ -98,6 +98,8 @@ const incomingMessageSchema = z.object({
   message_id: z.number(),
   chat: chatSchema,
   from: userSchema.optional(),
+  /** Set when a group became a supergroup, which gets a new chat ID. */
+  migrate_to_chat_id: z.number().optional(),
   /** Unix time in seconds. */
   date: z.number().optional(),
   text: z.string().optional(),

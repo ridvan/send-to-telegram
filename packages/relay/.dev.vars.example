@@ -1,6 +1,6 @@
 # Copy to .dev.vars for `wrangler dev` and `pnpm webhook`.
 BOT_TOKEN=123456789:AAH4kYbPq_replace_me
-# Any long random string; Telegram sends it back with each update.
-WEBHOOK_SECRET=replace-with-a-long-random-string
+# 16–256 of [A-Za-z0-9_-], e.g. `openssl rand -hex 32`. Telegram sends it back with each update.
+WEBHOOK_SECRET=replace_with_a_long_random_string
 # Public URL of the deployed worker, used by `pnpm webhook`.
 RELAY_URL=https://send-to-telegram-relay.example.workers.dev

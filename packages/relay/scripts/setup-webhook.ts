@@ -5,10 +5,17 @@
 import { createBotClient } from '@send-to-telegram/core';
 import { z } from 'zod';
 
+import { WEBHOOK_SECRET_PATTERN } from '../src/crypto.ts';
+
 const env = z
   .object({
     BOT_TOKEN: z.string().min(1),
-    WEBHOOK_SECRET: z.string().min(16),
+    WEBHOOK_SECRET: z
+      .string()
+      .regex(
+        WEBHOOK_SECRET_PATTERN,
+        'Use 16–256 letters, digits, _ or -, for example from `openssl rand -hex 32`'
+      ),
     RELAY_URL: z.url(),
   })
   .parse(process.env);
