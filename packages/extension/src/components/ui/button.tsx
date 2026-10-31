@@ -39,7 +39,9 @@ const buttonVariants = cva(
           'size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
         'icon-lg': 'size-9',
         // The round button at the end of a message field, as in a chat app.
-        send: 'size-9 rounded-full',
+        send: 'size-8 rounded-full',
+        // The round play button on a voice message.
+        play: 'size-9 rounded-full',
       },
       tone: {
         default: '',

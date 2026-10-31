@@ -8,17 +8,16 @@ import { cn } from '@/lib/utils';
 export function PlaneIcon({ className }: { className?: string }) {
   return (
     <svg
-      // The plane's box with its rounded stroke, squared. Starting a little
-      // left and low moves it right and up by about 1px at 18px, where
-      // Telegram's send button sits its plane, since the tip carries the weight.
-      viewBox="-8.5 -4.5 105 105"
+      // The plane's box with its rounded stroke (-2.5 to 102.5 across, -2.5
+      // to 86.5 down), squared around its centre so it sits mid-button.
+      viewBox="-2.5 -10.5 105 105"
       overflow="visible"
       fill="currentColor"
       stroke="currentColor"
       strokeWidth={5}
       strokeLinejoin="round"
       aria-hidden
-      className={cn('size-4.5', className)}
+      className={cn('size-4', className)}
     >
       <g opacity={0.6}>
         <polygon points="26,48 80,15 39,56 36,80" />

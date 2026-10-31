@@ -917,7 +917,11 @@ function Composer({
           rows={1}
           autoFocus
         />
-        <SendButton phase={phase} onSend={() => void send()} />
+        {/* A one-line field's height, so the smaller send button shares the
+            line's centre with the attach glyph and the text. */}
+        <div className="flex h-9 shrink-0 items-center">
+          <SendButton phase={phase} onSend={() => void send()} />
+        </div>
       </div>
     </div>
   );

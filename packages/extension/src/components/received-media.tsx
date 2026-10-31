@@ -416,7 +416,7 @@ function SoundMedia({
       <span className="flex items-center gap-2.5">
         <Button
           variant="brand"
-          size="send"
+          size="play"
           aria-label={playing ? `Pause ${label}` : `Play ${label}`}
           aria-disabled={state.status === 'loading'}
           onClick={() => {
