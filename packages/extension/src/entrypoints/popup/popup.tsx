@@ -528,6 +528,7 @@ function Composer({
   );
 
   const [note, setNote] = useState('');
+  const chatRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const tags = settings.tags.enabled ? settings.tags.list : [];
   const attachPage = settings.composer.attachPage && page.url !== undefined;
@@ -560,6 +561,19 @@ function Composer({
       settings.history.showInChat
   );
 
+  /**
+   * Brings the draft into view, as Telegram does when you send, even if you
+   * had scrolled up to read. The chat is reversed, so its bottom is 0.
+   */
+  function scrollToDraft() {
+    chatRef.current?.scrollTo({
+      top: 0,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
+  }
+
   async function send() {
     if (busy) return;
 
@@ -576,6 +590,7 @@ function Composer({
     setPhase({ name: 'sending' });
     setFirstSendAt((current) => current ?? Date.now());
     refuse(undefined);
+    scrollToDraft();
 
     if (attached) {
       try {
@@ -605,6 +620,8 @@ function Composer({
         setFirstSendAt(undefined);
         setPhase({ name: 'idle' });
         noteRef.current?.focus();
+        // Once the sent message and the fresh draft have rendered.
+        requestAnimationFrame(scrollToDraft);
       }, 1000);
 
       return;
@@ -755,6 +772,7 @@ function Composer({
           opens at its newest message too. */}
       <div
         key={destinationId}
+        ref={chatRef}
         className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-chat p-3"
       >
         <div
