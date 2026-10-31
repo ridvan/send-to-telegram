@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { MessageMenu } from '@/components/message-menu';
 import { ReceivedMessage, SentMessage } from '@/components/message-preview';
@@ -82,6 +82,7 @@ export function ChatHistory({
   botToken,
   now,
   draftBelow,
+  intro,
   onPick,
   select,
   focusKey,
@@ -93,6 +94,8 @@ export function ChatHistory({
   botToken: string | undefined;
   now: number;
   draftBelow: boolean;
+  /** Where the chat begins, above its oldest message once that's shown. */
+  intro?: ReactNode;
   /** Set while searching: a message is picked, not used. */
   onPick?: ((key: string) => void) | undefined;
   /**
@@ -118,7 +121,7 @@ export function ChatHistory({
 
   const shown = Math.max(pages, Math.ceil((target + 1) / PAGE)) * PAGE;
 
-  if (items.length === 0) return null;
+  if (items.length === 0) return intro ?? null;
 
   const days = groupByDay(
     items.slice(0, shown).toReversed(),
@@ -139,7 +142,9 @@ export function ChatHistory({
         >
           Show older messages
         </Button>
-      ) : null}
+      ) : (
+        intro
+      )}
       {days.map(([day, messages]) => (
         <section
           key={day}

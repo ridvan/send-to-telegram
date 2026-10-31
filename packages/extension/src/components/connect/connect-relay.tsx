@@ -169,8 +169,8 @@ export function ConnectRelay({
       ) : null}
 
       <p className="text-xs text-pretty text-muted-foreground">
-        Messages pass through the Send to Telegram server, which never keeps
-        them.{' '}
+        Messages pass through the Send to Telegram server, which doesn’t read or
+        store them, so what people send the bot stays in Telegram.{' '}
         <Button variant="link" size="text" tone="muted" onClick={onUseOwnBot}>
           Use your own bot instead
         </Button>

@@ -29,6 +29,7 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
+import { ChatIntro } from '@/components/chat-intro';
 import { SelectionBar } from '@/components/chat-selection';
 import { ChatName } from '@/components/chat-name';
 import {
@@ -567,12 +568,13 @@ function Composer({
     }
   }
 
-  useInbox(
-    destination,
+  // Earlier messages, and what people send your bot, show in the chat.
+  const showsHistory =
     !page.incognito &&
-      settings.history.mode === 'full' &&
-      settings.history.showInChat
-  );
+    settings.history.mode === 'full' &&
+    settings.history.showInChat;
+
+  useInbox(destination, showsHistory);
 
   /**
    * Brings the draft into view, as Telegram does when you send, even if you
@@ -805,6 +807,11 @@ function Composer({
             }
             now={time}
             draftBelow={!term}
+            intro={
+              destination && !term && showsHistory ? (
+                <ChatIntro destination={destination} />
+              ) : undefined
+            }
             focusKey={focusKey}
             onPick={search?.onShow}
             select={{

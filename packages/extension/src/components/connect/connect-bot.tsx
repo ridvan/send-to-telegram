@@ -445,7 +445,9 @@ export function ConnectBot({
       </div>
 
       {onUseRelay ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-pretty text-muted-foreground">
+          Messages go straight from this browser to Telegram, and what people
+          send your bot shows up in the popup.{' '}
           <Button variant="link" size="text" tone="muted" onClick={onUseRelay}>
             Use the Send to Telegram bot instead
           </Button>
