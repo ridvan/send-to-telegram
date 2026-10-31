@@ -17,9 +17,8 @@ import {
 import { plural } from '@/lib/format';
 
 /**
- * The search field, in the header in place of the chat's name, the same
- * height so the header doesn't move. Escape clears it first, then closes
- * search.
+ * The search field, in the header in place of the chat's name, as tall as the
+ * header's buttons. Escape clears it first, then closes search.
  */
 export function ChatSearchField({
   query,
@@ -40,7 +39,7 @@ export function ChatSearchField({
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
       </Button>
-      <InputGroup size="lg" className="flex-1">
+      <InputGroup className="flex-1">
         <InputGroupAddon>
           <HugeiconsIcon icon={Search01Icon} strokeWidth={1.8} />
         </InputGroupAddon>
