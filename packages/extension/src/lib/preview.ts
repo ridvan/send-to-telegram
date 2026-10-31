@@ -189,7 +189,7 @@ function fakeRelay(realFetch: typeof fetch): typeof fetch {
       return json(
         {
           code: 'previewpreviewpreview',
-          botUsername: 'SendToTelegramRelayBot',
+          botUsername: 'S2TRelayBot',
           expiresAt: Date.now() + 600_000,
         },
         201

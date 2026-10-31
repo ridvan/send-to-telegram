@@ -9,16 +9,21 @@
         "enabled": true,
         "logs": { "invocation_logs": false },
     },
+    // The hosted relay's address; the extension saves it with each linked chat,
+    // so it must not change. Forks: use a domain on your own Cloudflare zone.
+    "routes": [{ "pattern": "relay.s2t.dev", "custom_domain": true }],
     "vars": {
         // The bot's username without the @, as BotFather shows it.
-        "BOT_USERNAME": "SendToTelegramRelayBot",
+        "BOT_USERNAME": "S2TRelayBot",
     },
     "d1_databases": [
         {
             "binding": "DB",
             "database_name": "send-to-telegram",
-            // Replace with the id printed by `wrangler d1 create send-to-telegram`.
-            "database_id": "00000000-0000-0000-0000-000000000000",
+            // No database_id: the first `wrangler deploy` creates the database,
+            // later deploys reuse the one bound to the deployed Worker, and D1
+            // commands find it by name. Don't commit the id Wrangler writes
+            // back here on that first deploy.
             "migrations_dir": "migrations",
         },
     ],

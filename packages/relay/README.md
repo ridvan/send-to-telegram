@@ -8,31 +8,33 @@ The optional hosted bot behind "Use the Send to Telegram bot". It lets people li
 2. The extension opens `t.me/<bot>?start=<code>`, or `?startgroup=<code>` for a group. Pressing Start sends `/start <code>` to the bot's webhook, and the relay links that device to the chat.
 3. The extension polls `GET /v1/device` until the link shows up, then sends with `POST /v1/messages`.
 
-Codes expire after 10 minutes, and a daily cron removes unused ones. In Telegram, `/devices` lists the browsers linked to a chat, with a button to unlink each. Removing the bot from a group or blocking it unlinks every browser for that chat.
+Codes expire after 10 minutes, and a daily cron removes unused ones. In Telegram, `/devices` lists the browsers linked to a chat, with a button to unlink each. Removing the bot from a group or blocking it unlinks every browser for that chat, and any member of a group can unlink its browsers. When Telegram upgrades a group to a supergroup, its links move to the new chat.
 
 What is stored per device: the token hash, the browser's name (such as "Chrome on macOS"), the chat ID, title and type, and when it was linked and last used. Message content is never stored or logged. Invocation logs are off in `wrangler.jsonc` because they would record request headers.
 
 ## Deploy to Cloudflare
 
-1. Create a bot with [@BotFather](https://t.me/BotFather). Set `BOT_USERNAME` in `wrangler.jsonc` to its username.
-2. Create the database, then put the id it prints into `wrangler.jsonc`:
+`wrangler.jsonc` holds no account or database IDs, so a fork deploys to its own account unchanged.
+
+1. Create a bot with [@BotFather](https://t.me/BotFather). In `wrangler.jsonc`, set `BOT_USERNAME` to its username and the `routes` pattern to a hostname on your own Cloudflare zone. Linked browsers keep that address, so pick one you won't change.
+2. Deploy. The first deploy creates the `send-to-telegram` D1 database and writes its ID into `wrangler.jsonc`; discard that change rather than committing it. Later deploys reuse the database bound to the deployed Worker, and D1 commands find it by name. Then create the table:
 
     ```bash
-    pnpm wrangler d1 create send-to-telegram
+    pnpm run deploy
+    git restore wrangler.jsonc
     pnpm db:migrate
     ```
 
-3. Add the secrets. `WEBHOOK_SECRET` is any long random string:
+3. Add the secrets. `WEBHOOK_SECRET` is 16–256 letters, digits, `_` or `-`, which is all Telegram accepts; `openssl rand -hex 32` makes one. The relay refuses every webhook until it's set:
 
     ```bash
     pnpm wrangler secret put BOT_TOKEN
     pnpm wrangler secret put WEBHOOK_SECRET
     ```
 
-4. Deploy, then point the bot at the worker. Copy `.dev.vars.example` to `.dev.vars` and fill in the token, secret and the worker's URL first:
+4. Point the bot at the worker. Copy `.dev.vars.example` to `.dev.vars` and fill in the token, secret and the worker's URL first:
 
     ```bash
-    pnpm run deploy
     pnpm webhook
     ```
 
