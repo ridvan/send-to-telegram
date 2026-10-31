@@ -1111,7 +1111,7 @@ function ChatPicker({
             }}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent width="content">
           <SelectGroup>
             {destinations.map((item) => (
               <SelectItem key={item.id} value={item.id}>
@@ -1121,7 +1121,7 @@ function ChatPicker({
                   avatar={item.avatar}
                   size="sm"
                 />
-                <ChatName name={destinationName(item)} />
+                <ChatName name={destinationName(item)} className="truncate" />
               </SelectItem>
             ))}
           </SelectGroup>
