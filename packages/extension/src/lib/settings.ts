@@ -89,12 +89,12 @@ export type Theme = z.infer<typeof themeSchema>;
 /** Behind the popup's chat: its plain color, a pattern, or your photo. */
 export const chatBackgroundSchema = z.enum([
   'plain',
-  'dots',
-  'grid',
-  'lines',
+  'doodles',
+  'space',
+  'garden',
   'waves',
-  'crosses',
-  'rings',
+  'lattice',
+  'petals',
   'photo',
 ]);
 

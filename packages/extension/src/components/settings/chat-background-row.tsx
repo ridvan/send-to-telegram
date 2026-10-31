@@ -19,12 +19,12 @@ import {
 
 const names = {
   plain: 'Plain',
-  dots: 'Dots',
-  grid: 'Grid',
-  lines: 'Lines',
+  doodles: 'Doodles',
+  space: 'Space',
+  garden: 'Garden',
   waves: 'Waves',
-  crosses: 'Crosses',
-  rings: 'Rings',
+  lattice: 'Hemp leaf',
+  petals: 'Petals',
   photo: 'Your photo',
 } satisfies Record<ChatBackground, string>;
 
@@ -91,7 +91,7 @@ export function ChatBackgroundRow() {
               }
             >
               <span className="relative flex h-11 w-full items-center justify-center overflow-hidden rounded-lg bg-chat text-muted-foreground">
-                <ChatWallpaper background={option} photo={photo} />
+                <ChatWallpaper background={option} photo={photo} preview />
                 {option === 'photo' && !photo ? (
                   <HugeiconsIcon icon={ImageAdd01Icon} strokeWidth={1.8} />
                 ) : null}

@@ -117,6 +117,9 @@
   /* The popup is drawn as a chat: a wallpaper and your outgoing message. */
   --chat: oklch(0.955 0.012 235);
   --chat-pattern: oklch(0.55 0.06 240 / 17%);
+  /* Soft light from two corners under a pattern, as Telegram tints its own. */
+  --chat-glow-start: oklch(0.93 0.06 190 / 70%);
+  --chat-glow-end: oklch(0.9 0.06 285 / 60%);
   --bubble: oklch(0.93 0.045 232);
   --bubble-foreground: oklch(0.2 0.02 245);
   --bubble-muted: oklch(0.48 0.04 240);
@@ -186,6 +189,8 @@
   --brand: oklch(0.64 0.135 240);
   --chat: oklch(0.12 0.006 250);
   --chat-pattern: oklch(0.75 0.04 245 / 11%);
+  --chat-glow-start: oklch(0.3 0.05 200 / 45%);
+  --chat-glow-end: oklch(0.28 0.06 285 / 45%);
   --bubble: oklch(0.4 0.075 250);
   --bubble-foreground: oklch(0.985 0 0);
   --bubble-muted: oklch(0.8 0.04 245);
@@ -338,6 +343,12 @@
 }
 
 /* A row that scrolls sideways, such as hashtags, without a scrollbar. */
+@utility chat-glow {
+  background-image:
+    radial-gradient(at 0% 0%, var(--chat-glow-start), transparent 65%),
+    radial-gradient(at 100% 100%, var(--chat-glow-end), transparent 65%);
+}
+
 @utility scrollbar-none {
   scrollbar-width: none;
 

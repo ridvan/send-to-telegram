@@ -8,9 +8,12 @@ import type { ChatBackground } from '@/lib/settings';
 export function ChatWallpaper({
   background,
   photo,
+  preview = false,
 }: {
   background: ChatBackground;
   photo: string | null;
+  /** Drawn small, in a swatch, with more of the pattern in view. */
+  preview?: boolean;
 }) {
   if (background === 'photo' && photo) {
     return (
@@ -25,13 +28,17 @@ export function ChatWallpaper({
 
   if (!isChatPattern(background)) return null;
 
-  const tile = patternTile(background);
+  const tile = patternTile(background, preview ? 0.6 : 1);
 
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute inset-0 bg-chat-pattern mask-(--tile) mask-size-(--tile-size) mask-repeat"
-      style={{ '--tile': tile.image, '--tile-size': tile.size }}
-    />
+      className="pointer-events-none absolute inset-0 chat-glow"
+    >
+      <span
+        className="absolute inset-0 bg-chat-pattern mask-(--tile) mask-size-(--tile-size) mask-repeat mask-luminance"
+        style={{ '--tile': tile.image, '--tile-size': tile.size }}
+      />
+    </span>
   );
 }
