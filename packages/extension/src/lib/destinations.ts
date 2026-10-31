@@ -24,26 +24,22 @@ function sameChat(a: Destination, b: Destination) {
   return false;
 }
 
-/** Adds a chat, replacing an existing one for the same bot and chat or the same relay link. */
+/**
+ * Adds a chat, replacing an existing one for the same bot and chat or the
+ * same relay link. The chat just connected becomes the default, so the popup
+ * opens on it.
+ */
 export function addDestination(destination: Destination) {
-  return settingsStore.update((settings) => {
-    const others = settings.destinations.filter(
-      (existing) => !sameChat(existing, destination)
-    );
-
-    // Keep the default unless it was the chat being replaced.
-    const keepsDefault = others.some(
-      (existing) => existing.id === settings.defaultDestinationId
-    );
-
-    return {
-      ...settings,
-      destinations: [...others, destination],
-      defaultDestinationId: keepsDefault
-        ? settings.defaultDestinationId
-        : destination.id,
-    };
-  });
+  return settingsStore.update((settings) => ({
+    ...settings,
+    destinations: [
+      ...settings.destinations.filter(
+        (existing) => !sameChat(existing, destination)
+      ),
+      destination,
+    ],
+    defaultDestinationId: destination.id,
+  }));
 }
 
 export async function removeDestination(destination: Destination) {

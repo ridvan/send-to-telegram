@@ -25,11 +25,10 @@ describe('addDestination', () => {
     expect(destinations.map((destination) => destination.id)).toEqual([
       'second',
     ]);
-    // The default follows the replacement instead of pointing at nothing.
     expect(defaultDestinationId).toBe('second');
   });
 
-  it('keeps another chat as the default when adding one', async () => {
+  it('makes the chat just connected the default', async () => {
     await addDestination(relay);
     await addDestination({
       ...relay,
@@ -37,7 +36,7 @@ describe('addDestination', () => {
       deviceToken: 'b'.repeat(43),
     });
 
-    expect((await settingsStore.get()).defaultDestinationId).toBe('first');
+    expect((await settingsStore.get()).defaultDestinationId).toBe('second');
   });
 
   it('keeps separate relay links apart', async () => {
