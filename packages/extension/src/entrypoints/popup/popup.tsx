@@ -30,6 +30,7 @@ import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
 import { ChatIntro } from '@/components/chat-intro';
+import { ChatWallpaper } from '@/components/chat-wallpaper';
 import { SelectionBar } from '@/components/chat-selection';
 import { ChatName } from '@/components/chat-name';
 import {
@@ -96,6 +97,7 @@ import { revealMessage } from '@/lib/reveal';
 import { matchChatItems } from '@/lib/search';
 import {
   avatarSeed,
+  chatPhotoStore,
   defaultDestination,
   destinationName,
   historyStore,
@@ -549,6 +551,7 @@ function Composer({
   const busy = phase.name === 'sending' || phase.name === 'sent';
   const [firstSendAt, setFirstSendAt] = useState<number>();
   const earlier = useChatItems(settings, destinationId, firstSendAt);
+  const chatPhoto = useStore(chatPhotoStore);
 
   const destination = settings.destinations.find(
     (item) => item.id === destinationId
@@ -782,137 +785,143 @@ function Composer({
           {canAttach ? 'Drop to attach' : 'Files go only to your own bot'}
         </div>
       ) : null}
-      {/* Reversed around a single child, so it opens scrolled to the newest
-          message and stays there as the draft grows. Keyed so another chat
-          opens at its newest message too. */}
-      <div
-        key={destinationId}
-        ref={chatRef}
-        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-chat p-3"
-      >
+      <div className="relative flex min-h-0 flex-1 flex-col bg-chat">
+        <ChatWallpaper
+          background={settings.appearance.chatBackground}
+          photo={chatPhoto}
+        />
+        {/* Reversed around a single child, so it opens scrolled to the newest
+            message and stays there as the draft grows. Keyed so another chat
+            opens at its newest message too. */}
         <div
-          className={
-            noMatches ? 'my-auto flex flex-col gap-3' : 'flex flex-col gap-3'
-          }
+          key={destinationId}
+          ref={chatRef}
+          className="relative flex min-h-0 flex-1 flex-col-reverse overflow-y-auto p-3"
         >
-          {noMatches && search ? (
-            <NoMatches query={search.query} onClear={search.onClear} />
-          ) : null}
-
-          <ChatHistory
-            items={matches}
-            delivery={settings.delivery}
-            botToken={
-              destination?.kind === 'bot' ? destination.token : undefined
-            }
-            now={time}
-            draftBelow={!term}
-            intro={
-              destination && !term && showsHistory ? (
-                <ChatIntro destination={destination} />
-              ) : undefined
-            }
-            focusKey={focusKey}
-            onPick={search?.onShow}
-            select={{
-              selected: selection?.selected,
-              onToggle: (key) => selection?.onToggle(key),
-              onStart: onStartSelecting,
-            }}
-          />
-
-          {term && !noMatches ? <MatchCount count={matches.length} /> : null}
-
-          <p aria-live="polite" className="sr-only">
-            {term
-              ? plural(matches.length, {
-                  one: '# message',
-                  other: '# messages',
-                })
-              : ''}
-          </p>
-
-          {/* Always wrapped, so searching doesn't rebuild the draft: it dims
-              while you search or select, and steps aside once you type. */}
           <div
-            inert={browsing}
-            hidden={term !== ''}
-            className="flex flex-col gap-3 transition-opacity duration-150 inert:opacity-50"
+            className={
+              noMatches ? 'my-auto flex flex-col gap-3' : 'flex flex-col gap-3'
+            }
           >
-            {page.selection ? (
-              <ToggleGroup
-                variant="segmented"
-                size="sm"
-                aria-label="What to send"
-                value={[mode]}
-                onValueChange={([next]) => {
-                  if (next === 'page' || next === 'selection') setMode(next);
-                }}
-                className="self-center"
-              >
-                <ToggleGroupItem value="selection">
-                  Selected text
-                </ToggleGroupItem>
-                <ToggleGroupItem value="page">Page link</ToggleGroupItem>
-              </ToggleGroup>
+            {noMatches && search ? (
+              <NoMatches query={search.query} onClear={search.onClear} />
             ) : null}
 
-            {phase.name === 'failed' ? null : (
-              <LastFailure
-                inChat={(id) =>
-                  earlier.some(
-                    (item) => item.direction === 'out' && item.entry.id === id
-                  )
-                }
-              />
-            )}
-
-            <MessagePreview
-              kind={mode}
-              pageUrl={attachPage ? page.url : undefined}
-              pageTitle={attachPage ? page.title : undefined}
-              favIconUrl={page.favIconUrl}
-              text={page.selection}
-              note={note}
+            <ChatHistory
+              items={matches}
               delivery={settings.delivery}
-              status={statusOf[phase.name]}
-              time={time}
-              standOut={earlier.length > 0}
-              attachment={attached && { ...attached.info, url: attached.url }}
-              onRemoveAttachment={busy ? undefined : removeAttachment}
-              onRemovePageLink={busy ? undefined : () => setAttachPage(false)}
-              menu={draftMenu}
-              menuDisabled={draftMenuDisabled}
+              botToken={
+                destination?.kind === 'bot' ? destination.token : undefined
+              }
+              now={time}
+              draftBelow={!term}
+              intro={
+                destination && !term && showsHistory ? (
+                  <ChatIntro destination={destination} />
+                ) : undefined
+              }
+              focusKey={focusKey}
+              onPick={search?.onShow}
+              select={{
+                selected: selection?.selected,
+                onToggle: (key) => selection?.onToggle(key),
+                onStart: onStartSelecting,
+              }}
             />
 
-            {problem ? (
-              <Alert variant="destructive">
-                <AlertTitle>Can’t attach this file</AlertTitle>
-                <AlertDescription>{problem}</AlertDescription>
-              </Alert>
-            ) : null}
+            {term && !noMatches ? <MatchCount count={matches.length} /> : null}
 
-            {phase.name === 'failed' ? (
-              <Alert variant="destructive">
-                <AlertTitle>Not sent</AlertTitle>
-                <AlertDescription>
-                  {phase.message}{' '}
-                  {phase.canSetUp ? (
-                    <Button
-                      variant="link"
-                      size="text"
-                      onClick={onOpenChatSettings}
-                    >
-                      Open chat settings
-                    </Button>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <p role="status" className="sr-only">
-              {phase.name === 'sent' ? `Sent to ${phase.destination}` : ''}
+            <p aria-live="polite" className="sr-only">
+              {term
+                ? plural(matches.length, {
+                    one: '# message',
+                    other: '# messages',
+                  })
+                : ''}
             </p>
+
+            {/* Always wrapped, so searching doesn't rebuild the draft: it dims
+              while you search or select, and steps aside once you type. */}
+            <div
+              inert={browsing}
+              hidden={term !== ''}
+              className="flex flex-col gap-3 transition-opacity duration-150 inert:opacity-50"
+            >
+              {page.selection ? (
+                <ToggleGroup
+                  variant="segmented"
+                  size="sm"
+                  aria-label="What to send"
+                  value={[mode]}
+                  onValueChange={([next]) => {
+                    if (next === 'page' || next === 'selection') setMode(next);
+                  }}
+                  className="self-center"
+                >
+                  <ToggleGroupItem value="selection">
+                    Selected text
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="page">Page link</ToggleGroupItem>
+                </ToggleGroup>
+              ) : null}
+
+              {phase.name === 'failed' ? null : (
+                <LastFailure
+                  inChat={(id) =>
+                    earlier.some(
+                      (item) => item.direction === 'out' && item.entry.id === id
+                    )
+                  }
+                />
+              )}
+
+              <MessagePreview
+                kind={mode}
+                pageUrl={attachPage ? page.url : undefined}
+                pageTitle={attachPage ? page.title : undefined}
+                favIconUrl={page.favIconUrl}
+                text={page.selection}
+                note={note}
+                delivery={settings.delivery}
+                status={statusOf[phase.name]}
+                time={time}
+                standOut={earlier.length > 0}
+                attachment={attached && { ...attached.info, url: attached.url }}
+                onRemoveAttachment={busy ? undefined : removeAttachment}
+                onRemovePageLink={busy ? undefined : () => setAttachPage(false)}
+                menu={draftMenu}
+                menuDisabled={draftMenuDisabled}
+              />
+
+              {problem ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Can’t attach this file</AlertTitle>
+                  <AlertDescription>{problem}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {phase.name === 'failed' ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Not sent</AlertTitle>
+                  <AlertDescription>
+                    {phase.message}{' '}
+                    {phase.canSetUp ? (
+                      <Button
+                        variant="link"
+                        size="text"
+                        onClick={onOpenChatSettings}
+                      >
+                        Open chat settings
+                      </Button>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              <p role="status" className="sr-only">
+                {phase.name === 'sent' ? `Sent to ${phase.destination}` : ''}
+              </p>
+            </div>
           </div>
         </div>
       </div>

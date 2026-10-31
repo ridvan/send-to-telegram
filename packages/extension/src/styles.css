@@ -24,6 +24,7 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-chat: var(--chat);
+  --color-chat-pattern: var(--chat-pattern);
   --color-bubble: var(--bubble);
   --color-bubble-foreground: var(--bubble-foreground);
   --color-bubble-muted: var(--bubble-muted);
@@ -115,6 +116,7 @@
   --brand-foreground: oklch(1 0 0);
   /* The popup is drawn as a chat: a wallpaper and your outgoing message. */
   --chat: oklch(0.955 0.012 235);
+  --chat-pattern: oklch(0.55 0.06 240 / 17%);
   --bubble: oklch(0.93 0.045 232);
   --bubble-foreground: oklch(0.2 0.02 245);
   --bubble-muted: oklch(0.48 0.04 240);
@@ -183,6 +185,7 @@
   --warning-foreground: oklch(0.205 0 0);
   --brand: oklch(0.64 0.135 240);
   --chat: oklch(0.12 0.006 250);
+  --chat-pattern: oklch(0.75 0.04 245 / 11%);
   --bubble: oklch(0.4 0.075 250);
   --bubble-foreground: oklch(0.985 0 0);
   --bubble-muted: oklch(0.8 0.04 245);

@@ -63,6 +63,7 @@ import {
   themeSchema,
 } from '@/lib/settings';
 
+import { ChatBackgroundRow } from './chat-background-row';
 import { TagEditor } from './tag-editor';
 
 function update(change: (settings: Settings) => Settings) {
@@ -465,6 +466,7 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
           </ToggleGroup>
         }
       />
+      <ChatBackgroundRow />
       <SettingRow
         icon={{ icon: KeyboardIcon, tone: 'blue' }}
         label="Keyboard shortcuts"

@@ -86,6 +86,20 @@ export const themeSchema = z.enum(['system', 'light', 'dark']);
 
 export type Theme = z.infer<typeof themeSchema>;
 
+/** Behind the popup's chat: its plain color, a pattern, or your photo. */
+export const chatBackgroundSchema = z.enum([
+  'plain',
+  'dots',
+  'grid',
+  'lines',
+  'waves',
+  'crosses',
+  'rings',
+  'photo',
+]);
+
+export type ChatBackground = z.infer<typeof chatBackgroundSchema>;
+
 export const DEFAULT_TAGS = ['work', 'personal', 'ideas', 'reading'];
 
 export const settingsSchema = z.object({
@@ -123,6 +137,8 @@ export const settingsSchema = z.object({
       theme: themeSchema.default('system'),
       /** Off blurs chat names until hovered, for screen sharing and onlookers. */
       showChatNames: z.boolean().default(true),
+      /** One this version doesn't draw falls back to plain. */
+      chatBackground: chatBackgroundSchema.default('plain').catch('plain'),
     })
     .prefault({}),
   privacy: z
@@ -297,6 +313,21 @@ export const inboxRemovedStore = defineStore(
   'inboxRemoved',
   listOf(inboxRemovedSchema),
   () => [],
+  { sealed: true }
+);
+
+/**
+ * The photo behind the chat, as a WebP data URL. Apart from settings, which
+ * are read far more often than it changes.
+ */
+export const chatPhotoStore = defineStore(
+  'chatPhoto',
+  z
+    .string()
+    .regex(/^data:image\/[\w.+-]+;base64,/)
+    .nullable()
+    .catch(null),
+  () => null,
   { sealed: true }
 );
 

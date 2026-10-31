@@ -21,6 +21,8 @@ const toggleVariants = cva(
         // A picture to pick, such as an avatar; chosen, it gets a ring.
         swatch:
           'rounded-full bg-transparent p-0.5 hover:bg-transparent aria-pressed:bg-transparent aria-pressed:ring-2 aria-pressed:ring-primary',
+        // A wider picture to pick, such as a chat background.
+        tile: 'rounded-xl bg-transparent p-0.5 hover:bg-transparent aria-pressed:bg-transparent aria-pressed:ring-2 aria-pressed:ring-primary',
       },
       size: {
         default:
