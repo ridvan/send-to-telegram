@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { HistoryView } from '@/components/history-view';
 import { ChatsSection } from '@/components/settings/chats-section';
+import { LockSection } from '@/components/settings/lock-section';
 import {
   GeneralSection,
   HistorySection,
@@ -77,6 +78,7 @@ export function Options() {
             <TagsSection />
             <HistorySection />
             <PrivacySection />
+            <LockSection />
             <GeneralSection onReset={restart} />
           </>
         )}

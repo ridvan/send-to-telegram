@@ -7,6 +7,7 @@ import {
 import { browser } from 'wxt/browser';
 
 import type { InboxFile, InboxPicture } from './settings.ts';
+import { lockState } from './vault.ts';
 
 /**
  * Telegram's file host leaves out Access-Control-Allow-Origin on successful
@@ -61,6 +62,9 @@ function cacheKey(uniqueId: string) {
 }
 
 async function openCache() {
+  // Under the password lock, nothing received is kept in the clear.
+  if ((await lockState()) !== 'off') return undefined;
+
   return 'caches' in globalThis ? caches.open(CACHE) : undefined;
 }
 

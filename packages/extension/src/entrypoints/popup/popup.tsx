@@ -5,6 +5,7 @@ import {
   Link01Icon,
   Search01Icon,
   Settings01Icon,
+  SquareLock02Icon,
   Tick02Icon,
   Unlink04Icon,
 } from '@hugeicons/core-free-icons';
@@ -44,6 +45,7 @@ import {
 } from '@/components/message-preview';
 import { SettingsDensity } from '@/components/setting-row';
 import { ChatsSection } from '@/components/settings/chats-section';
+import { LockSection } from '@/components/settings/lock-section';
 import {
   GeneralSection,
   HistorySection,
@@ -81,11 +83,13 @@ import { useAttachment } from '@/hooks/use-attachment';
 import { chatKey, useChatItems } from '@/hooks/use-chat-items';
 import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
+import { useLock } from '@/hooks/use-lock';
 import { useStore } from '@/hooks/use-store';
 import { saveAttachment } from '@/lib/attachments';
 import { deleteMessages } from '@/lib/chat-actions';
 import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
 import { plural } from '@/lib/format';
+import { lockNow } from '@/lib/lock';
 import type { Draft } from '@/lib/compose';
 import { revealMessage } from '@/lib/reveal';
 import { matchChatItems } from '@/lib/search';
@@ -206,6 +210,7 @@ function HeaderButton({
  * animate poorly. Chrome caps popups at 600px.
  */
 function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
+  const lock = useLock();
   const { view, show } = useNavigation();
   const [focusKey, setFocusKey] = useState<string>();
   const [query, setQuery] = useState('');
@@ -324,6 +329,13 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
                   onClick={() => show('search')}
                 />
               ) : null}
+              {lock.state === 'unlocked' ? (
+                <HeaderButton
+                  label="Lock"
+                  icon={SquareLock02Icon}
+                  onClick={() => void lockNow()}
+                />
+              ) : null}
               <HeaderButton
                 label="Settings"
                 icon={Settings01Icon}
@@ -411,6 +423,7 @@ function SettingsPanel() {
         <TagsSection />
         <HistorySection />
         <PrivacySection />
+        <LockSection />
         {/* Clearing storage empties the chats, so the popup shows setup. */}
         <GeneralSection onReset={() => undefined} />
         <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-2 pb-4 text-xs text-muted-foreground">

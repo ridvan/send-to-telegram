@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 
+import { LockGate, type LockScreenSize } from '@/components/lock-screen';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useStore } from '@/hooks/use-store';
@@ -20,11 +21,20 @@ function ThemeSync() {
   return null;
 }
 
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({
+  lockScreen,
+  children,
+}: {
+  lockScreen: LockScreenSize;
+  children: ReactNode;
+}) {
   return (
     <TooltipProvider delay={400}>
-      <ThemeSync />
-      {children}
+      {/* Locked settings read as defaults; the remembered theme stays applied. */}
+      <LockGate size={lockScreen}>
+        <ThemeSync />
+        {children}
+      </LockGate>
       <Toaster position="bottom-center" />
     </TooltipProvider>
   );

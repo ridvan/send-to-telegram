@@ -38,6 +38,7 @@ import {
   settingsStore,
   statsStore,
 } from './settings.ts';
+import { LockedError, lockState, touchSession } from './vault.ts';
 
 export const sendRequestSchema = z.object({
   type: z.literal('send'),
@@ -161,7 +162,14 @@ function record(entry: HistoryEntry, replaces: string | undefined) {
 
 /** Keeps the files that failed messages in history could send again. */
 export async function pruneUnsentFiles() {
-  const history = await historyStore.get();
+  const history = await historyStore.get().catch((cause: unknown) => {
+    // Locked history can't say which files it could still retry, so none go.
+    if (cause instanceof LockedError) return undefined;
+
+    throw cause;
+  });
+
+  if (!history) return;
 
   const retryable = history.flatMap((entry) =>
     entry.status === 'failed' && entry.content?.attachment
@@ -198,6 +206,14 @@ export async function clearFailureBadge() {
  * do not count towards the total, as in 1.x.
  */
 export async function send(request: SendRequest): Promise<SendOutcome> {
+  // A send counts as using the extension, for auto-lock.
+  await touchSession();
+
+  // Chats and their tokens can't be read, and nothing can be recorded.
+  if ((await lockState()) === 'locked') {
+    return { ok: false, reason: 'locked', message: failureCopy.locked };
+  }
+
   const settings = await settingsStore.get();
   const { draft, incognito } = request;
   const remember = !incognito && settings.history.mode !== 'off';

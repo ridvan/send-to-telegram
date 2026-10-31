@@ -8,4 +8,4 @@ import { Popup } from './popup';
 
 const page = await loadPage();
 
-await mount(() => <Popup page={page} />);
+await mount(() => <Popup page={page} />, 'popup');

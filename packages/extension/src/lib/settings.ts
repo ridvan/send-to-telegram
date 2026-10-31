@@ -5,7 +5,7 @@ import {
 } from '@send-to-telegram/core';
 import { z } from 'zod';
 
-import { defineStore } from './storage.ts';
+import { defineStore, sealKey } from './storage.ts';
 
 /** Telegram links `#word` only for letters, digits and underscores. */
 export const TAG_PATTERN = /^[\p{L}\p{N}_]{1,32}$/u;
@@ -140,7 +140,8 @@ export const defaultSettings = (): Settings => settingsSchema.parse({});
 export const settingsStore = defineStore(
   'settings',
   settingsSchema,
-  defaultSettings
+  defaultSettings,
+  { sealed: true }
 );
 
 export const contentKindSchema = z.enum(['selection', 'link', 'image', 'page']);
@@ -241,7 +242,8 @@ function listOf<S extends z.ZodType>(entrySchema: S) {
 export const historyStore = defineStore(
   'history',
   listOf(historyEntrySchema),
-  () => []
+  () => [],
+  { sealed: true }
 );
 
 /** A message someone sent to your own bot in a chat, shown in the popup. */
@@ -271,7 +273,8 @@ export const MAX_INBOX = 500;
 export const inboxStore = defineStore(
   'inbox',
   listOf(inboxEntrySchema),
-  () => []
+  () => [],
+  { sealed: true }
 );
 
 /**
@@ -293,8 +296,12 @@ export const MAX_INBOX_REMOVED = 1000;
 export const inboxRemovedStore = defineStore(
   'inboxRemoved',
   listOf(inboxRemovedSchema),
-  () => []
+  () => [],
+  { sealed: true }
 );
+
+/** 1.x data kept after migrating it (see `legacy.ts`), with its bot token. */
+sealKey('legacyBackup');
 
 export const statsSchema = z.object({
   sent: z.number().int().nonnegative().default(0),

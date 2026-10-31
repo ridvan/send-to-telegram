@@ -2,7 +2,8 @@
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
- * `?fail` to make sends and downloads fail. The demo group chat's bot answers
+ * `?fail` to make sends and downloads fail, and `?lock` to lock it again after
+ * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
  * download their media.
  * Production builds drop this module because `import.meta.env.DEV` is false.
@@ -22,10 +23,59 @@ type ChangeListener = (changes: Changes, area: string) => void;
 
 const PREFIX = 'preview:';
 
-function read(key: string) {
-  const raw = localStorage.getItem(PREFIX + key);
+function read(key: string, backing = localStorage) {
+  const raw = backing.getItem(PREFIX + key);
 
   return raw === null ? undefined : JSON.parse(raw);
+}
+
+/** One `storage` area on top of a Web Storage object. */
+function storageArea(
+  backing: Storage,
+  area: string,
+  emit: (changes: Changes, area: string) => void
+) {
+  return {
+    get: async (keys: string | string[]) => {
+      const list = Array.isArray(keys) ? keys : [keys];
+
+      return Object.fromEntries(list.map((key) => [key, read(key, backing)]));
+    },
+    set: async (items: Record<string, string>) => {
+      const changes: Changes = {};
+
+      for (const [key, value] of Object.entries(items)) {
+        changes[key] = { newValue: value };
+        backing.setItem(PREFIX + key, JSON.stringify(value));
+      }
+
+      emit(changes, area);
+    },
+    remove: async (keys: string | string[]) => {
+      const changes: Changes = {};
+
+      for (const key of Array.isArray(keys) ? keys : [keys]) {
+        changes[key] = { oldValue: read(key, backing) };
+        backing.removeItem(PREFIX + key);
+      }
+
+      emit(changes, area);
+    },
+    clear: async () => {
+      const changes: Changes = {};
+
+      for (const key of Object.keys(backing)) {
+        if (!key.startsWith(PREFIX)) continue;
+
+        changes[key.slice(PREFIX.length)] = {
+          oldValue: read(key.slice(PREFIX.length), backing),
+        };
+        backing.removeItem(key);
+      }
+
+      emit(changes, area);
+    },
+  };
 }
 
 function demoData(now: number) {
@@ -483,16 +533,24 @@ function install() {
   }
 
   if (url.searchParams.has('reset')) {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(PREFIX)) localStorage.removeItem(key);
+    for (const backing of [localStorage, sessionStorage]) {
+      for (const key of Object.keys(backing)) {
+        if (key.startsWith(PREFIX)) backing.removeItem(key);
+      }
     }
   }
 
-  const emit = (changes: Changes) => {
-    for (const listener of listeners) listener(changes, 'local');
+  // `?lock` forgets the unlocked key, as quitting the browser would.
+  if (url.searchParams.has('lock'))
+    sessionStorage.removeItem(`${PREFIX}vaultKey`);
+
+  const emit = (changes: Changes, area = 'local') => {
+    for (const listener of listeners) listener(changes, area);
   };
 
   addEventListener('storage', (event) => {
+    if (event.storageArea !== localStorage) return;
+
     if (!event.key?.startsWith(PREFIX)) return;
 
     emit({
@@ -545,47 +603,9 @@ function install() {
         removeListener: (listener: ChangeListener) =>
           listeners.delete(listener),
       },
-      local: {
-        get: async (keys: string | string[]) => {
-          const list = Array.isArray(keys) ? keys : [keys];
-
-          return Object.fromEntries(list.map((key) => [key, read(key)]));
-        },
-        set: async (items: Record<string, string>) => {
-          const changes: Changes = {};
-
-          for (const [key, value] of Object.entries(items)) {
-            changes[key] = { newValue: value };
-            localStorage.setItem(PREFIX + key, JSON.stringify(value));
-          }
-
-          emit(changes);
-        },
-        remove: async (keys: string | string[]) => {
-          const changes: Changes = {};
-
-          for (const key of Array.isArray(keys) ? keys : [keys]) {
-            changes[key] = { oldValue: read(key) };
-            localStorage.removeItem(PREFIX + key);
-          }
-
-          emit(changes);
-        },
-        clear: async () => {
-          const changes: Changes = {};
-
-          for (const key of Object.keys(localStorage)) {
-            if (!key.startsWith(PREFIX)) continue;
-
-            changes[key.slice(PREFIX.length)] = {
-              oldValue: read(key.slice(PREFIX.length)),
-            };
-            localStorage.removeItem(key);
-          }
-
-          emit(changes);
-        },
-      },
+      local: storageArea(localStorage, 'local', emit),
+      // Kept for the tab's life, as the browser keeps it until it quits.
+      session: storageArea(sessionStorage, 'session', emit),
     },
     tabs: {
       query: async () => [

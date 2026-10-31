@@ -11,6 +11,7 @@ export const failureReasonSchema = z.enum([
   'network',
   'rejected',
   'unsendable',
+  'locked',
 ]);
 
 export type FailureReason = z.infer<typeof failureReasonSchema>;
@@ -28,6 +29,8 @@ export class SendFailure extends Error {
 
 export const failureCopy = {
   no_destination: 'Connect Telegram first, then send again.',
+  locked:
+    'Send to Telegram is locked. Unlock it with your password, then send again.',
   bot_unauthorized:
     'Telegram rejected the bot token. It may have been revoked in BotFather. Update it in settings.',
   relay_unauthorized:

@@ -19,6 +19,7 @@ A rewrite from the ground up. Existing settings, chats, hashtags and history mov
 - A searchable list of everything you sent on the settings page, with Send again, Copy and Remove, grouped by day.
 - Keyboard shortcuts to open the popup and to send the current page.
 - Dark mode, following the system or set by hand.
+- An optional password lock. Chats, bot tokens, history and received messages are encrypted in the browser (AES-GCM, with a key wrapped by your password through PBKDF2), and asked for each time the browser starts or the extension updates, or also after 15 minutes or an hour without use if you choose. A recovery code shown once lets you set a new password if you forget it. Sends from the right-click menu while locked open the popup to unlock, then go out.
 - Firefox support.
 
 ### Changed

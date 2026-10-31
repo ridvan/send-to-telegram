@@ -18,7 +18,6 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useId, useState } from 'react';
-import { browser } from 'wxt/browser';
 
 import {
   type SettingIcon,
@@ -47,6 +46,7 @@ import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStore } from '@/hooks/use-store';
 import { plural } from '@/lib/format';
+import { resetExtension } from '@/lib/lock';
 import { forgetFiles } from '@/lib/telegram-files';
 import {
   type HistoryMode,
@@ -410,9 +410,7 @@ function ResetRow({ onReset }: { onReset: () => void }) {
                 disabled={resetting}
                 onClick={async () => {
                   setResetting(true);
-                  await browser.storage.local.clear();
-                  // Received photos are cached apart from storage.
-                  await forgetFiles();
+                  await resetExtension();
                   onReset();
                 }}
               >
