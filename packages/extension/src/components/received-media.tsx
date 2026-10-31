@@ -129,6 +129,116 @@ function savedName(message: InboxEntry, extension: string) {
   return `telegram-${day}.${extension}`;
 }
 
+const extensions = new Map([
+  ['audio/mpeg', 'mp3'],
+  ['audio/mp4', 'm4a'],
+  ['audio/ogg', 'ogg'],
+  ['audio/wav', 'wav'],
+  ['audio/flac', 'flac'],
+  ['video/mp4', 'mp4'],
+  ['video/quicktime', 'mov'],
+  ['video/webm', 'webm'],
+]);
+
+/** The name a file is saved under: its own, its title, or the day it came. */
+function fileNameOf(message: InboxEntry, file: InboxFile, extension: string) {
+  if (message.fileName) return message.fileName;
+
+  const known = extensions.get(file.mimeType ?? '') ?? extension;
+
+  return file.title ? `${file.title}.${known}` : savedName(message, known);
+}
+
+function saveUrl(url: string, name: string) {
+  Object.assign(document.createElement('a'), {
+    href: url,
+    download: name,
+  }).click();
+}
+
+/**
+ * Saves a received file to the computer. `save` takes the file's `blob:` URL
+ * when it's already downloaded, such as a song that played, so it isn't
+ * fetched twice.
+ */
+function useSaveFile(
+  token: string,
+  file: InboxFile,
+  options: { name: string; type: string }
+) {
+  const { name, type } = options;
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<FileFailure>();
+
+  async function save(url?: string) {
+    if (saving) return;
+
+    if (url) {
+      saveUrl(url, name);
+
+      return;
+    }
+
+    setSaving(true);
+    setFailure(undefined);
+
+    try {
+      const blob = await downloadFile(token, file, {
+        signal: new AbortController().signal,
+        keep: false,
+        type,
+      });
+
+      const objectUrl = URL.createObjectURL(blob);
+
+      saveUrl(objectUrl, name);
+      // Long enough for the browser to start saving it.
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (cause) {
+      setFailure(
+        cause instanceof FileFailure
+          ? cause
+          : new FileFailure('unavailable', { cause })
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return { saving, failure, save };
+}
+
+/** Saves a file from the end of its row, or from a corner of a video. */
+function SaveButton({
+  label,
+  saving,
+  onSave,
+  overlay = false,
+}: {
+  /** What it does, for screen readers: the file's name, or its kind. */
+  label: string;
+  saving: boolean;
+  onSave: () => void;
+  overlay?: boolean;
+}) {
+  return (
+    <Button
+      variant={overlay ? 'overlay' : 'ghost'}
+      size={overlay ? 'corner' : 'icon'}
+      aria-label={label}
+      aria-disabled={saving}
+      onClick={onSave}
+      className={overlay ? 'absolute top-2 right-2' : undefined}
+    >
+      {saving ? (
+        <Spinner />
+      ) : (
+        <HugeiconsIcon icon={Download04Icon} strokeWidth={1.8} />
+      )}
+    </Button>
+  );
+}
+
 /** The full photo, opened from its bubble, with a way to save it. */
 function PhotoViewer({
   token,
@@ -266,11 +376,13 @@ function PhotoMedia({
 /** A video or GIF: its first frame until clicked, then played in place. */
 function VideoMedia({
   token,
+  message,
   file,
   looped,
   hidden,
 }: {
   token: string;
+  message: InboxEntry;
   file: InboxFile;
   /** A GIF: plays silently on a loop, without controls. */
   looped: boolean;
@@ -294,29 +406,58 @@ function VideoMedia({
   });
 
   const aspectRatio = aspectOf(file.preview ?? file);
-
-  if (video.state.status === 'ready') {
-    return (
-      <video
-        src={video.state.url}
-        autoPlay
-        playsInline
-        controls={!looped}
-        loop={looped}
-        muted={looped}
-        className="aspect-(--aspect) max-h-80 w-full bg-black"
-        style={{ '--aspect': aspectRatio }}
-      />
-    );
-  }
+  const name = fileNameOf(message, file, 'mp4');
+  const saver = useSaveFile(token, file, { name, type: 'video/mp4' });
+  const ready = video.state.status === 'ready' ? video.state.url : undefined;
 
   // Known from the size Telegram reported, before trying to download it.
   const tooBig =
     (file.size ?? 0) > DOWNLOAD_LIMIT ||
-    (video.state.status === 'failed' && video.state.reason === 'too_big');
+    (video.state.status === 'failed' && video.state.reason === 'too_big') ||
+    saver.failure?.reason === 'too_big';
+
+  const save = tooBig ? null : (
+    <SaveButton
+      label={
+        message.fileName ? `Save ${name}` : `Save ${looped ? 'GIF' : 'video'}`
+      }
+      saving={saver.saving}
+      onSave={() => void saver.save(ready)}
+      overlay
+    />
+  );
+
+  const saveFailure =
+    saver.failure && saver.failure.reason !== 'too_big' ? (
+      <span className="px-3 pt-1.5">
+        <Failure
+          state={{ status: 'failed', reason: saver.failure.reason }}
+          onRetry={() => void saver.save(ready)}
+        />
+      </span>
+    ) : null;
+
+  if (ready) {
+    return (
+      <span className="relative flex flex-col">
+        <video
+          src={ready}
+          autoPlay
+          playsInline
+          controls={!looped}
+          loop={looped}
+          muted={looped}
+          className="aspect-(--aspect) max-h-80 w-full bg-black"
+          style={{ '--aspect': aspectRatio }}
+        />
+        {save}
+        {saveFailure}
+      </span>
+    );
+  }
 
   return (
-    <span className="flex flex-col">
+    <span className="relative flex flex-col">
       <button
         type="button"
         aria-label={`${covered ? 'Show' : 'Play'} ${looped ? 'GIF' : 'video'}`}
@@ -372,6 +513,8 @@ function VideoMedia({
           </span>
         ) : null}
       </button>
+      {save}
+      {saveFailure}
       {tooBig || video.state.status === 'failed' ? (
         <span className="px-3 pt-1.5">
           <Failure
@@ -388,13 +531,15 @@ function VideoMedia({
   );
 }
 
-/** A voice message or song: a play button and how long it runs. */
+/** A voice message or song: a play button, how long it runs, and a save. */
 function SoundMedia({
   token,
+  message,
   file,
   label,
 }: {
   token: string;
+  message: InboxEntry;
   file: InboxFile;
   label: string;
 }) {
@@ -410,6 +555,9 @@ function SoundMedia({
   });
 
   const duration = file.duration ? formatDuration(file.duration) : undefined;
+  const name = fileNameOf(message, file, 'ogg');
+  const saver = useSaveFile(token, file, { name, type: 'audio/ogg' });
+  const ready = state.status === 'ready' ? state.url : undefined;
 
   return (
     <span className="flex flex-col gap-1">
@@ -436,7 +584,7 @@ function SoundMedia({
             />
           )}
         </Button>
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-medium">{label}</span>
           <span className="text-xs text-received-muted tabular-nums">
             {started && duration
@@ -444,6 +592,13 @@ function SoundMedia({
               : (duration ?? (file.size ? formatBytes(file.size) : ''))}
           </span>
         </span>
+        <SaveButton
+          label={
+            message.media === 'voice' ? 'Save voice message' : `Save ${name}`
+          }
+          saving={saver.saving}
+          onSave={() => void saver.save(ready)}
+        />
       </span>
       {state.status === 'ready' ? (
         <audio
@@ -458,6 +613,11 @@ function SoundMedia({
       ) : null}
       {state.status === 'failed' ? (
         <Failure state={state} onRetry={retry} />
+      ) : saver.failure ? (
+        <Failure
+          state={{ status: 'failed', reason: saver.failure.reason }}
+          onRetry={() => void saver.save(ready)}
+        />
       ) : null}
     </span>
   );
@@ -473,46 +633,16 @@ function FileMedia({
   file: InboxFile;
   name: string;
 }) {
-  const [saving, setSaving] = useState(false);
-  const [failure, setFailure] = useState<FileFailure>();
+  const saver = useSaveFile(token, file, {
+    name,
+    type: 'application/octet-stream',
+  });
 
   const thumbnail = useTelegramFile(token, file.preview, {
     wanted: true,
     keep: true,
     type: 'image/jpeg',
   });
-
-  async function save() {
-    setSaving(true);
-    setFailure(undefined);
-
-    try {
-      const blob = await downloadFile(token, file, {
-        signal: new AbortController().signal,
-        keep: false,
-        type: 'application/octet-stream',
-      });
-
-      const url = URL.createObjectURL(blob);
-
-      const link = Object.assign(document.createElement('a'), {
-        href: url,
-        download: name,
-      });
-
-      link.click();
-      // Long enough for the browser to start saving it.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (cause) {
-      setFailure(
-        cause instanceof FileFailure
-          ? cause
-          : new FileFailure('unavailable', { cause })
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <span className="flex flex-col gap-1">
@@ -534,26 +664,16 @@ function FileMedia({
             </span>
           ) : null}
         </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Save ${name}`}
-          aria-disabled={saving}
-          onClick={() => {
-            if (!saving) void save();
-          }}
-        >
-          {saving ? (
-            <Spinner />
-          ) : (
-            <HugeiconsIcon icon={Download04Icon} strokeWidth={1.8} />
-          )}
-        </Button>
+        <SaveButton
+          label={`Save ${name}`}
+          saving={saver.saving}
+          onSave={() => void saver.save()}
+        />
       </span>
-      {failure ? (
+      {saver.failure ? (
         <Failure
-          state={{ status: 'failed', reason: failure.reason }}
-          onRetry={() => void save()}
+          state={{ status: 'failed', reason: saver.failure.reason }}
+          onRetry={() => void saver.save()}
         />
       ) : null}
     </span>
@@ -590,17 +710,26 @@ export function ReceivedMedia({
       return (
         <VideoMedia
           token={token}
+          message={message}
           file={file}
           looped={message.media === 'animation'}
           hidden={hidden}
         />
       );
     case 'voice':
-      return <SoundMedia token={token} file={file} label="Voice message" />;
+      return (
+        <SoundMedia
+          token={token}
+          message={message}
+          file={file}
+          label="Voice message"
+        />
+      );
     case 'audio':
       return (
         <SoundMedia
           token={token}
+          message={message}
           file={file}
           label={file.title ?? message.fileName ?? 'Audio'}
         />

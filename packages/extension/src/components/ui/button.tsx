@@ -23,6 +23,9 @@ const buttonVariants = cva(
         // A note from the chat itself, as Telegram draws dates between messages.
         service:
           'rounded-full bg-service text-service-foreground backdrop-blur-sm hover:bg-[color-mix(in_oklch,var(--service),var(--foreground)_6%)]',
+        // On top of a photo or video, as its duration is drawn.
+        overlay:
+          'rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70',
       },
       size: {
         // Inline with text, such as a link at the end of a sentence.
@@ -42,6 +45,8 @@ const buttonVariants = cva(
         send: 'size-8 rounded-full',
         // The round play button on a voice message.
         play: 'size-9 rounded-full',
+        // A round button in a corner of a photo or video.
+        corner: 'size-7 rounded-full',
       },
       tone: {
         default: '',

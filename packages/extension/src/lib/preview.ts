@@ -335,6 +335,22 @@ function demoUpdates(now: number): Update[] {
       },
     },
     {
+      update_id: 9,
+      message: {
+        message_id: 17,
+        chat: group,
+        from: mert,
+        date: seconds(27),
+        audio: {
+          file_id: 'voice',
+          file_unique_id: 'A',
+          duration: 2,
+          mime_type: 'audio/wav',
+          title: 'Crit recap',
+        },
+      },
+    },
+    {
       update_id: 7,
       message: {
         message_id: 15,
