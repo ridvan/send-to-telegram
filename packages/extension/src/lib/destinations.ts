@@ -16,20 +16,32 @@ function sameChat(a: Destination, b: Destination) {
     return a.token === b.token && String(a.chatId) === String(b.chatId);
   }
 
+  if (a.kind === 'relay' && b.kind === 'relay') {
+    // One device token is one link on the relay, whatever chat it reports.
+    return a.relayUrl === b.relayUrl && a.deviceToken === b.deviceToken;
+  }
+
   return false;
 }
 
-/** Adds a chat, replacing an existing one for the same bot and chat. */
+/** Adds a chat, replacing an existing one for the same bot and chat or the same relay link. */
 export function addDestination(destination: Destination) {
   return settingsStore.update((settings) => {
     const others = settings.destinations.filter(
       (existing) => !sameChat(existing, destination)
     );
 
+    // Keep the default unless it was the chat being replaced.
+    const keepsDefault = others.some(
+      (existing) => existing.id === settings.defaultDestinationId
+    );
+
     return {
       ...settings,
       destinations: [...others, destination],
-      defaultDestinationId: settings.defaultDestinationId ?? destination.id,
+      defaultDestinationId: keepsDefault
+        ? settings.defaultDestinationId
+        : destination.id,
     };
   });
 }

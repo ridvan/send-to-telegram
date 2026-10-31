@@ -26,6 +26,7 @@ type Phase =
   | { name: 'idle' }
   | { name: 'opening' }
   | { name: 'waiting'; pairing: Pairing; token: string }
+  | { name: 'linked' }
   | { name: 'expired' }
   | { name: 'failed'; message: string };
 
@@ -78,6 +79,8 @@ export function ConnectRelay({
         const status = await deviceStatus(RELAY_URL, phase.token);
 
         if (status.status === 'linked') {
+          // Stops the poll, so the chat is added once.
+          setPhase({ name: 'linked' });
           onConnected({
             id: crypto.randomUUID(),
             kind: 'relay',
@@ -102,7 +105,11 @@ export function ConnectRelay({
   return (
     <div className="flex flex-col gap-6">
       <Steps>
-        <Step index={1} title="Open the bot in Telegram" done={waiting}>
+        <Step
+          index={1}
+          title="Open the bot in Telegram"
+          done={waiting || phase.name === 'linked'}
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="brand"
