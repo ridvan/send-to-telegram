@@ -9,7 +9,7 @@
 
 `pnpm dev` opens Chrome with the extension loaded (profile in `packages/extension/.wxt/chrome-data`); use it to verify menus, the background worker, migration and real sends. For the pages alone, `pnpm --filter extension dev:pages` builds and serves without opening a browser (the `extension` entry in `.claude/launch.json`, port 3002). Serve `packages/extension/.output/chrome-mv3-pages` (the `extension-pages` entry, port 3001) and open `popup.html`, `options.html` or `welcome.html`. `src/lib/preview.ts` stands in for extension APIs outside an extension. Add `?demo` for sample data, `?selection` for a text selection, `?fail` to make sends fail, `?reset` to clear it.
 
-Don't start `pnpm dev` yourself: a running one is the owner's, and its Chrome loads the extension from `.output/chrome-mv3-dev`. Each dev command builds into its own folder and fixed port, so `dev:pages`, `pnpm build` and `pnpm zip` leave it alone; never delete or write into `chrome-mv3-dev`.
+Don't start `pnpm dev` yourself: a running one is the owner's, and its Chrome loads the extension from `.output/chrome-mv3-dev`. Each dev command builds into its own folder and fixed port, so `dev:pages`, `pnpm build` and `pnpm zip` leave it alone; never delete or write into `chrome-mv3-dev`. If the extension vanishes from the dev Chrome after an edit, Developer mode is off in that profile: Chrome disables unpacked extensions when they reload without it, and keeps the setting in signed Secure Preferences, so web-ext can't turn it on. Ask the owner to switch it on once in `chrome://extensions`; the profile keeps it.
 
 ## Constraints
 
