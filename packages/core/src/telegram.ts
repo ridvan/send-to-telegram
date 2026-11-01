@@ -161,6 +161,7 @@ const webhookInfoSchema = z.object({
 const resultSchemas = {
   getMe: userSchema,
   getChat: chatSchema,
+  getChatMember: z.object({ status: z.string() }),
   getFile: z.object({
     file_id: z.string(),
     file_size: z.number().optional(),
@@ -239,6 +240,7 @@ function requestBody(params: MethodParams[BotMethod]): RequestInit {
 type MethodParams = {
   getMe: undefined;
   getChat: { chat_id: ChatId };
+  getChatMember: { chat_id: ChatId; user_id: number };
   getFile: { file_id: string };
   getUpdates: { offset?: number; timeout?: number; allowed_updates?: string[] };
   getWebhookInfo: undefined;

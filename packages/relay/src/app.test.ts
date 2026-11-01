@@ -8,7 +8,13 @@ import {
 } from '@send-to-telegram/core';
 import { describe, expect, it } from 'vitest';
 
-import { createApp, type Deps, PAIRING_TTL, parseCommand } from './app.ts';
+import {
+  clientKey,
+  createApp,
+  type Deps,
+  PAIRING_TTL,
+  parseCommand,
+} from './app.ts';
 import { sha256 } from './crypto.ts';
 import type { Device, DeviceStore } from './store.ts';
 
@@ -74,10 +80,15 @@ function memoryStore(): DeviceStore {
 
 type Sent = { method: BotMethod; params: Parameters<BotClient['call']>[1] };
 
-function setup({ webhookSecret = 'secret-secret-secret' } = {}) {
+type Limiter = Parameters<Deps['allow']>[0];
+
+function setup({
+  webhookSecret = 'secret-secret-secret',
+  memberStatus = 'member',
+} = {}) {
   const sent: Sent[] = [];
   let clock = 1_000_000;
-  let allowed = true;
+  const blocked = new Set<Limiter>();
   let failure: TelegramError | undefined;
   const store = memoryStore();
 
@@ -87,10 +98,11 @@ function setup({ webhookSecret = 'secret-secret-secret' } = {}) {
 
       sent.push({ method, params });
 
-      // SAFETY: tests only read message_id from these results.
+      // SAFETY: tests only read message_id, or status for getChatMember.
       return {
         message_id: sent.length,
         chat: { id: 7, type: 'private' },
+        status: memberStatus,
       } as never;
     },
   };
@@ -100,7 +112,7 @@ function setup({ webhookSecret = 'secret-secret-secret' } = {}) {
     bot,
     botUsername: 'RelayBot',
     webhookSecret,
-    allow: async () => allowed,
+    allow: async (limiter) => !blocked.has(limiter),
     now: () => clock,
   };
 
@@ -113,8 +125,8 @@ function setup({ webhookSecret = 'secret-secret-secret' } = {}) {
     advance: (ms: number) => {
       clock += ms;
     },
-    block: () => {
-      allowed = false;
+    block: (...limiters: Limiter[]) => {
+      for (const limiter of limiters) blocked.add(limiter);
     },
     failWith: (error: TelegramError) => {
       failure = error;
@@ -172,6 +184,18 @@ describe('parseCommand', () => {
     });
     expect(parseCommand('/start@OtherBot abc', 'RelayBot')).toBeUndefined();
     expect(parseCommand('hello', 'RelayBot')).toBeUndefined();
+  });
+});
+
+describe('clientKey', () => {
+  it('counts an IPv6 address as its /64', () => {
+    expect(clientKey('203.0.113.9')).toBe('203.0.113.9');
+    expect(clientKey('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+    expect(clientKey('2001:0DB8:0001:0002:ffff:0:0:9')).toBe(
+      '2001:db8:1:2::/64'
+    );
+    expect(clientKey('2001:db8::1')).toBe('2001:db8:0:0::/64');
+    expect(clientKey('::1')).toBe('0:0:0:0::/64');
   });
 });
 
@@ -269,7 +293,7 @@ describe('relay', () => {
     const { code } = await pair(app);
 
     await webhook(app, `/start ${code}`);
-    block();
+    block('send');
 
     expect(
       (
@@ -446,5 +470,83 @@ describe('relay', () => {
         message: 'The relay couldn’t reach Telegram. Try again in a moment.',
       },
     });
+  });
+  it('limits how much one chat receives', async () => {
+    const { app, block } = setup();
+    const { code } = await pair(app);
+
+    await webhook(app, `/start ${code}`);
+    block('chat');
+
+    const response = await app.request('/v1/messages', {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({
+        kind: 'text',
+        text: 'hi',
+        linkPreview: false,
+        silent: true,
+      }),
+    });
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toMatchObject({
+      error: { code: 'rate_limited' },
+    });
+  });
+
+  it('refuses bodies larger than any real message', async () => {
+    const { app } = setup();
+
+    const response = await app.request('/v1/messages', {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ kind: 'text', text: 'x'.repeat(300 * 1024) }),
+    });
+
+    expect(response.status).toBe(413);
+  });
+
+  it('ignores commands from a chat over its limit', async () => {
+    const { app, sent, block } = setup();
+
+    block('command');
+    await webhook(app, '/help');
+
+    expect(sent).toEqual([]);
+  });
+
+  it('lets only group admins unlink', async () => {
+    const group = { id: -42, type: 'group', title: 'Reading list' } as const;
+
+    const press = (app: App, hash: string) =>
+      update(app, {
+        callback_query: {
+          id: 'q3',
+          from: { id: 8, is_bot: false, first_name: 'Grace' },
+          data: `unlink:${hash.slice(0, 16)}`,
+          message: { message_id: 9, chat: group },
+        },
+      });
+
+    const hash = await sha256(token);
+
+    const member = setup();
+
+    await webhook(member.app, `/start ${(await pair(member.app)).code}`, group);
+    await press(member.app, hash);
+
+    expect(await member.store.findByToken(hash)).toBeDefined();
+    expect(member.sent.at(-1)).toMatchObject({
+      method: 'answerCallbackQuery',
+      params: { text: 'Only group admins can unlink browsers.' },
+    });
+
+    const admin = setup({ memberStatus: 'administrator' });
+
+    await webhook(admin.app, `/start ${(await pair(admin.app)).code}`, group);
+    await press(admin.app, hash);
+
+    expect(await admin.store.findByToken(hash)).toBeUndefined();
   });
 });

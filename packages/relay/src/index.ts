@@ -10,8 +10,14 @@ function deps(env: Env): Deps {
     botUsername: env.BOT_USERNAME,
     webhookSecret: env.WEBHOOK_SECRET,
     async allow(limiter, key) {
-      const binding = limiter === 'send' ? env.SEND_LIMITER : env.PAIR_LIMITER;
-      const { success } = await binding.limit({ key });
+      const bindings = {
+        send: env.SEND_LIMITER,
+        pair: env.PAIR_LIMITER,
+        chat: env.CHAT_LIMITER,
+        command: env.COMMAND_LIMITER,
+      };
+
+      const { success } = await bindings[limiter].limit({ key });
 
       return success;
     },

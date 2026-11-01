@@ -15,6 +15,7 @@ import {
   updateSchema,
 } from '@send-to-telegram/core';
 import { type Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
@@ -32,7 +33,10 @@ export type Deps = {
   botUsername: string;
   webhookSecret: string;
   /** False when the caller is over the limit for this kind of request. */
-  allow: (limiter: 'send' | 'pair', key: string) => Promise<boolean>;
+  allow: (
+    limiter: 'send' | 'pair' | 'chat' | 'command',
+    key: string
+  ) => Promise<boolean>;
   now: () => number;
 };
 
@@ -62,6 +66,32 @@ async function tokenHashOf(c: AppContext): Promise<string | undefined> {
 
   return DEVICE_TOKEN_PATTERN.test(token) ? sha256(token) : undefined;
 }
+
+/**
+ * Who a per-address limit counts against. An IPv6 address counts as its /64,
+ * the block one connection usually gets, so cycling addresses inside it
+ * doesn't reset the limit.
+ */
+export function clientKey(ip: string) {
+  if (!ip.includes(':')) return ip;
+
+  const [head = '', tail] = ip.toLowerCase().split('::');
+  const groups = head ? head.split(':') : [];
+
+  if (tail !== undefined) {
+    const rest = tail ? tail.split(':') : [];
+
+    groups.push(...Array<string>(8 - groups.length - rest.length).fill('0'));
+    groups.push(...rest);
+  }
+
+  const prefix = groups.slice(0, 4).map((group) => Number.parseInt(group, 16));
+
+  return `${prefix.map((group) => group.toString(16)).join(':')}::/64`;
+}
+
+/** Room for the longest message the extension sends, in any script. */
+const MAX_BODY_BYTES = 256 * 1024;
 
 async function readJson(c: AppContext) {
   return c.req.json().catch(() => null);
@@ -127,6 +157,21 @@ async function link(deps: Deps, chat: Chat, code: string) {
   });
 }
 
+/** The button's payload: `unlink:` and the first 16 hex digits of a token hash. */
+const UNLINK = /^unlink:[0-9a-f]{16}$/;
+
+/** In a group, only admins unlink; anyone in a private chat owns it. */
+async function canUnlink(deps: Deps, chat: Chat, userId: number) {
+  if (chat.type === 'private') return true;
+
+  const member = await deps.bot.call('getChatMember', {
+    chat_id: chat.id,
+    user_id: userId,
+  });
+
+  return member.status === 'creator' || member.status === 'administrator';
+}
+
 export async function handleUpdate(deps: Deps, update: Update) {
   const membership = update.my_chat_member;
 
@@ -142,7 +187,10 @@ export async function handleUpdate(deps: Deps, update: Update) {
 
   const callback = update.callback_query;
 
-  if (callback && !(callback.data?.startsWith('unlink:') && callback.message)) {
+  if (
+    callback &&
+    !(callback.data && UNLINK.test(callback.data) && callback.message)
+  ) {
     // A button this relay doesn't handle; answer so the client stops waiting.
     await deps.bot.call('answerCallbackQuery', {
       callback_query_id: callback.id,
@@ -153,6 +201,16 @@ export async function handleUpdate(deps: Deps, update: Update) {
 
   if (callback?.data && callback.message) {
     const chatId = callback.message.chat.id;
+
+    if (!(await canUnlink(deps, callback.message.chat, callback.from.id))) {
+      await deps.bot.call('answerCallbackQuery', {
+        callback_query_id: callback.id,
+        text: 'Only group admins can unlink browsers.',
+      });
+
+      return;
+    }
+
     const prefix = callback.data.slice('unlink:'.length);
     const devices = await deps.store.listForChat(chatId);
 
@@ -188,6 +246,10 @@ export async function handleUpdate(deps: Deps, update: Update) {
     : undefined;
 
   if (!message || !parsed) return;
+
+  // Every command answers in the chat, so a group spamming them would spend
+  // the bot's message limit; past this one they go unanswered.
+  if (!(await deps.allow('command', String(message.chat.id)))) return;
 
   if (parsed.command === 'start' && parsed.argument) {
     await link(deps, message.chat, parsed.argument);
@@ -237,6 +299,15 @@ export function createApp(makeDeps: (env: Env) => Deps) {
   });
 
   app.use(
+    '*',
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: (c) =>
+        fail(c, 413, 'invalid_request', 'The message is too large to send.'),
+    })
+  );
+
+  app.use(
     '/v1/*',
     cors({
       origin: '*',
@@ -273,7 +344,7 @@ export function createApp(makeDeps: (env: Env) => Deps) {
 
     const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
 
-    if (!(await deps.allow('pair', ip))) {
+    if (!(await deps.allow('pair', clientKey(ip)))) {
       return fail(
         c,
         429,
@@ -368,6 +439,15 @@ export function createApp(makeDeps: (env: Env) => Deps) {
         429,
         'rate_limited',
         'Too many messages in a short time. Try again in a minute.'
+      );
+    }
+
+    if (!(await deps.allow('chat', String(device.chatId)))) {
+      return fail(
+        c,
+        429,
+        'rate_limited',
+        'This chat got too many messages in a short time. Try again in a minute.'
       );
     }
 

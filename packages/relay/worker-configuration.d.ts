@@ -5,6 +5,8 @@ interface __BaseEnv_Env {
 	DB: D1Database;
 	SEND_LIMITER: RateLimit;
 	PAIR_LIMITER: RateLimit;
+	CHAT_LIMITER: RateLimit;
+	COMMAND_LIMITER: RateLimit;
 	BOT_USERNAME: "S2TRelayBot";
 }
 declare namespace Cloudflare {
