@@ -138,7 +138,7 @@ export function ConnectRelay({
         </Step>
         <Step index={2} title="Press Start" active={waiting}>
           <div className="flex flex-col gap-3">
-            <StartButton bot="Send to Telegram" />
+            <StartButton bot="S2T Relay" />
             {waiting ? (
               <p
                 role="status"

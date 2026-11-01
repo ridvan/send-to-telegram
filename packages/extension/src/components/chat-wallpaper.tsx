@@ -1,4 +1,8 @@
-import { isChatPattern, patternTile } from '@/lib/chat-patterns';
+import {
+  isChatPattern,
+  patternTile,
+} from '@send-to-telegram/core/chat-patterns';
+
 import type { ChatBackground } from '@/lib/settings';
 
 /**

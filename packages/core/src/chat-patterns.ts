@@ -44,9 +44,18 @@ import {
   UfoIcon,
 } from '@hugeicons/core-free-icons';
 
-import type { ChatBackground } from './settings.ts';
-
-export type ChatPattern = Exclude<ChatBackground, 'plain' | 'photo'>;
+/**
+ * The chat wallpapers, drawn as SVG tiles. The extension draws them behind
+ * the popup's chat, and the website behind its pictures of one, so both look
+ * the same. The extension's settings list the same names.
+ */
+export type ChatPattern =
+  | 'doodles'
+  | 'space'
+  | 'garden'
+  | 'waves'
+  | 'lattice'
+  | 'petals';
 
 type Glyph = typeof SentIcon;
 
@@ -424,9 +433,7 @@ export const chatPatterns = Object.keys(builders).filter(
   (name): name is ChatPattern => Object.hasOwn(builders, name)
 );
 
-export function isChatPattern(
-  background: ChatBackground
-): background is ChatPattern {
+export function isChatPattern(background: string): background is ChatPattern {
   return Object.hasOwn(builders, background);
 }
 

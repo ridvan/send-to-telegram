@@ -449,7 +449,7 @@ export function ConnectBot({
           Messages go straight from this browser to Telegram, and what people
           send your bot shows up in the popup.{' '}
           <Button variant="link" size="text" tone="muted" onClick={onUseRelay}>
-            Use the Send to Telegram bot instead
+            Use S2T Relay instead
           </Button>
         </p>
       ) : null}

@@ -1,0 +1,459 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/*
+ * Set on <html> before the first paint, from the visitor's choice or the
+ * system. A part set light inside a dark page leaves the variant, so it draws
+ * light throughout.
+ */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *):not(:where([data-theme='dark'] [data-theme='light'], [data-theme='dark'] [data-theme='light'] *)));
+
+/*
+ * Geist Serif isn't on Fontsource yet, so it's copied from Vercel's `geist`
+ * package with its license beside it. It comes in one weight.
+ */
+@font-face {
+  font-family: 'Geist Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/GeistSerif-Regular.woff2') format('woff2');
+}
+
+@theme inline {
+  --font-sans:
+    'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+  --font-mono:
+    'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+  --font-heading: 'Geist Serif', ui-serif, Georgia, serif;
+  --default-border-width: 0.5px;
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-chat: var(--chat);
+  --color-chat-pattern: var(--chat-pattern);
+  --color-bubble: var(--bubble);
+  --color-bubble-foreground: var(--bubble-foreground);
+  --color-bubble-muted: var(--bubble-muted);
+  --color-bubble-accent: var(--bubble-accent);
+  --color-service: var(--service);
+  --color-received: var(--received);
+  --color-received-foreground: var(--received-foreground);
+  --color-received-muted: var(--received-muted);
+  --color-service-foreground: var(--service-foreground);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-tint-red: var(--tint-red);
+  --color-tint-red-to: var(--tint-red-to);
+  --color-tint-orange: var(--tint-orange);
+  --color-tint-orange-to: var(--tint-orange-to);
+  --color-tint-violet: var(--tint-violet);
+  --color-tint-violet-to: var(--tint-violet-to);
+  --color-tint-green: var(--tint-green);
+  --color-tint-green-to: var(--tint-green-to);
+  --color-tint-cyan: var(--tint-cyan);
+  --color-tint-cyan-to: var(--tint-cyan-to);
+  --color-tint-blue: var(--tint-blue);
+  --color-tint-blue-to: var(--tint-blue-to);
+  --color-tint-pink: var(--tint-pink);
+  --color-tint-pink-to: var(--tint-pink-to);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* The light tokens; [data-theme='light'] draws one part light inside a dark page. */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.52 0.13 152);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.6 0.14 65);
+  --warning-foreground: oklch(0.985 0 0);
+  /* Telegram's blue, for the one action that sends. */
+  --brand: oklch(0.62 0.135 238);
+  --brand-foreground: oklch(1 0 0);
+  /* The popup is drawn as a chat: a wallpaper and your outgoing message. */
+  --chat: oklch(0.955 0.012 235);
+  --chat-pattern: oklch(0.55 0.06 240 / 17%);
+  /* Soft light from two corners under a pattern, as Telegram tints its own. */
+  --chat-glow-start: oklch(0.93 0.06 190 / 70%);
+  --chat-glow-end: oklch(0.9 0.06 285 / 60%);
+  --bubble: oklch(0.93 0.045 232);
+  --bubble-foreground: oklch(0.2 0.02 245);
+  --bubble-muted: oklch(0.48 0.04 240);
+  --bubble-accent: oklch(0.5 0.14 245);
+  /* A message sent to your bot from Telegram. */
+  --received: oklch(1 0 0);
+  --received-foreground: oklch(0.2 0.01 250);
+  --received-muted: oklch(0.55 0.02 250);
+  /* Notes from the chat itself, such as a date between messages. */
+  --service: oklch(0.89 0.02 238 / 88%);
+  --service-foreground: oklch(0.4 0.03 245);
+  /* A browser's text selection, on the pages drawn here. */
+  --selection-ink: oklch(0.85 0.08 240 / 70%);
+  /* Telegram's avatar colors, top to bottom of each gradient. */
+  --tint-foreground: oklch(1 0 0);
+  --tint-red: oklch(0.75 0.156 40);
+  --tint-red-to: oklch(0.66 0.2 17);
+  --tint-orange: oklch(0.84 0.13 78);
+  --tint-orange-to: oklch(0.76 0.15 58);
+  --tint-violet: oklch(0.74 0.124 262);
+  --tint-violet-to: oklch(0.57 0.22 279);
+  --tint-green: oklch(0.82 0.142 135);
+  --tint-green-to: oklch(0.7 0.175 147);
+  --tint-cyan: oklch(0.84 0.133 181);
+  --tint-cyan-to: oklch(0.72 0.127 184);
+  --tint-blue: oklch(0.8 0.109 227);
+  --tint-blue-to: oklch(0.65 0.157 246);
+  --tint-pink: oklch(0.78 0.129 318);
+  --tint-pink-to: oklch(0.67 0.211 321);
+  --border: oklch(0.89 0 0);
+  --input: oklch(0.89 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+/* On <html> for the page, or on any element to draw just that part dark. */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --background: oklch(0.155 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.195 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.245 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.78 0.16 152);
+  --success-foreground: oklch(0.205 0 0);
+  --warning: oklch(0.83 0.15 80);
+  --warning-foreground: oklch(0.205 0 0);
+  --brand: oklch(0.64 0.135 240);
+  --chat: oklch(0.12 0.006 250);
+  --chat-pattern: oklch(0.75 0.04 245 / 11%);
+  --chat-glow-start: oklch(0.3 0.05 200 / 45%);
+  --chat-glow-end: oklch(0.28 0.06 285 / 45%);
+  --bubble: oklch(0.4 0.075 250);
+  --bubble-foreground: oklch(0.985 0 0);
+  --bubble-muted: oklch(0.8 0.04 245);
+  --bubble-accent: oklch(0.83 0.1 230);
+  --received: oklch(0.27 0.012 250);
+  --received-foreground: oklch(0.985 0 0);
+  --received-muted: oklch(0.72 0.02 250);
+  --service: oklch(0.24 0.012 250 / 88%);
+  --service-foreground: oklch(0.82 0.02 245);
+  --selection-ink: oklch(0.5 0.1 250 / 55%);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply bg-background font-sans text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    scroll-padding-top: 4rem;
+
+    @media (prefers-reduced-motion: reduce) {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    @apply bg-background;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    @apply bg-foreground/15;
+  }
+}
+
+/* The page width every section lines up to, with the phone gutter. */
+@utility page {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+}
+
+/* Soft light from two corners under a pattern, as Telegram tints its own. */
+@utility chat-glow {
+  background-image:
+    radial-gradient(at 0% 0%, var(--chat-glow-start), transparent 65%),
+    radial-gradient(at 100% 100%, var(--chat-glow-end), transparent 65%);
+}
+
+/* Text being selected on a page, swept from left to right. */
+@utility selection-sweep {
+  background-image: linear-gradient(var(--selection-ink), var(--selection-ink));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  box-decoration-break: clone;
+  transition: background-size 900ms var(--ease-in-out-strong);
+
+  &[data-selected] {
+    background-size: 100% 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* Enter for content that appears once, such as a message arriving. */
+@utility animate-rise {
+  animation: rise 360ms var(--ease-out-strong) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 200ms ease-out both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    translate: 0 12px;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A menu opening from where it was asked for. */
+@utility animate-menu {
+  animation: menu 160ms var(--ease-out-strong) both;
+  transform-origin: top left;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 120ms ease-out both;
+  }
+}
+
+@keyframes menu {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+/* A status icon that replaces another, such as the sent check. */
+@utility animate-pop {
+  animation: pop 260ms var(--ease-out-strong) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 150ms ease-out both;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
+/*
+ * A message on its way along a route: it crosses in the first half of the
+ * cycle and rests in the second. Set on a box as wide as the route, with the
+ * dot at its start.
+ */
+@utility animate-travel {
+  animation: travel 2.8s var(--ease-in-out-strong) infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* The next leg of the same trip, crossing while the first one rests. */
+@utility animate-travel-next {
+  animation: travel 2.8s var(--ease-in-out-strong) -1.4s infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* A reply coming back the other way, while the message going out rests. */
+@utility animate-travel-back {
+  animation: travel 2.8s var(--ease-in-out-strong) infinite reverse;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes travel {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  6%,
+  44% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+    translate: 100% 0;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * A star that lights up when its button is pointed at: it turns a fifth of a
+ * turn, so it lands on its own shape, and fills in orange on the way.
+ */
+@utility star-on-hover {
+  color: var(--muted-foreground);
+  transition:
+    color 200ms ease-out,
+    fill 200ms ease-out,
+    rotate 560ms var(--ease-out-strong),
+    scale 560ms var(--ease-out-strong);
+
+  & path {
+    fill: transparent;
+    transition: fill 200ms ease-out;
+  }
+
+  :where(.group\/button:hover, .group\/button:focus-visible) & {
+    color: var(--tint-orange-to);
+    rotate: 72deg;
+    scale: 1.15;
+
+    & path {
+      fill: currentColor;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: color 200ms ease-out;
+
+    :where(.group\/button:hover, .group\/button:focus-visible) & {
+      rotate: none;
+      scale: none;
+    }
+  }
+}
+
+/* An extension's popup, opening down from its toolbar button. */
+@utility animate-popup {
+  animation: menu 200ms var(--ease-out-strong) both;
+  transform-origin: top right;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: fade 120ms ease-out both;
+  }
+}
+
+/* The text cursor in a field being typed into. */
+@utility animate-caret {
+  animation: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Lifted off the page: a tight contact shadow under a soft, wide one. */
+@utility shadow-lifted {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 10%),
+    0 10px 24px -8px oklch(0 0 0 / 18%),
+    0 28px 56px -16px oklch(0 0 0 / 16%);
+}

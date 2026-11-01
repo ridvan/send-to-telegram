@@ -23,7 +23,7 @@ export function ChatIntro({ destination }: { destination: Destination }) {
       />
       <p className="font-semibold">
         {relay
-          ? 'Sent with the Send to Telegram bot'
+          ? 'Sent with S2T Relay'
           : bot
             ? `Sent with your bot, @${bot}`
             : 'Sent with your own bot'}

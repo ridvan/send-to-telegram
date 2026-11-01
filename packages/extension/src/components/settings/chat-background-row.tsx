@@ -1,5 +1,6 @@
 import { ImageAdd01Icon, PaintBoardIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { chatPatterns } from '@send-to-telegram/core/chat-patterns';
 import { useRef, useState } from 'react';
 
 import { ChatWallpaper } from '@/components/chat-wallpaper';
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStore } from '@/hooks/use-store';
-import { chatPatterns } from '@/lib/chat-patterns';
 import { photoToBackground } from '@/lib/chat-photo';
 import {
   type ChatBackground,

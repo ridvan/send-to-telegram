@@ -17,6 +17,7 @@
     "**/node_modules/**",
     "tools/oxlint/anti-slop/**",
     "packages/relay/worker-configuration.d.ts",
+    "packages/site/src/routeTree.gen.ts",
     "pnpm-lock.yaml",
     "skills-lock.json"
   ]

@@ -24,7 +24,7 @@
 
 There are two ways, and you can mix them:
 
-|       | The Send to Telegram bot          | Your own bot                                                               |
+|       | S2T Relay                         | Your own bot                                                               |
 | ----- | --------------------------------- | -------------------------------------------------------------------------- |
 | Setup | Press Start in Telegram           | Create a bot with [@BotFather](https://t.me/BotFather) and paste its token |
 | Time  | A few seconds                     | About two minutes                                                          |
@@ -49,22 +49,26 @@ pnpm dev
 
 `pnpm dev` opens a separate Chrome window with the extension already loaded, and reloads it as you save. That window keeps its own profile in `packages/extension/.wxt/chrome-data`, so a connected chat and its history carry over between runs; delete the folder to start fresh. `pnpm dev:firefox` does the same in Firefox, with a fresh profile each time.
 
-To work on the pages without a browser window, run `pnpm --filter extension dev:pages`, serve `packages/extension/.output/chrome-mv3-dev`, and open `popup.html`, `options.html` or `welcome.html` in any browser. Extension APIs are replaced with a local stand-in there. Add `?demo` to the URL for sample chats and history, `?selection` for a text selection, `?fail` to make sends fail, or `?reset` to start over.
+To work on the pages without a browser window, run `pnpm --filter extension dev:pages`, serve `packages/extension/.output/chrome-mv3-pages`, and open `popup.html`, `options.html` or `welcome.html` in any browser. Extension APIs are replaced with a local stand-in there. Add `?demo` to the URL for sample chats and history, `?selection` for a text selection, `?fail` to make sends fail, or `?reset` to start over.
 
-| Command          | What it does                                     |
-| ---------------- | ------------------------------------------------ |
-| `pnpm check`     | Lint, format check, type check and tests         |
-| `pnpm build`     | Production builds for Chrome and Firefox         |
-| `pnpm zip`       | Store-ready zips in `packages/extension/.output` |
-| `pnpm dev:relay` | Runs the relay locally with Wrangler             |
+| Command            | What it does                                     |
+| ------------------ | ------------------------------------------------ |
+| `pnpm check`       | Lint, format check, type check and tests         |
+| `pnpm build`       | Production builds for Chrome and Firefox         |
+| `pnpm zip`         | Store-ready zips in `packages/extension/.output` |
+| `pnpm dev:relay`   | Runs the relay locally with Wrangler             |
+| `pnpm dev:site`    | Runs the website on port 3003                    |
+| `pnpm build:site`  | Builds the website, rendering its pages to HTML  |
+| `pnpm deploy:site` | Builds the website and deploys it to s2t.dev     |
 
-The hosted bot is optional at build time. Set `WXT_RELAY_URL` to the relay's address (see `packages/extension/.env.example`) to offer it; without it, setup goes straight to the own-bot flow.
+S2T Relay is optional at build time. Set `WXT_RELAY_URL` to the relay's address (see `packages/extension/.env.example`) to offer it; without it, setup goes straight to the own-bot flow.
 
 ### Layout
 
 - `packages/extension`: the browser extension (WXT, React, shadcn/ui on Base UI, Tailwind CSS)
-- `packages/relay`: the optional hosted bot (Cloudflare Workers, Hono, D1)
-- `packages/core`: the message model and Telegram client both share
+- `packages/relay`: S2T Relay, the optional hosted bot (Cloudflare Workers, Hono, D1)
+- `packages/core`: the message model and Telegram client the extension and relay share, and the chat backgrounds the extension and website both draw
+- `packages/site`: the website at [s2t.dev](https://s2t.dev) (TanStack Start on Cloudflare Workers, shadcn/ui)
 
 Code is checked with oxlint, including the [anti-slop](https://github.com/dmmulroy/anti-slop) rules in `tools/oxlint/anti-slop` and shadcn's design lint, and formatted with oxfmt.
 

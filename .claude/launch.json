@@ -22,6 +22,28 @@
         "packages/extension/.output/chrome-mv3-pages"
       ],
       "port": 3001
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "site",
+        "dev"
+      ],
+      "port": 3003
+    },
+    {
+      "name": "site-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "site",
+        "preview",
+        "--port",
+        "3004"
+      ],
+      "port": 3004
     }
   ]
 }

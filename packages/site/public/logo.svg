@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The mark the pages show. The toolbar PNGs are drawn from assets/icon. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#383838"/><stop offset="1" stop-color="#1a1a1a"/></linearGradient>
+    <linearGradient id="shutter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b4b4b"/><stop offset="1" stop-color="#434343"/></linearGradient>
+    <linearGradient id="wing" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="20" y2="80"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6d6d6"/></linearGradient>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="80" y1="15" x2="30" y2="80"><stop offset="0" stop-color="#bdbdbd"/><stop offset="1" stop-color="#a2a2a2"/></linearGradient>
+    <clipPath id="disk"><path d="M16 0 H79.5 Q83 0 85.47 2.47 L97.53 14.53 Q100 17 100 20.5 V84 A16 16 0 0 1 84 100 H16 A16 16 0 0 1 0 84 V16 A16 16 0 0 1 16 0 Z"/></clipPath>
+  </defs>
+  <path d="M16 0 H79.5 Q83 0 85.47 2.47 L97.53 14.53 Q100 17 100 20.5 V84 A16 16 0 0 1 84 100 H16 A16 16 0 0 1 0 84 V16 A16 16 0 0 1 16 0 Z" fill="url(#body)"/>
+  <path d="M28 0 H70 V24.5 A4.5 4.5 0 0 1 65.5 29 H32.5 A4.5 4.5 0 0 1 28 24.5 Z" fill="url(#shutter)"/>
+  <rect x="55" y="5" width="8" height="17" rx="2" fill="#2f2f2f"/>
+  <path d="M16 0 H79.5 Q83 0 85.47 2.47 L97.53 14.53 Q100 17 100 20.5 V84 A16 16 0 0 1 84 100 H16 A16 16 0 0 1 0 84 V16 A16 16 0 0 1 16 0 Z" fill="none" stroke="#505050" stroke-width="2.4" clip-path="url(#disk)"/>
+  <g transform="translate(16 34.94) scale(0.68)" stroke-linejoin="round" stroke-width="5">
+    <polygon points="26,48 80,15 39,56 36,80" fill="url(#fold)" stroke="url(#fold)"/>
+    <polygon points="39,56 56,68.2 36,80" fill="#8c8c8c" stroke="#8c8c8c"/>
+    <polygon points="0,39 100,0 78,84 39,56 80,15 26,48" fill="url(#wing)" stroke="url(#wing)"/>
+  </g>
+</svg>

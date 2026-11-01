@@ -71,6 +71,9 @@ export default defineConfig({
       '.claude/**',
       '.git/**',
       'packages/relay/**',
+      // The website and the store listing images play no part in the build.
+      'packages/site/**',
+      'packages/extension/store/**',
       'skills-lock.json',
       '**/.output/**',
       '**/.wxt/**',

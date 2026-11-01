@@ -75,7 +75,7 @@ function via(destination: Destination) {
     ? chatTypeLabel[destination.chatType]
     : 'Chat';
 
-  if (destination.kind === 'relay') return `${type} · Send to Telegram bot`;
+  if (destination.kind === 'relay') return `${type} · S2T Relay`;
 
   return destination.botUsername
     ? `${type} · @${destination.botUsername}`
@@ -157,7 +157,7 @@ function RemoveDialog({
           <AlertDialogTitle>{`Remove “${name}”?`}</AlertDialogTitle>
           <AlertDialogDescription>
             {destination.kind === 'relay'
-              ? 'This browser stops sending to the chat and is unlinked from the Send to Telegram bot. Messages already in Telegram stay there.'
+              ? 'This browser stops sending to the chat and is unlinked from S2T Relay. Messages already in Telegram stay there.'
               : 'This browser stops sending to the chat. Your bot and the messages already in Telegram stay as they are.'}
           </AlertDialogDescription>
         </AlertDialogHeader>

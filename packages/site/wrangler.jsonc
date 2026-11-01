@@ -1,0 +1,16 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "send-to-telegram-site",
+    "main": "@tanstack/react-start/server-entry",
+    "compatibility_date": "2026-10-20",
+    "compatibility_flags": ["nodejs_compat"],
+    "observability": { "enabled": true },
+    // Pages are prerendered as faq/index.html and so on; serve them at /faq,
+    // the address their canonical links and the sitemap use, instead of
+    // redirecting to /faq/.
+    "assets": { "html_handling": "drop-trailing-slash" },
+    // The site lives at the zone's apex; the relay has relay.s2t.dev. Forks:
+    // use a domain on your own Cloudflare zone, or remove this to deploy to
+    // workers.dev.
+    "routes": [{ "pattern": "s2t.dev", "custom_domain": true }],
+}

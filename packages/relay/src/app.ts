@@ -98,7 +98,7 @@ async function readJson(c: AppContext) {
 }
 
 const ABOUT =
-  'This bot delivers what you send from the Send to Telegram browser extension. Install the extension, choose “Use the Send to Telegram bot” and follow the link it opens.';
+  'This bot delivers what you send from the Send to Telegram browser extension. Install the extension, choose “Use S2T Relay” and follow the link it opens.';
 
 /** Splits "/start@MyBot abc" into its command and argument, ignoring commands for other bots. */
 export function parseCommand(text: string, botUsername: string) {

@@ -1,6 +1,6 @@
 # Relay
 
-The optional hosted bot behind "Use the Send to Telegram bot". It lets people link a browser to a chat by pressing Start, without creating a bot of their own.
+The optional hosted bot behind "Use S2T Relay". It lets people link a browser to a chat by pressing Start, without creating a bot of their own.
 
 ## How it works
 

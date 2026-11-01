@@ -2,6 +2,8 @@ node_modules
 .output
 .wxt
 .wrangler
+dist
+.tanstack
 .dev.vars
 .env
 .env.*

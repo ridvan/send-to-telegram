@@ -1,6 +1,9 @@
+import {
+  chatPatterns,
+  patternTile,
+} from '@send-to-telegram/core/chat-patterns';
 import { describe, expect, it } from 'vitest';
 
-import { chatPatterns, patternTile } from './chat-patterns.ts';
 import { chatBackgroundSchema, settingsSchema } from './settings.ts';
 
 describe('the chat background', () => {

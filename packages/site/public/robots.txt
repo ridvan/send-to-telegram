@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://s2t.dev/sitemap.xml

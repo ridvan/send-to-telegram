@@ -24,6 +24,7 @@
     "**/.wrangler/**",
     "**/node_modules/**",
     "packages/relay/worker-configuration.d.ts",
+    "packages/site/src/routeTree.gen.ts",
     "tools/oxlint/anti-slop/**"
   ],
   "jsPlugins": [
@@ -100,7 +101,7 @@
       }
     },
     {
-      "files": ["packages/extension/**/*.{ts,tsx}"],
+      "files": ["packages/{extension,site}/**/*.{ts,tsx}"],
       "env": {
         "browser": true,
         "webextensions": true
@@ -158,7 +159,7 @@
       }
     },
     {
-      "files": ["packages/extension/src/**/*.{ts,tsx}"],
+      "files": ["packages/{extension,site}/src/**/*.{ts,tsx}"],
       "rules": {
         "shadcn/no-restyle": [
           "error",
@@ -189,7 +190,7 @@
       }
     },
     {
-      "files": ["packages/extension/src/components/ui/**/*.{ts,tsx}"],
+      "files": ["packages/{extension,site}/src/components/ui/**/*.{ts,tsx}"],
       "rules": {
         "shadcn/no-restyle": "off",
         "shadcn/no-arbitrary-values": "off",
