@@ -53,6 +53,9 @@ export default defineConfig({
         description: 'Send the current page',
       },
     },
+    // Tailwind v4 needs Chrome 111. Older browsers stay on 1.x instead of
+    // updating to a popup that can't draw.
+    ...(browser !== 'firefox' && { minimum_chrome_version: '111' }),
     ...(browser === 'firefox' && {
       browser_specific_settings: {
         gecko: {
@@ -67,6 +70,9 @@ export default defineConfig({
     name: 'send-to-telegram',
     // Firefox reviewers rebuild from source, which needs the shared core package.
     sourcesRoot: '../..',
+    // Dot files are left out by default, and without this one a rebuild has
+    // no relay. Setting this replaces WXT's default of everything, so keep it.
+    includeSources: ['**/*', 'packages/extension/.env.production'],
     excludeSources: [
       '.claude/**',
       '.git/**',

@@ -8,6 +8,7 @@ dist
 .env
 .env.*
 !.env.example
+!.env.production
 coverage
 stats.html
 stats-*.json
