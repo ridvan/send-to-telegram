@@ -36,7 +36,13 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'stylesheet', href: styles },
-      { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' },
+      // The extension's toolbar icons, copied from packages/extension/public/icon.
+      ...[16, 32, 48, 96, 128].map((size) => ({
+        rel: 'icon',
+        type: 'image/png',
+        sizes: `${size}x${size}`,
+        href: `/icon/${size}.png`,
+      })),
     ],
     scripts: [{ children: themeScript }],
   }),
