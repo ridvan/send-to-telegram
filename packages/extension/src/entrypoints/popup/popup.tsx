@@ -559,15 +559,12 @@ function Composer({
 
   const { attached, problem, attach, remove, refuse } = useAttachment();
   const [dropping, setDropping] = useState(false);
-  // The relay takes JSON, so files go only to chats with your own bot.
-  const canAttach = destination?.kind === 'bot';
+  const canAttach = destination !== undefined;
 
   function attachOrRefuse(file: File) {
     if (canAttach) attach(file);
     else {
-      refuse(
-        'Files go only to chats connected with your own bot. Switch to one of those chats to attach it.'
-      );
+      refuse('Connect a chat first, then attach the file.');
     }
   }
 
@@ -782,7 +779,7 @@ function Composer({
           aria-hidden
           className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-brand/60 bg-background/85 text-sm font-medium text-brand backdrop-blur-sm"
         >
-          {canAttach ? 'Drop to attach' : 'Files go only to your own bot'}
+          {canAttach ? 'Drop to attach' : 'Connect a chat to attach files'}
         </div>
       ) : null}
       <div className="relative flex min-h-0 flex-1 flex-col bg-chat">
@@ -810,9 +807,7 @@ function Composer({
             <ChatHistory
               items={matches}
               delivery={settings.delivery}
-              botToken={
-                destination?.kind === 'bot' ? destination.token : undefined
-              }
+              botToken={destination?.token}
               now={time}
               draftBelow={!term}
               intro={

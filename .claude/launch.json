@@ -12,18 +12,6 @@
       "port": 3002
     },
     {
-      "name": "extension-fake-relay",
-      "runtimeExecutable": "env",
-      "runtimeArgs": [
-        "WXT_RELAY_URL=https://relay.invalid",
-        "pnpm",
-        "--filter",
-        "extension",
-        "dev:pages"
-      ],
-      "port": 3002
-    },
-    {
       "name": "extension-pages",
       "runtimeExecutable": "python3",
       "runtimeArgs": [

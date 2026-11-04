@@ -57,22 +57,23 @@ export const botDestinationSchema = destinationBase.extend({
   botUsername: z.string().optional(),
 });
 
-export const relayDestinationSchema = destinationBase.extend({
-  kind: z.literal('relay'),
-  relayUrl: z.url(),
-  deviceToken: z.string(),
-});
-
-export const destinationSchema = z.discriminatedUnion('kind', [
-  botDestinationSchema,
-  relayDestinationSchema,
-]);
+export const destinationSchema = botDestinationSchema;
 
 export type Destination = z.infer<typeof destinationSchema>;
 
-export type BotDestination = z.infer<typeof botDestinationSchema>;
+export type BotDestination = Destination;
 
-export type RelayDestination = z.infer<typeof relayDestinationSchema>;
+/**
+ * Pre-release builds also linked chats through S2T Relay. Those are dropped
+ * instead of failing the whole settings key.
+ */
+const destinationsSchema = z.preprocess(
+  (stored) =>
+    Array.isArray(stored)
+      ? stored.filter((entry) => destinationSchema.safeParse(entry).success)
+      : stored,
+  z.array(destinationSchema).default([])
+);
 
 export const imageModeSchema = z.enum(['photo', 'document', 'link']);
 
@@ -103,7 +104,7 @@ export type ChatBackground = z.infer<typeof chatBackgroundSchema>;
 export const DEFAULT_TAGS = ['work', 'personal', 'ideas', 'reading'];
 
 export const settingsSchema = z.object({
-  destinations: z.array(destinationSchema).default([]),
+  destinations: destinationsSchema,
   defaultDestinationId: z.string().nullable().default(null),
   delivery: z
     .object({
@@ -360,7 +361,7 @@ export function destinationName(destination: Destination): string {
 
   if (destination.chatTitle) return destination.chatTitle;
 
-  return destination.kind === 'bot' ? `Chat ${destination.chatId}` : 'Telegram';
+  return `Chat ${destination.chatId}`;
 }
 
 /** Picks a chat's avatar color from its name in Telegram, so a rename keeps it. */

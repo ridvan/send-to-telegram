@@ -227,9 +227,7 @@ export function HistorySection() {
   const stats = useStore(statsStore);
   const mode = settings.history.mode;
 
-  const hasOwnBot = settings.destinations.some(
-    (destination) => destination.kind === 'bot'
-  );
+  const hasOwnBot = settings.destinations.length > 0;
 
   // Messages sent to your bot are kept with history and cleared with it.
   const kept = history.length + inbox.length;

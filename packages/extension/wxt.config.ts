@@ -70,9 +70,6 @@ export default defineConfig({
     name: 'send-to-telegram',
     // Firefox reviewers rebuild from source, which needs the shared core package.
     sourcesRoot: '../..',
-    // Dot files are left out by default, and without this one a rebuild has
-    // no relay. Setting this replaces WXT's default of everything, so keep it.
-    includeSources: ['**/*', 'packages/extension/.env.production'],
     excludeSources: [
       '.claude/**',
       '.git/**',

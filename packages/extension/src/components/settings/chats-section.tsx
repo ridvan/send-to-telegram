@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { ChatAvatar } from '@/components/chat-avatar';
 import { AvatarDialog } from '@/components/settings/avatar-dialog';
-import { ConnectFlow } from '@/components/connect/connect-flow';
+import { ConnectBot } from '@/components/connect/connect-bot';
 import { SettingsSection } from '@/components/setting-row';
 import {
   AlertDialog,
@@ -74,8 +74,6 @@ function via(destination: Destination) {
   const type = destination.chatType
     ? chatTypeLabel[destination.chatType]
     : 'Chat';
-
-  if (destination.kind === 'relay') return `${type} · S2T Relay`;
 
   return destination.botUsername
     ? `${type} · @${destination.botUsername}`
@@ -156,9 +154,8 @@ function RemoveDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Remove “${name}”?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            {destination.kind === 'relay'
-              ? 'This browser stops sending to the chat and is unlinked from S2T Relay. Messages already in Telegram stay there.'
-              : 'This browser stops sending to the chat. Your bot and the messages already in Telegram stay as they are.'}
+            This browser stops sending to the chat. Your bot and the messages
+            already in Telegram stay as they are.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -352,7 +349,7 @@ export function ChatsSection({
               Send to yourself, a group or a channel.
             </DialogDescription>
           </DialogHeader>
-          <ConnectFlow
+          <ConnectBot
             onConnected={async (destination) => {
               await addDestination(destination);
               setAdding(false);

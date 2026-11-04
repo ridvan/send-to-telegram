@@ -26,7 +26,6 @@ import {
   toSendFailure,
 } from './failure.ts';
 import { attachmentOf } from './inbox.ts';
-import { relaySend } from './relay.ts';
 import {
   type Destination,
   defaultDestination,
@@ -66,11 +65,6 @@ export async function transmit(
   message: OutgoingMessage | ComposedUpload
 ): Promise<Delivery> {
   if ('attachment' in message) {
-    // The relay takes JSON, so files go only to chats with your own bot.
-    if (destination.kind === 'relay') {
-      throw new SendFailure('unsendable', failureCopy.relay_attachment);
-    }
-
     const blob = await loadAttachment(message.attachment.id);
 
     if (!blob) {
@@ -83,10 +77,6 @@ export async function transmit(
       ...rest,
       upload: new Upload(blob, attachment.name),
     });
-  }
-
-  if (destination.kind === 'relay') {
-    return relaySend(destination.relayUrl, destination.deviceToken, message);
   }
 
   return deliver(

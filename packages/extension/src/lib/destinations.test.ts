@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 
 import { addDestination } from './destinations.ts';
-import { type RelayDestination, settingsStore } from './settings.ts';
+import { type Destination, settingsSchema, settingsStore } from './settings.ts';
 
-const relay: RelayDestination = {
+const chat: Destination = {
   id: 'first',
-  kind: 'relay',
-  relayUrl: 'https://relay.example',
-  deviceToken: 'a'.repeat(43),
+  kind: 'bot',
+  token: '1:a',
+  chatId: 42,
   chatTitle: 'Ada',
   chatType: 'private',
 };
@@ -16,9 +16,9 @@ const relay: RelayDestination = {
 describe('addDestination', () => {
   beforeEach(() => fakeBrowser.reset());
 
-  it('adds a relay link once however often it is reported', async () => {
-    await addDestination(relay);
-    await addDestination({ ...relay, id: 'second' });
+  it('adds a bot and chat once however often it is connected', async () => {
+    await addDestination(chat);
+    await addDestination({ ...chat, id: 'second' });
 
     const { destinations, defaultDestinationId } = await settingsStore.get();
 
@@ -29,24 +29,37 @@ describe('addDestination', () => {
   });
 
   it('makes the chat just connected the default', async () => {
-    await addDestination(relay);
-    await addDestination({
-      ...relay,
-      id: 'second',
-      deviceToken: 'b'.repeat(43),
-    });
+    await addDestination(chat);
+    await addDestination({ ...chat, id: 'second', chatId: 43 });
 
     expect((await settingsStore.get()).defaultDestinationId).toBe('second');
   });
 
-  it('keeps separate relay links apart', async () => {
-    await addDestination(relay);
-    await addDestination({
-      ...relay,
-      id: 'second',
-      deviceToken: 'b'.repeat(43),
-    });
+  it('keeps separate chats apart', async () => {
+    await addDestination(chat);
+    await addDestination({ ...chat, id: 'second', token: '2:b' });
 
     expect((await settingsStore.get()).destinations).toHaveLength(2);
+  });
+});
+
+describe('settingsSchema', () => {
+  it('drops chats linked through S2T Relay and keeps the rest', () => {
+    const settings = settingsSchema.parse({
+      destinations: [
+        {
+          id: 'relay',
+          kind: 'relay',
+          relayUrl: 'https://relay.example',
+          deviceToken: 'a'.repeat(43),
+        },
+        chat,
+      ],
+      defaultDestinationId: 'first',
+      appearance: { theme: 'dark' },
+    });
+
+    expect(settings.destinations).toEqual([chat]);
+    expect(settings.appearance.theme).toBe('dark');
   });
 });

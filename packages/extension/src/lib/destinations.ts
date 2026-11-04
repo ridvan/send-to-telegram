@@ -2,7 +2,6 @@ import { createBotClient } from '@send-to-telegram/core';
 
 import { TEST_MESSAGE } from './bot-setup.ts';
 import { toSendFailure } from './failure.ts';
-import { relaySend, unlinkDevice } from './relay.ts';
 import { forgetFiles } from './telegram-files.ts';
 import {
   type ChatAvatarChoice,
@@ -12,21 +11,11 @@ import {
 } from './settings.ts';
 
 function sameChat(a: Destination, b: Destination) {
-  if (a.kind === 'bot' && b.kind === 'bot') {
-    return a.token === b.token && String(a.chatId) === String(b.chatId);
-  }
-
-  if (a.kind === 'relay' && b.kind === 'relay') {
-    // One device token is one link on the relay, whatever chat it reports.
-    return a.relayUrl === b.relayUrl && a.deviceToken === b.deviceToken;
-  }
-
-  return false;
+  return a.token === b.token && String(a.chatId) === String(b.chatId);
 }
 
 /**
- * Adds a chat, replacing an existing one for the same bot and chat or the
- * same relay link. The chat just connected becomes the default, so the popup
+ * Adds a chat, replacing an existing one for the same bot and chat. The chat just connected becomes the default, so the popup
  * opens on it.
  */
 export function addDestination(destination: Destination) {
@@ -43,13 +32,6 @@ export function addDestination(destination: Destination) {
 }
 
 export async function removeDestination(destination: Destination) {
-  if (destination.kind === 'relay') {
-    // Best effort: the device is forgotten here whether or not the relay answers.
-    await unlinkDevice(destination.relayUrl, destination.deviceToken).catch(
-      () => undefined
-    );
-  }
-
   await settingsStore.update((settings) => {
     const destinations = settings.destinations.filter(
       (existing) => existing.id !== destination.id
@@ -122,17 +104,6 @@ export function makeDefault(id: string) {
 
 export async function sendTest(destination: Destination) {
   try {
-    if (destination.kind === 'relay') {
-      await relaySend(destination.relayUrl, destination.deviceToken, {
-        kind: 'text',
-        text: TEST_MESSAGE,
-        linkPreview: false,
-        silent: true,
-      });
-
-      return;
-    }
-
     await createBotClient(destination.token).call('sendMessage', {
       chat_id: destination.chatId,
       text: TEST_MESSAGE,

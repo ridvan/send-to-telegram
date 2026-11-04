@@ -740,7 +740,7 @@ export function SentMessage({
 }: {
   entry: HistoryEntry;
   delivery: Settings['delivery'];
-  /** The bot's, to show a file it sent; absent for relay chats. */
+  /** The bot's, to show a file it sent. */
   token?: string | undefined;
   /** Under the bubble, such as a way to send a failed message again. */
   footer?: ReactNode;

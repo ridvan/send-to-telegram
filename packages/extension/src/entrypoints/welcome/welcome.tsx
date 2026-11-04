@@ -1,6 +1,5 @@
 import {
   Clock01Icon,
-  FlashIcon,
   KeyboardIcon,
   MessageMultiple01Icon,
   MouseRightClick02Icon,
@@ -16,7 +15,7 @@ import { browser } from 'wxt/browser';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatName } from '@/components/chat-name';
-import { ConnectFlow } from '@/components/connect/connect-flow';
+import { ConnectBot } from '@/components/connect/connect-bot';
 import { IconTile, type TileTone } from '@/components/icon-tile';
 import { useShortcuts } from '@/components/shortcuts';
 import { ThemePicker } from '@/components/theme-picker';
@@ -27,7 +26,6 @@ import { useStore } from '@/hooks/use-store';
 import { openExtensionPage } from '@/lib/client';
 import { addDestination } from '@/lib/destinations';
 import { plural } from '@/lib/format';
-import { hasRelay } from '@/lib/relay';
 import {
   avatarSeed,
   defaultDestination,
@@ -97,7 +95,7 @@ export function Welcome() {
       title="Send anything to Telegram"
       description="Connect a Telegram chat, and everything you send from this browser lands there."
     >
-      <ConnectFlow
+      <ConnectBot
         onConnected={async (next) => {
           await addDestination(next);
           await onboardingStore.update((state) => ({
@@ -310,15 +308,6 @@ function Upgraded() {
           <Feature icon={TextIcon} tone="orange" title="Line breaks survive">
             Long selections arrive in full.
           </Feature>
-          {hasRelay ? (
-            <Feature
-              icon={FlashIcon}
-              tone="violet"
-              title="Setup without BotFather"
-            >
-              New chats connect in a few seconds.
-            </Feature>
-          ) : null}
         </ul>
       </section>
 

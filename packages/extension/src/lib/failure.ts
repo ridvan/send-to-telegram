@@ -33,14 +33,10 @@ export const failureCopy = {
     'Send to Telegram is locked. Unlock it with your password, then send again.',
   bot_unauthorized:
     'Telegram rejected the bot token. It may have been revoked in BotFather. Update it in settings.',
-  relay_unauthorized:
-    'This browser is no longer linked to Telegram. Connect it again in settings.',
   chat_unavailable:
     'The bot can’t post to this chat. Open the chat in Telegram and press Start, or add the bot back to the group.',
   rate_limited: 'Telegram is limiting messages. Try again in a few seconds.',
   network: 'Couldn’t reach Telegram. Check your connection and try again.',
-  relay_attachment:
-    'Files go only to chats connected with your own bot. Pick one of those chats, or remove the file.',
   attachment_missing:
     'The file is no longer saved. Attach it again from the popup.',
 } as const;

@@ -261,7 +261,7 @@ function TurnOnDialog({ onClose }: { onClose: () => void }) {
               <DialogTitle>Set a password</DialogTitle>
               <DialogDescription>
                 Your chats, history and received messages are encrypted with it.
-                Telegram and the relay never see it.
+                Telegram never sees it.
               </DialogDescription>
             </DialogHeader>
             <form id={formId} onSubmit={submitted(submit)}>
