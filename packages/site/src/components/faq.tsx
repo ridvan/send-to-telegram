@@ -20,10 +20,10 @@ const questions: { question: string; answer: ReactNode }[] = [
     question: 'Do I need to create a Telegram bot?',
     answer: (
       <p>
-        No. With S2T Relay, you press Start in Telegram and the chat is linked
-        in seconds. Create your own bot with{' '}
-        <a href={links.botFather}>@BotFather</a> when you want what’s sent to
-        the chat to show up in the popup, or to send files.
+        Yes, for now. Create one with <a href={links.botFather}>@BotFather</a>{' '}
+        and paste its token; the extension walks you through it in about two
+        minutes. S2T Relay, coming soon, will link a chat when you press Start
+        in Telegram, with no bot of your own.
       </p>
     ),
   },
@@ -31,11 +31,12 @@ const questions: { question: string; answer: ReactNode }[] = [
     question: 'Can S2T Relay read what I send?',
     answer: (
       <p>
-        It passes your messages on to Telegram, but never stores or logs them,
-        and <a href={links.relay}>its code is public</a>. If you’d rather
-        nothing sits in between, use your own bot: the extension then talks to
-        Telegram directly. The <a href="/privacy">privacy policy</a> lists
-        everything the relay keeps.
+        It’s built to pass your messages on to Telegram without storing or
+        logging them, and <a href={links.relay}>its code is public</a>. The
+        extension doesn’t use it yet. Before it does, the{' '}
+        <a href="/privacy">privacy policy</a> will list everything the relay
+        keeps. With your own bot, nothing sits in between: the extension talks
+        to Telegram directly.
       </p>
     ),
   },
@@ -51,12 +52,7 @@ const questions: { question: string; answer: ReactNode }[] = [
   },
   {
     question: 'Can I send files?',
-    answer: (
-      <p>
-        With your own bot, yes: attach one in the popup, or paste or drop it in.
-        S2T Relay sends text, links, pages and images.
-      </p>
-    ),
+    answer: <p>Yes: attach one in the popup, or paste or drop it in.</p>,
   },
   {
     question: 'Why does it ask for access to api.telegram.org?',
@@ -99,16 +95,6 @@ const questions: { question: string; answer: ReactNode }[] = [
     ),
   },
   {
-    question: 'Can I host the relay myself?',
-    answer: (
-      <p>
-        Yes. It runs on Cloudflare Workers, and{' '}
-        <a href={links.relay}>its README</a> walks through setting it up. Build
-        the extension with WXT_RELAY_URL set to your relay’s address.
-      </p>
-    ),
-  },
-  {
     question: 'Something’s broken. Where do I report it?',
     answer: (
       <p>
@@ -123,7 +109,7 @@ export function Faq() {
   return (
     <Article
       title="Questions and answers"
-      lede="What people ask about the extension, S2T Relay and connecting your own bot."
+      lede="What people ask about the extension, connecting your own bot and S2T Relay."
     >
       <div className="flex flex-col border-b">
         {questions.map((item) => (

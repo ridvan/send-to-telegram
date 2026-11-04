@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Privacy } from '@/components/privacy-policy';
 
 const description =
-  'What Send to Telegram and S2T Relay store, where they keep it, and how to remove it.';
+  'What Send to Telegram stores, where it keeps it, and how to remove it.';
 
 export const Route = createFileRoute('/privacy')({
   head: () => ({

@@ -6,7 +6,7 @@ export function Privacy() {
     <Article
       title="Privacy policy"
       lede="Send to Telegram keeps as little as it can. This page lists everything it stores, where it keeps it, and how to remove it."
-      note="Last updated 1 November 2026"
+      note="Last updated 4 November 2026"
     >
       <ArticleSection title="The short version">
         <ul>
@@ -16,8 +16,8 @@ export function Privacy() {
           </li>
           <li>Your chats, bot tokens and history stay in your browser.</li>
           <li>
-            S2T Relay passes your messages on to Telegram and never stores or
-            logs them.
+            Messages go straight from your browser to Telegram, with nothing in
+            between.
           </li>
         </ul>
       </ArticleSection>
@@ -41,58 +41,19 @@ export function Privacy() {
 
       <ArticleSection title="When you send">
         <p>
-          With your own bot, the extension sends straight to Telegram’s Bot API
-          at api.telegram.org, using your bot’s token. Nothing sits in between.
-        </p>
-        <p>
-          With S2T Relay, it sends to relay.s2t.dev, which hands the message to
-          Telegram. Once delivered, your messages are covered by{' '}
+          The extension sends straight to Telegram’s Bot API at
+          api.telegram.org, using your bot’s token. Nothing sits in between.
+          Once delivered, your messages are covered by{' '}
           <a href={links.telegramPrivacy}>Telegram’s privacy policy</a>.
         </p>
       </ArticleSection>
 
-      <ArticleSection title="What S2T Relay stores">
-        <p>For each browser linked to a chat, the relay keeps:</p>
-        <ul>
-          <li>
-            A SHA-256 hash of the browser’s random token, never the token itself
-          </li>
-          <li>The browser’s name, such as “Chrome on macOS”</li>
-          <li>The chat it sends to: its ID, title and type</li>
-          <li>When it was linked and when it was last used</li>
-          <li>
-            While linking, a one-time code that expires. Links that are never
-            finished are deleted every day.
-          </li>
-        </ul>
+      <ArticleSection title="S2T Relay">
         <p>
-          <strong>Your messages aren’t stored or logged.</strong> The relay
-          passes them to Telegram and keeps nothing. Request logging is off, and
-          errors are logged by type only.
+          S2T Relay, a way to connect a chat without your own bot, is coming
+          soon. The extension doesn’t use it yet. Before it does, this page will
+          list what the relay stores.
         </p>
-        <p>
-          Your IP address is used only to limit how many requests one network
-          can make in a minute. It isn’t written to the relay’s database.
-        </p>
-        <p>
-          The relay runs on Cloudflare Workers, so Cloudflare handles its
-          requests. Its code is <a href={links.relay}>open source</a>, and you
-          can host your own.
-        </p>
-      </ArticleSection>
-
-      <ArticleSection title="Removing a browser from the relay">
-        <ul>
-          <li>Remove the chat in the extension’s settings.</li>
-          <li>
-            Or send /devices to @S2TRelayBot in the chat and unlink the browser
-            there.
-          </li>
-          <li>
-            Removing or blocking the bot deletes every browser linked to that
-            chat.
-          </li>
-        </ul>
       </ArticleSection>
 
       <ArticleSection title="Permissions">

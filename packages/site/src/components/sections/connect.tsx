@@ -61,6 +61,8 @@ const rows = [
 type Way = {
   id: string;
   title: string;
+  /** Not in the extension yet. */
+  soon?: boolean;
   badges: { icon: typeof BotIcon; label: string }[];
   summary: string;
   route: ReactNode;
@@ -70,73 +72,6 @@ type Way = {
 };
 
 const ways: Way[] = [
-  {
-    id: 'relay',
-    title: 'S2T Relay',
-    badges: [
-      { icon: FlashIcon, label: 'Ready in seconds' },
-      { icon: ArrowRight02Icon, label: 'One-way' },
-    ],
-    summary:
-      'Press Start in Telegram and the chat is linked. A small relay passes your messages on to Telegram without reading or storing them.',
-    route: (
-      <Route>
-        <Stop label="This browser" align="start">
-          <HugeiconsIcon icon={BrowserIcon} strokeWidth={1.8} aria-hidden />
-        </Stop>
-        <Leg>
-          <Dot className="animate-travel" />
-        </Leg>
-        <Stop label="relay.s2t.dev">
-          <HugeiconsIcon icon={Shield01Icon} strokeWidth={1.8} aria-hidden />
-        </Stop>
-        <Leg>
-          <Dot className="animate-travel-next" />
-        </Leg>
-        <Telegram />
-      </Route>
-    ),
-    chat: (
-      <ChatWindow
-        label="A chat sent with S2T Relay: a link with a note and #club, then a quote with an Open page button"
-        name="Reading club"
-        tone="violet"
-        pattern="doodles"
-      >
-        <ServiceNote icon={Shield01Icon} title="Sent with S2T Relay">
-          It passes your messages to Telegram without reading or storing them,
-          so what people send the bot doesn’t show up here.
-        </ServiceNote>
-        <DayMarker>Today</DayMarker>
-        <Outgoing
-          time="20:41"
-          card={<LinkCard site="essays.example" title="On reading slowly" />}
-        >
-          {'For Thursday '}
-          <Accent>#club</Accent>
-          {'\n'}
-          <Accent>essays.example/reading-slowly</Accent>
-        </Outgoing>
-        <Outgoing time="20:44" button="Open page">
-          The second time through, you notice what the first one was for.
-        </Outgoing>
-      </ChatWindow>
-    ),
-    facts: {
-      setup: 'Press Start in Telegram.',
-      time: 'A few seconds.',
-      stored:
-        'A hash of your browser’s token, its name (such as “Chrome on macOS”) and the chat it sends to. Never your messages.',
-      incoming:
-        'Messages sent to the chat stay in Telegram. The relay only sends one way.',
-      files:
-        'Text, links, pages and images. Attaching a file needs your own bot.',
-    },
-    more: {
-      href: links.relay,
-      label: 'Read the relay’s code, or host your own',
-    },
-  },
   {
     id: 'own-bot',
     title: 'Your own bot',
@@ -198,6 +133,74 @@ const ways: Way[] = [
     },
     more: { href: links.botFather, label: 'Open @BotFather in Telegram' },
   },
+  {
+    id: 'relay',
+    title: 'S2T Relay',
+    soon: true,
+    badges: [
+      { icon: FlashIcon, label: 'Ready in seconds' },
+      { icon: ArrowRight02Icon, label: 'One-way' },
+    ],
+    summary:
+      'Press Start in Telegram and the chat is linked. A small relay passes your messages on to Telegram without reading or storing them.',
+    route: (
+      <Route>
+        <Stop label="This browser" align="start">
+          <HugeiconsIcon icon={BrowserIcon} strokeWidth={1.8} aria-hidden />
+        </Stop>
+        <Leg>
+          <Dot className="animate-travel" />
+        </Leg>
+        <Stop label="relay.s2t.dev">
+          <HugeiconsIcon icon={Shield01Icon} strokeWidth={1.8} aria-hidden />
+        </Stop>
+        <Leg>
+          <Dot className="animate-travel-next" />
+        </Leg>
+        <Telegram />
+      </Route>
+    ),
+    chat: (
+      <ChatWindow
+        label="A chat sent with S2T Relay: a link with a note and #club, then a quote with an Open page button"
+        name="Reading club"
+        tone="violet"
+        pattern="doodles"
+      >
+        <ServiceNote icon={Shield01Icon} title="Sent with S2T Relay">
+          It passes your messages to Telegram without reading or storing them,
+          so what people send the bot doesn’t show up here.
+        </ServiceNote>
+        <DayMarker>Today</DayMarker>
+        <Outgoing
+          time="20:41"
+          card={<LinkCard site="essays.example" title="On reading slowly" />}
+        >
+          {'For Thursday '}
+          <Accent>#club</Accent>
+          {'\n'}
+          <Accent>essays.example/reading-slowly</Accent>
+        </Outgoing>
+        <Outgoing time="20:44" button="Open page">
+          The second time through, you notice what the first one was for.
+        </Outgoing>
+      </ChatWindow>
+    ),
+    facts: {
+      setup: 'Press Start in Telegram.',
+      time: 'A few seconds.',
+      stored:
+        'A hash of your browser’s token, its name (such as “Chrome on macOS”) and the chat it sends to. Never your messages.',
+      incoming:
+        'Messages sent to the chat stay in Telegram. The relay only sends one way.',
+      files:
+        'Text, links, pages and images. Attaching a file needs your own bot.',
+    },
+    more: {
+      href: links.relay,
+      label: 'Read the relay’s code',
+    },
+  },
 ];
 
 /** One way's name, badges and chat, without the rest, for the store pictures. */
@@ -210,7 +213,7 @@ export function WayPreview({ id }: { id: string }) {
     <div className="flex size-full flex-col gap-4">
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-semibold tracking-tight">{way.title}</h2>
-        <WayBadges badges={way.badges} />
+        <WayBadges way={way} />
       </div>
       <div className="min-h-0 flex-1">{way.chat}</div>
     </div>
@@ -224,8 +227,8 @@ export function Connect() {
       className="page flex flex-col gap-14 py-24"
     >
       <SectionHeading id="connect" title="Two ways to connect a chat">
-        Link a chat in seconds with S2T Relay, or use your own bot for a direct,
-        two-way connection. Each chat can use either.
+        Use your own bot for a direct, two-way connection. S2T Relay, which
+        links a chat in seconds, is coming soon.
       </SectionHeading>
       <div className="grid gap-y-20 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-6">
         {ways.map((way) => (
@@ -242,7 +245,7 @@ export function Connect() {
                 >
                   {way.title}
                 </h3>
-                <WayBadges badges={way.badges} />
+                <WayBadges way={way} />
               </div>
               <p className="text-muted-foreground">{way.summary}</p>
             </div>
@@ -282,10 +285,15 @@ export function Connect() {
 }
 
 /** What sets a way apart, in a word or two each. */
-function WayBadges({ badges }: { badges: Way['badges'] }) {
+function WayBadges({ way }: { way: Way }) {
   return (
     <ul className="flex flex-wrap gap-1.5">
-      {badges.map((badge) => (
+      {way.soon ? (
+        <li>
+          <Badge>Coming soon</Badge>
+        </li>
+      ) : null}
+      {way.badges.map((badge) => (
         <li key={badge.label}>
           <Badge variant="secondary">
             <HugeiconsIcon

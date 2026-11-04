@@ -103,12 +103,12 @@ export function PopupSlide() {
 export function ConnectSlide() {
   return (
     <Slide
-      title="Connect in seconds, or bring your own bot"
-      text="S2T Relay links a chat when you press Start. Your own bot works both ways."
+      title="Your own bot, both ways"
+      text="Messages go straight to Telegram, and what you send your bot shows up here. S2T Relay is coming soon."
     >
       <div className="grid h-full grid-cols-2 grid-rows-1 gap-10 pb-16">
-        <WayPreview id="relay" />
         <WayPreview id="own-bot" />
+        <WayPreview id="relay" />
       </div>
     </Slide>
   );

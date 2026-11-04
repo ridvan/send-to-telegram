@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Faq } from '@/components/faq';
 
 const description =
-  'Answers about Send to Telegram: browsers, S2T Relay, your own bot, files, the password lock and more.';
+  'Answers about Send to Telegram: browsers, your own bot, files, the password lock, S2T Relay and more.';
 
 export const Route = createFileRoute('/faq')({
   head: () => ({
