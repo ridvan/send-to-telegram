@@ -2,7 +2,6 @@ import {
   ArrowUpRight01Icon,
   BubbleChatIcon,
   Clock01Icon,
-  ComputerIcon,
   Delete02Icon,
   Globe02Icon,
   HashtagIcon,
@@ -13,10 +12,8 @@ import {
   Moon02Icon,
   NotificationOff01Icon,
   RotateLeft01Icon,
-  Sun03Icon,
   ViewOffSlashIcon,
 } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { useId, useState } from 'react';
 
 import {
@@ -41,6 +38,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { ThemePicker } from '@/components/theme-picker';
 import { Kbd } from '@/components/ui/kbd';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -59,8 +57,6 @@ import {
   type Settings,
   settingsStore,
   statsStore,
-  type Theme,
-  themeSchema,
 } from '@/lib/settings';
 
 import { ChatBackgroundRow } from './chat-background-row';
@@ -374,12 +370,6 @@ export function PrivacySection() {
   );
 }
 
-const themes = {
-  system: { label: 'System', icon: ComputerIcon },
-  light: { label: 'Light', icon: Sun03Icon },
-  dark: { label: 'Dark', icon: Moon02Icon },
-} satisfies Record<Theme, { label: string; icon: typeof Sun03Icon }>;
-
 function ResetRow({ onReset }: { onReset: () => void }) {
   const settings = useStore(settingsStore);
   const history = useStore(historyStore);
@@ -427,7 +417,6 @@ function ResetRow({ onReset }: { onReset: () => void }) {
 
 /** `onReset` runs once storage is cleared, to leave a page that needs chats. */
 export function GeneralSection({ onReset }: { onReset: () => void }) {
-  const { appearance } = useStore(settingsStore);
   const shortcuts = useShortcuts();
 
   return (
@@ -436,35 +425,7 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
         icon={{ icon: Moon02Icon, tone: 'violet' }}
         label="Appearance"
         wide
-        control={
-          <ToggleGroup
-            variant="segmented"
-            size="sm"
-            aria-label="Appearance"
-            value={[appearance.theme]}
-            onValueChange={([next]) => {
-              const theme = themeSchema.safeParse(next);
-
-              if (theme.success) {
-                void update((settings) => ({
-                  ...settings,
-                  appearance: { ...settings.appearance, theme: theme.data },
-                }));
-              }
-            }}
-          >
-            {themeSchema.options.map((theme) => (
-              <ToggleGroupItem key={theme} value={theme}>
-                <HugeiconsIcon
-                  icon={themes[theme].icon}
-                  strokeWidth={1.8}
-                  data-icon="inline-start"
-                />
-                {themes[theme].label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        }
+        control={<ThemePicker />}
       />
       <ChatBackgroundRow />
       <SettingRow

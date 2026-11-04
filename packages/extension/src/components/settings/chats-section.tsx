@@ -345,7 +345,7 @@ export function ChatsSection({
       )}
 
       <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-148">
           <DialogHeader>
             <DialogTitle>Add a chat</DialogTitle>
             <DialogDescription>

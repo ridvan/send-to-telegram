@@ -215,9 +215,14 @@ function demoData(now: number) {
 
 /**
  * Answers for a relay at relay.invalid (build with WXT_RELAY_URL set to it):
- * a pairing that links on the third status check. Other requests pass through.
+ * a pairing that links on the third status check. `?wait` keeps it waiting,
+ * `?expire` lets it expire after 8 seconds, and `?fail` can't reach the relay
+ * to start one. Other requests pass through.
  */
-function fakeRelay(realFetch: typeof fetch): typeof fetch {
+function fakeRelay(
+  realFetch: typeof fetch,
+  pairing: 'link' | 'wait' | 'expire' | 'fail'
+): typeof fetch {
   let checks = 0;
 
   const json = (body: DeviceStatus | Pairing | Delivery, status = 200) =>
@@ -234,13 +239,15 @@ function fakeRelay(realFetch: typeof fetch): typeof fetch {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     if (url.pathname === '/v1/pairings') {
+      if (pairing === 'fail') throw new TypeError('Failed to fetch');
+
       checks = 0;
 
       return json(
         {
           code: 'previewpreviewpreview',
           botUsername: 'S2TRelayBot',
-          expiresAt: Date.now() + 600_000,
+          expiresAt: Date.now() + (pairing === 'expire' ? 8000 : 600_000),
         },
         201
       );
@@ -249,7 +256,7 @@ function fakeRelay(realFetch: typeof fetch): typeof fetch {
     if (url.pathname === '/v1/device') {
       checks += 1;
 
-      return checks < 3
+      return checks < 3 || pairing !== 'link'
         ? json({ status: 'pending', expiresAt: Date.now() + 600_000 })
         : json({
             status: 'linked',
@@ -690,7 +697,15 @@ function install() {
 
   Object.assign(globalThis, {
     chrome,
-    fetch: fakeTelegram(fakeRelay(fetch), url.searchParams.has('fail')),
+    fetch: fakeTelegram(
+      fakeRelay(
+        fetch,
+        (['fail', 'wait', 'expire'] as const).find((mode) =>
+          url.searchParams.has(mode)
+        ) ?? 'link'
+      ),
+      url.searchParams.has('fail')
+    ),
   });
 }
 

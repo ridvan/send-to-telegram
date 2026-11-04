@@ -1,14 +1,27 @@
-import { ArrowUpRight01Icon } from '@hugeicons/core-free-icons';
+import {
+  ArrowUpRight01Icon,
+  ComputerIcon,
+  Copy01Icon,
+  SmartPhone01Icon,
+  Tick02Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { Pairing } from '@send-to-telegram/core';
-import { useState } from 'react';
-import { browser } from 'wxt/browser';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { usePoll } from '@/hooks/use-poll';
 import { SendFailure, toSendFailure } from '@/lib/failure';
+import { links } from '@/lib/links';
 import {
   clientName,
   createDeviceToken,
@@ -18,59 +31,109 @@ import {
   startPairing,
 } from '@/lib/relay';
 import type { RelayDestination } from '@/lib/settings';
+import { cn } from '@/lib/utils';
 
-import { StartButton } from './illustrations';
-import { Steps, Step } from './steps';
+import { QrCode } from './qr-code';
+import { TextLink } from './text-link';
 
 type Phase =
-  | { name: 'idle' }
-  | { name: 'opening' }
+  | { name: 'creating' }
   | { name: 'waiting'; pairing: Pairing; token: string }
-  | { name: 'linked' }
-  | { name: 'expired' }
+  | { name: 'linked'; pairing: Pairing }
+  | { name: 'expired'; pairing: Pairing }
   | { name: 'failed'; message: string };
 
+type Audience = 'me' | 'group';
+
 /**
- * Links this browser to a chat with the hosted bot: open a one-time link,
- * press Start in Telegram, and the relay reports the chat back here.
+ * On a phone there's nothing to scan the code with, so the link leads.
+ * iPadOS asks for desktop sites as a Mac, so a Mac with touch is an iPad.
+ */
+const onPhone =
+  /Android|iPhone|iPad/.test(navigator.userAgent) ||
+  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+/**
+ * The link still waiting for Start, kept while the page is open so closing
+ * and reopening Add chat picks it up instead of asking the relay for another.
+ */
+let pending: { pairing: Pairing; token: string } | undefined;
+
+function reusable() {
+  return pending && Date.now() < pending.pairing.expiresAt
+    ? pending
+    : undefined;
+}
+
+/**
+ * Links this browser to a chat with the hosted bot. The one-time link is
+ * ready as the page opens, as a code to scan with the phone most people
+ * keep Telegram on, and as a link for Telegram on this computer. Pressing
+ * Start in Telegram links the chat, and the relay reports it back here.
  */
 export function ConnectRelay({
   onConnected,
-  onUseOwnBot,
+  active = true,
 }: {
   onConnected: (destination: RelayDestination) => void;
-  onUseOwnBot: () => void;
+  /** False while another way to connect is showing; the link waits, unchecked. */
+  active?: boolean;
 }) {
-  const [phase, setPhase] = useState<Phase>({ name: 'idle' });
+  const ids = useId();
 
-  async function open(group: boolean) {
-    const reusable = phase.name === 'waiting' ? phase : undefined;
+  const [phase, setPhase] = useState<Phase>(() => {
+    const kept = reusable();
 
-    if (reusable) {
-      await browser.tabs.create({ url: pairingLink(reusable.pairing, group) });
+    return kept ? { name: 'waiting', ...kept } : { name: 'creating' };
+  });
 
-      return;
-    }
+  const [audience, setAudience] = useState<Audience>('me');
+  const started = useRef(false);
 
-    setPhase({ name: 'opening' });
+  async function create() {
+    setPhase({ name: 'creating' });
 
     try {
       const token = createDeviceToken();
       const pairing = await startPairing(RELAY_URL, token, await clientName());
 
+      pending = { pairing, token };
       setPhase({ name: 'waiting', pairing, token });
-      await browser.tabs.create({ url: pairingLink(pairing, group) });
     } catch (cause) {
       setPhase({ name: 'failed', message: toSendFailure(cause).message });
     }
   }
+
+  // A link kept from earlier in this page is already waiting.
+  const createOnOpen = useEffectEvent(() => {
+    if (phase.name === 'creating') void create();
+  });
+
+  useEffect(() => {
+    // Strict mode runs effects twice; one link is enough.
+    if (started.current) return;
+    started.current = true;
+    createOnOpen();
+  }, []);
+
+  const retryOnline = useEffectEvent(() => {
+    if (phase.name === 'failed') void create();
+  });
+
+  useEffect(() => {
+    // A link that couldn't start offline starts once the connection is back.
+    window.addEventListener('online', retryOnline);
+
+    return () => window.removeEventListener('online', retryOnline);
+  }, []);
 
   usePoll(
     async () => {
       if (phase.name !== 'waiting') return;
 
       if (Date.now() > phase.pairing.expiresAt) {
-        setPhase({ name: 'expired' });
+        pending = undefined;
+        setPhase({ name: 'expired', pairing: phase.pairing });
 
         return;
       }
@@ -80,7 +143,8 @@ export function ConnectRelay({
 
         if (status.status === 'linked') {
           // Stops the poll, so the chat is added once.
-          setPhase({ name: 'linked' });
+          pending = undefined;
+          setPhase({ name: 'linked', pairing: phase.pairing });
           onConnected({
             id: crypto.randomUUID(),
             kind: 'relay',
@@ -92,89 +156,303 @@ export function ConnectRelay({
         }
       } catch (cause) {
         if (cause instanceof SendFailure && cause.reason === 'unauthorized') {
-          setPhase({ name: 'expired' });
+          pending = undefined;
+          setPhase({ name: 'expired', pairing: phase.pairing });
         }
       }
     },
     2000,
-    phase.name === 'waiting'
+    active && phase.name === 'waiting'
   );
 
-  const waiting = phase.name === 'waiting';
+  const group = audience === 'group';
+
+  const pairing =
+    phase.name === 'creating' || phase.name === 'failed'
+      ? undefined
+      : phase.pairing;
+
+  const link = pairing ? pairingLink(pairing, group) : '';
+  const usable = phase.name === 'waiting';
 
   return (
-    <div className="flex flex-col gap-6">
-      <Steps>
-        <Step
-          index={1}
-          title="Open the bot in Telegram"
-          done={waiting || phase.name === 'linked'}
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-medium" id={`${ids}-audience`}>
+          Send to
+        </p>
+        <ToggleGroup
+          variant="segmented"
+          size="sm"
+          aria-labelledby={`${ids}-audience`}
+          value={[audience]}
+          onValueChange={([next]) => {
+            if (next === 'me' || next === 'group') setAudience(next);
+          }}
         >
-          <div className="flex flex-wrap items-center gap-2">
+          <ToggleGroupItem value="me">Yourself</ToggleGroupItem>
+          <ToggleGroupItem value="group">A group</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      <div className="flex flex-col overflow-hidden rounded-xl border">
+        {onPhone ? null : (
+          <section
+            aria-labelledby={`${ids}-phone`}
+            className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center"
+          >
+            <CodeTile phase={phase} link={link} group={group} />
+            <div className="flex flex-col gap-3">
+              <Lane id={`${ids}-phone`} icon={SmartPhone01Icon}>
+                On your phone
+              </Lane>
+              <ol className="flex flex-col gap-2.5 text-sm">
+                <Instruction index={1}>
+                  Scan the code with your camera
+                </Instruction>
+                <Instruction index={2}>
+                  {group
+                    ? 'Pick the group and add the bot'
+                    : 'Press Start in Telegram'}
+                </Instruction>
+              </ol>
+            </div>
+          </section>
+        )}
+
+        <section
+          aria-labelledby={`${ids}-computer`}
+          className={cn(
+            'flex flex-col gap-3 p-5',
+            onPhone ? undefined : 'border-t'
+          )}
+        >
+          <Lane
+            id={`${ids}-computer`}
+            icon={onPhone ? SmartPhone01Icon : ComputerIcon}
+          >
+            {onPhone ? 'In Telegram' : 'On this computer'}
+          </Lane>
+          <div className="flex flex-wrap gap-2">
+            <InputGroup className="min-w-0 flex-1 basis-56">
+              <InputGroupInput
+                aria-label="Link to the bot"
+                value={link}
+                placeholder="t.me/…"
+                readOnly
+                disabled={!usable}
+                code
+                onFocus={(event) => event.target.select()}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label="Copy link"
+                  disabled={!usable}
+                  onClick={() =>
+                    void navigator.clipboard.writeText(link).then(
+                      () => toast('Copied link'),
+                      () =>
+                        toast.error(
+                          'Couldn’t copy. Select the link and copy it yourself.'
+                        )
+                    )
+                  }
+                >
+                  <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
             <Button
-              variant="brand"
-              onClick={() => void open(false)}
-              disabled={phase.name === 'opening'}
+              variant={onPhone ? 'brand' : 'outline'}
+              className={onPhone ? 'order-first' : undefined}
+              disabled={!usable}
+              {...(usable && {
+                nativeButton: false,
+                render: <a href={link} target="_blank" rel="noreferrer" />,
+              })}
             >
-              {phase.name === 'opening' ? (
-                <Spinner data-icon="inline-start" />
-              ) : null}
-              Open Telegram
+              {group ? 'Choose a group' : 'Open Telegram'}
               <HugeiconsIcon
                 icon={ArrowUpRight01Icon}
                 strokeWidth={2}
                 data-icon="inline-end"
               />
             </Button>
-            <Button
-              variant="ghost"
-              tone="muted"
-              onClick={() => void open(true)}
-              disabled={phase.name === 'opening'}
-            >
-              Add to a group
-            </Button>
           </div>
-        </Step>
-        <Step index={2} title="Press Start" active={waiting}>
-          <div className="flex flex-col gap-3">
-            <StartButton bot="S2T Relay" />
-            {waiting ? (
-              <p
-                role="status"
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Spinner />
-                Waiting for Telegram
-              </p>
-            ) : null}
-          </div>
-        </Step>
-      </Steps>
+          {onPhone ? null : (
+            <p className="text-xs text-muted-foreground">
+              Opens Telegram Desktop. On Telegram Web, paste it into Saved
+              Messages and click it.
+            </p>
+          )}
+        </section>
 
-      {phase.name === 'expired' ? (
-        <Alert>
-          <AlertTitle>The link expired</AlertTitle>
-          <AlertDescription>
-            Links work for 10 minutes. Open Telegram again to get a new one.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+        <Status phase={phase} group={group} onRenew={() => void create()} />
+      </div>
 
-      {phase.name === 'failed' ? (
-        <Alert variant="destructive">
-          <AlertTitle>Couldn’t start</AlertTitle>
-          <AlertDescription>{phase.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <p className="text-xs text-pretty text-muted-foreground">
-        Messages pass through the Send to Telegram server, which doesn’t read or
-        store them, so what people send the bot stays in Telegram.{' '}
-        <Button variant="link" size="text" tone="muted" onClick={onUseOwnBot}>
-          Use your own bot instead
-        </Button>
+      <p className="text-xs text-muted-foreground">
+        S2T Relay passes messages on to Telegram without reading or storing
+        them. <TextLink href={links.privacy}>See what it keeps</TextLink>
       </p>
     </div>
+  );
+}
+
+function Lane({
+  id,
+  icon,
+  children,
+}: {
+  id: string;
+  icon: typeof ComputerIcon;
+  children: string;
+}) {
+  return (
+    <h3
+      id={id}
+      className="flex items-center gap-2 text-sm font-medium text-foreground"
+    >
+      <HugeiconsIcon
+        icon={icon}
+        strokeWidth={1.8}
+        className="size-4 text-muted-foreground"
+      />
+      {children}
+    </h3>
+  );
+}
+
+function Instruction({ index, children }: { index: number; children: string }) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium tabular-nums text-muted-foreground"
+      >
+        {index}
+      </span>
+      {children}
+    </li>
+  );
+}
+
+/** The code to scan, or what stands in for it while there isn't one to use. */
+function CodeTile({
+  phase,
+  link,
+  group,
+}: {
+  phase: Phase;
+  link: string;
+  group: boolean;
+}) {
+  const tile = 'size-40 shrink-0';
+
+  if (phase.name === 'waiting') {
+    return (
+      <QrCode
+        value={link}
+        label={
+          group
+            ? 'Code that opens S2T Relay in Telegram to add it to a group'
+            : 'Code that opens S2T Relay in Telegram'
+        }
+        className={cn(tile, 'animate-rise')}
+      />
+    );
+  }
+
+  if (phase.name === 'expired' || phase.name === 'linked') {
+    return (
+      <div aria-hidden className={cn(tile, 'relative')}>
+        <QrCode
+          value={link}
+          label=""
+          className="size-full opacity-15 blur-xs"
+        />
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-muted-foreground">
+          {phase.name === 'linked' ? (
+            <HugeiconsIcon
+              icon={Tick02Icon}
+              strokeWidth={2}
+              className="size-8 text-success"
+            />
+          ) : (
+            'Expired'
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        tile,
+        'flex items-center justify-center rounded-xl border border-dashed bg-muted/40 text-muted-foreground'
+      )}
+    >
+      {phase.name === 'creating' ? <Spinner /> : null}
+    </div>
+  );
+}
+
+/** One line under both ways that says what's happening and what to do. */
+function Status({
+  phase,
+  group,
+  onRenew,
+}: {
+  phase: Phase;
+  group: boolean;
+  onRenew: () => void;
+}) {
+  const base =
+    'flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 border-t bg-muted/40 px-5 py-2.5 text-sm';
+
+  if (phase.name === 'expired' || phase.name === 'failed') {
+    return (
+      <div role="alert" className={cn(base, 'justify-between')}>
+        <span
+          className={cn(
+            'text-pretty',
+            phase.name === 'failed'
+              ? 'text-destructive'
+              : 'text-muted-foreground'
+          )}
+        >
+          {phase.name === 'failed'
+            ? phase.message
+            : 'This link expired. Links work for 10 minutes.'}
+        </span>
+        <Button variant="outline" size="sm" onClick={onRenew}>
+          {phase.name === 'failed' ? 'Try again' : 'Get a new link'}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <p role="status" className={cn(base, 'text-muted-foreground')}>
+      {phase.name === 'linked' ? (
+        <HugeiconsIcon
+          icon={Tick02Icon}
+          strokeWidth={2}
+          className="size-4 text-success"
+        />
+      ) : (
+        // The line is the live region; the spinner shouldn't announce too.
+        <Spinner role="presentation" aria-hidden />
+      )}
+      {phase.name === 'creating' ? 'Getting a link' : null}
+      {phase.name === 'waiting'
+        ? group
+          ? 'Waiting for the bot to join a group'
+          : 'Waiting for you to press Start'
+        : null}
+      {phase.name === 'linked' ? 'Connected' : null}
+    </p>
   );
 }

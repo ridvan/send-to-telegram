@@ -19,6 +19,7 @@ import { ChatName } from '@/components/chat-name';
 import { ConnectFlow } from '@/components/connect/connect-flow';
 import { IconTile, type TileTone } from '@/components/icon-tile';
 import { useShortcuts } from '@/components/shortcuts';
+import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Separator } from '@/components/ui/separator';
@@ -55,9 +56,12 @@ function Page({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-10 px-6 py-16 sm:py-24">
+    <main className="mx-auto flex min-h-dvh w-full max-w-152 flex-col gap-10 px-6 py-12 sm:py-20">
       <header className="flex flex-col gap-5">
-        <AppMark size="lg" />
+        <div className="flex items-start justify-between gap-4">
+          <AppMark size="lg" />
+          <ThemePicker compact />
+        </div>
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="text-base text-pretty text-muted-foreground">
@@ -91,7 +95,7 @@ export function Welcome() {
   return (
     <Page
       title="Send anything to Telegram"
-      description="Connect a chat to start."
+      description="Connect a Telegram chat, and everything you send from this browser lands there."
     >
       <ConnectFlow
         onConnected={async (next) => {

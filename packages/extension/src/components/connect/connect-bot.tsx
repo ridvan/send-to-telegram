@@ -45,6 +45,7 @@ import type { BotDestination } from '@/lib/settings';
 
 import { BotFatherChat } from './illustrations';
 import { Steps, Step } from './steps';
+import { TextLink } from './text-link';
 
 type TokenState =
   | { name: 'empty' }
@@ -59,29 +60,14 @@ function messageOf(cause: unknown) {
   return cause instanceof Error ? cause.message : toSendFailure(cause).message;
 }
 
-function TelegramLink({ href, children }: { href: string; children: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="font-medium text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
-    >
-      {children}
-    </a>
-  );
-}
-
 /**
  * Connects a bot the person owns: check the token, find the chat from the
  * bot's recent updates, then prove it works with a test message.
  */
 export function ConnectBot({
   onConnected,
-  onUseRelay,
 }: {
   onConnected: (destination: BotDestination) => void;
-  onUseRelay?: () => void;
 }) {
   const tokenId = useId();
   const chatIdInput = useId();
@@ -225,10 +211,7 @@ export function ConnectBot({
           done={valid !== undefined}
           description={
             <>
-              Open{' '}
-              <TelegramLink href="https://t.me/BotFather">
-                @BotFather
-              </TelegramLink>
+              Open <TextLink href="https://t.me/BotFather">@BotFather</TextLink>
               , send <code className="font-mono text-xs">/newbot</code> and pick
               a name. Paste the token it replies with.
             </>
@@ -285,10 +268,7 @@ export function ConnectBot({
           description={
             valid ? (
               <>
-                Open{' '}
-                <TelegramLink
-                  href={botLink}
-                >{`@${valid.username}`}</TelegramLink>{' '}
+                Open <TextLink href={botLink}>{`@${valid.username}`}</TextLink>{' '}
                 and press Start, or add it to a group or channel.
               </>
             ) : undefined
@@ -443,16 +423,6 @@ export function ConnectBot({
           Connect and send a test
         </Button>
       </div>
-
-      {onUseRelay ? (
-        <p className="text-xs text-pretty text-muted-foreground">
-          Messages go straight from this browser to Telegram, and what people
-          send your bot shows up in the popup.{' '}
-          <Button variant="link" size="text" tone="muted" onClick={onUseRelay}>
-            Use S2T Relay instead
-          </Button>
-        </p>
-      ) : null}
     </div>
   );
 }
