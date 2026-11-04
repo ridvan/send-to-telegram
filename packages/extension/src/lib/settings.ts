@@ -138,8 +138,8 @@ export const settingsSchema = z.object({
       theme: themeSchema.default('system'),
       /** Off blurs chat names until hovered, for screen sharing and onlookers. */
       showChatNames: z.boolean().default(true),
-      /** One this version doesn't draw falls back to plain. */
-      chatBackground: chatBackgroundSchema.default('plain').catch('plain'),
+      /** One this version doesn't draw falls back to doodles. */
+      chatBackground: chatBackgroundSchema.default('doodles').catch('doodles'),
     })
     .prefault({}),
   privacy: z

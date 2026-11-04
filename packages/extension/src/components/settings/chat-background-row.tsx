@@ -54,7 +54,7 @@ export function ChatBackgroundRow() {
 
   async function removePhoto() {
     await chatPhotoStore.set(null);
-    await choose('plain');
+    await choose('doodles');
   }
 
   const options: ChatBackground[] = ['plain', ...chatPatterns, 'photo'];

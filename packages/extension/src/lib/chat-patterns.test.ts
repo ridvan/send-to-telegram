@@ -7,20 +7,20 @@ import { describe, expect, it } from 'vitest';
 import { chatBackgroundSchema, settingsSchema } from './settings.ts';
 
 describe('the chat background', () => {
-  it('stays plain for settings saved before backgrounds', () => {
+  it('starts with doodles for settings saved before backgrounds', () => {
     const settings = settingsSchema.parse({ appearance: { theme: 'dark' } });
 
-    expect(settings.appearance.chatBackground).toBe('plain');
+    expect(settings.appearance.chatBackground).toBe('doodles');
   });
 
-  it('falls back to plain for one this version doesn’t draw', () => {
+  it('falls back to doodles for one this version doesn’t draw', () => {
     const settings = settingsSchema.parse({
       appearance: { chatBackground: 'confetti' },
     });
 
     expect(settings.appearance).toMatchObject({
       theme: 'system',
-      chatBackground: 'plain',
+      chatBackground: 'doodles',
     });
   });
 
