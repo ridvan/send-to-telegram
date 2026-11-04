@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- @S2TRelayBot's profile photo, set with BotFather /setuserpic as a 640px PNG. Telegram crops it to a circle, so it fills the square and keeps the plane and shutter inside the crop. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#1a1a1a"/></linearGradient>
+    <linearGradient id="shutter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f4f4f"/><stop offset="1" stop-color="#454545"/></linearGradient>
+    <linearGradient id="wing" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="20" y2="80"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6d6d6"/></linearGradient>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="80" y1="15" x2="30" y2="80"><stop offset="0" stop-color="#bdbdbd"/><stop offset="1" stop-color="#a2a2a2"/></linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#body)"/>
+  <path d="M33 0 H67 V17 A4 4 0 0 1 63 21 H37 A4 4 0 0 1 33 17 Z" fill="url(#shutter)"/>
+  <rect x="54" y="4" width="6.5" height="12.5" rx="1.6" fill="#2f2f2f"/>
+  <g transform="translate(21 33) scale(0.58)" stroke-linejoin="round" stroke-width="5">
+    <polygon points="26,48 80,15 39,56 36,80" fill="url(#fold)" stroke="url(#fold)"/>
+    <polygon points="39,56 56,68.2 36,80" fill="#8c8c8c" stroke="#8c8c8c"/>
+    <polygon points="0,39 100,0 78,84 39,56 80,15 26,48" fill="url(#wing)" stroke="url(#wing)"/>
+  </g>
+  <circle cx="50" cy="50" r="48.8" fill="none" stroke="#555" stroke-width="2.4"/>
+</svg>
