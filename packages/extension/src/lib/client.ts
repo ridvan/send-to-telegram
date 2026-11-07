@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 
+import type { SelectAreaRequest } from './area.ts';
 import type { Draft } from './compose.ts';
 import { failureCopy } from './failure.ts';
 import {
@@ -21,6 +22,17 @@ export async function requestSend(
   } catch {
     return { ok: false, reason: 'network', message: failureCopy.network };
   }
+}
+
+/**
+ * Asks the background to pick an area of the tab, which outlives the popup.
+ * Rejects when it didn't take the request, so the popup stays open.
+ */
+export async function requestAreaScreenshot(request: SelectAreaRequest) {
+  const accepted: unknown = await browser.runtime.sendMessage(request);
+
+  if (accepted !== true)
+    throw new Error('The background didn’t take the request');
 }
 
 /** Rebuilds what was sent from a history entry; undefined when content was not kept. */

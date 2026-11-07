@@ -8,6 +8,7 @@ import {
 import { browser } from 'wxt/browser';
 import { z } from 'zod';
 
+import { handoffWaiting } from './area.ts';
 import {
   deleteAttachment,
   loadAttachment,
@@ -180,15 +181,60 @@ export async function showBadge(ok: boolean) {
   await action.setBadgeTextColor?.({ color: '#ffffff' });
   await action.setBadgeText({ text: ok ? '✓' : '!' });
 
-  if (ok) {
-    clearBadge = setTimeout(() => void action.setBadgeText({ text: '' }), 2000);
-  }
+  if (ok) clearBadge = setTimeout(() => void settleBadge(), 2000);
 }
 
+/** Something waits in the popup, where the browser wouldn't open it for us. */
+export async function showWaitingBadge() {
+  clearTimeout(clearBadge);
+  await action.setBadgeBackgroundColor({ color: '#2aabee' });
+  await action.setBadgeTextColor?.({ color: '#ffffff' });
+  await action.setBadgeText({ text: '1' });
+}
+
+/** Points to a draft still waiting for the popup, or clears the badge. */
+async function settleBadge() {
+  if (await handoffWaiting()) await showWaitingBadge();
+  else await action.setBadgeText({ text: '' });
+}
+
+/**
+ * Opening the popup shows what a failure badge pointed at. A waiting badge
+ * stays while its draft waits for the popup on another tab.
+ */
 export async function clearFailureBadge() {
   const text = await action.getBadgeText({});
 
-  if (text === '!') await action.setBadgeText({ text: '' });
+  if (text === '!' || text === '1') await settleBadge();
+}
+
+/**
+ * Records a send that failed before reaching Telegram, like a screenshot the
+ * page refused, so the popup can say why the badge is red. It keeps no
+ * content, so nothing offers to send a message that never existed.
+ */
+export async function recordUnsent(
+  draft: Draft,
+  incognito: boolean,
+  error: string
+) {
+  await showBadge(false);
+
+  const settings = await settingsStore.get();
+
+  if (incognito || settings.history.mode === 'off') return;
+
+  await record(
+    {
+      id: crypto.randomUUID(),
+      sentAt: Date.now(),
+      kind: draft.kind,
+      status: 'failed',
+      error,
+      ...(draft.tag && { tag: draft.tag }),
+    },
+    undefined
+  );
 }
 
 /**

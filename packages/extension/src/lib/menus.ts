@@ -11,35 +11,93 @@ import {
 
 type MenuContext = `${Browser.contextMenus.ContextType}`;
 
-const items: { kind: ContentKind; context: MenuContext; title: string }[] = [
+/**
+ * `shot` items capture the tab first and send it with the page's link;
+ * `area` items let you drag out the part to capture.
+ */
+type Prefix = 'send' | 'shot' | 'area';
+
+const items: {
+  prefix: Prefix;
+  kind: ContentKind;
+  context: MenuContext;
+  title: string;
+}[] = [
   {
+    prefix: 'send',
     kind: 'selection',
     context: 'selection',
     title: 'Send selection to Telegram',
   },
-  { kind: 'link', context: 'link', title: 'Send link to Telegram' },
-  { kind: 'image', context: 'image', title: 'Send image to Telegram' },
-  { kind: 'page', context: 'page', title: 'Send page to Telegram' },
+  {
+    prefix: 'send',
+    kind: 'link',
+    context: 'link',
+    title: 'Send link to Telegram',
+  },
+  {
+    prefix: 'send',
+    kind: 'image',
+    context: 'image',
+    title: 'Send image to Telegram',
+  },
+  {
+    prefix: 'send',
+    kind: 'page',
+    context: 'page',
+    title: 'Send page to Telegram',
+  },
+  {
+    prefix: 'shot',
+    kind: 'page',
+    context: 'page',
+    title: 'Send screenshot to Telegram',
+  },
+  {
+    prefix: 'area',
+    kind: 'page',
+    context: 'page',
+    title: 'Send screenshot of an area to Telegram',
+  },
 ];
 
-/** Menu ids read `send:<kind>:<destination id>:<tag>`; empty parts mean the default. */
+/**
+ * Menu ids read `<prefix>:<kind>:<destination id>:<tag>`; empty parts mean
+ * the default.
+ */
 const SEPARATOR = ':';
 
-function menuId(kind: ContentKind, destinationId = '', tag = '') {
-  return ['send', kind, destinationId, tag].join(SEPARATOR);
+function menuId(
+  prefix: Prefix,
+  kind: ContentKind,
+  destinationId = '',
+  tag = ''
+) {
+  return [prefix, kind, destinationId, tag].join(SEPARATOR);
 }
 
 export function parseMenuId(id: string | number) {
   const [prefix, kind, destinationId, tag] = String(id).split(SEPARATOR);
   const parsedKind = contentKindSchema.safeParse(kind);
 
-  if (prefix !== 'send' || !parsedKind.success) return undefined;
+  if (
+    (prefix !== 'send' && prefix !== 'shot' && prefix !== 'area') ||
+    !parsedKind.success
+  ) {
+    return undefined;
+  }
+
+  const capture =
+    prefix === 'shot' ? 'visible' : prefix === 'area' ? 'area' : undefined;
 
   return {
-    kind: parsedKind.data,
-    ...(destinationId && { destinationId }),
-    ...(tag && { tag }),
-  } satisfies Partial<Draft>;
+    ...(capture && { capture }),
+    draft: {
+      kind: parsedKind.data,
+      ...(destinationId && { destinationId }),
+      ...(tag && { tag }),
+    } satisfies Partial<Draft>,
+  };
 }
 
 function create(properties: Browser.contextMenus.CreateProperties) {
@@ -51,13 +109,14 @@ function create(properties: Browser.contextMenus.CreateProperties) {
 
 function createTagItems(
   parentId: string,
+  prefix: Prefix,
   kind: ContentKind,
   context: MenuContext,
   destinationId: string,
   tags: string[]
 ) {
   create({
-    id: menuId(kind, destinationId),
+    id: menuId(prefix, kind, destinationId),
     parentId,
     title: 'Without a tag',
     contexts: [context],
@@ -71,7 +130,7 @@ function createTagItems(
 
   for (const tag of tags) {
     create({
-      id: menuId(kind, destinationId, tag),
+      id: menuId(prefix, kind, destinationId, tag),
       parentId,
       title: `#${tag}`,
       contexts: [context],
@@ -87,14 +146,14 @@ function build(settings: Settings) {
     ? [fallback, ...settings.destinations.filter((d) => d.id !== fallback.id)]
     : [];
 
-  for (const { kind, context, title } of items) {
-    const parentId = `send:${kind}`;
+  for (const { prefix, kind, context, title } of items) {
+    const parentId = `${prefix}:${kind}`;
 
     create({ id: parentId, title, contexts: [context] });
 
     if (destinations.length > 1) {
       for (const destination of destinations) {
-        const id = menuId(kind, destination.id);
+        const id = menuId(prefix, kind, destination.id);
 
         if (tags.length === 0) {
           create({
@@ -114,10 +173,10 @@ function build(settings: Settings) {
           title: destinationName(destination),
           contexts: [context],
         });
-        createTagItems(groupId, kind, context, destination.id, tags);
+        createTagItems(groupId, prefix, kind, context, destination.id, tags);
       }
     } else if (tags.length > 0) {
-      createTagItems(parentId, kind, context, '', tags);
+      createTagItems(parentId, prefix, kind, context, '', tags);
     }
   }
 }

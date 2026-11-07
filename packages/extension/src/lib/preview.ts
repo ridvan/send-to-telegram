@@ -2,7 +2,8 @@
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
- * `?fail` to make sends and downloads fail, and `?lock` to lock it again after
+ * `?fail` to make sends and downloads fail, `?nocapture` to make screenshots
+ * fail, and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
  * download their media.
@@ -11,6 +12,9 @@
 
 import type { Update } from '@send-to-telegram/core';
 import { z } from 'zod';
+
+import type { SelectAreaRequest } from './area.ts';
+import type { SendRequest } from './send.ts';
 
 type Changes = Record<string, { oldValue?: string; newValue?: string }>;
 
@@ -539,7 +543,13 @@ function install() {
       getManifest: () => ({ version: '2.0.0', name: 'Send to Telegram' }),
       getPlatformInfo: async () => ({ os: 'mac' }),
       connect: () => ({ name: 'popup', disconnect: noop, onDisconnect: event }),
-      sendMessage: async () => {
+      sendMessage: async (message: SelectAreaRequest | SendRequest) => {
+        if (message.type === 'select-area') {
+          void pickAreaOnThisPage(message);
+
+          return true;
+        }
+
         await new Promise((resolve) => setTimeout(resolve, 700));
 
         // `?fail` shows how the pages handle a send Telegram refuses.
@@ -578,8 +588,17 @@ function install() {
           title: 'An Interactive Guide to CSS Grid',
           favIconUrl: 'https://www.joshwcomeau.com/favicon.png',
           incognito: false,
+          windowId: 1,
         },
       ],
+      // `?nocapture` shows how the popup handles a page that refuses screenshots.
+      captureVisibleTab: async () => {
+        if (url.searchParams.has('nocapture')) {
+          throw new Error('Cannot access contents of the page.');
+        }
+
+        return fakeScreenshot();
+      },
       create: async ({ url: target }: { url: string }) => {
         // Telegram links would leave the preview; log them instead.
         if (target.startsWith('https://t.me/'))
@@ -607,6 +626,16 @@ function install() {
           name: 'send-page',
           shortcut: '⌥⇧S',
           description: 'Send the current page',
+        },
+        {
+          name: 'send-screenshot',
+          shortcut: '⌥⇧P',
+          description: 'Send a screenshot of the current page',
+        },
+        {
+          name: 'send-area-screenshot',
+          shortcut: '⌥⇧A',
+          description: 'Select an area of the page to send',
         },
       ],
     },
@@ -638,7 +667,53 @@ function install() {
   Object.assign(globalThis, {
     chrome,
     fetch: fakeTelegram(fetch, url.searchParams.has('fail')),
+    // The popup closes itself, as before picking an area; a tab the preview
+    // opened would close for real.
+    close: () => console.info('Would close the popup'),
   });
+}
+
+/**
+ * Stands in for the background picking an area: the overlay goes over this
+ * page instead of the tab, then the page reloads as the popup would reopen.
+ * Imported late, so it reads the stand-in `chrome` installed here.
+ */
+async function pickAreaOnThisPage(request: SelectAreaRequest) {
+  const area = await import('./area.ts');
+
+  if (await area.pickForPopup(request, area.pickArea)) location.reload();
+}
+
+/** A page drawn at twice its size, as a Retina screen captures it. */
+function fakeScreenshot(): string {
+  const canvas = document.createElement('canvas');
+
+  canvas.width = 2560;
+  canvas.height = 1600;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) return canvas.toDataURL('image/png');
+
+  context.fillStyle = '#fdf8f3';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#1e1b4b';
+  context.fillRect(0, 0, canvas.width, 140);
+  context.fillStyle = '#1e1b4b';
+  context.font = '600 72px system-ui';
+  context.fillText('An Interactive Guide to CSS Grid', 200, 360);
+  context.fillStyle = '#94a3b8';
+
+  for (let line = 0; line < 8; line += 1) {
+    context.fillRect(200, 460 + line * 64, line % 3 === 2 ? 1300 : 2100, 24);
+  }
+
+  context.fillStyle = '#c4b5fd';
+  context.fillRect(200, 1020, 1000, 440);
+  context.fillStyle = '#fda4af';
+  context.fillRect(1260, 1020, 1040, 440);
+
+  return canvas.toDataURL('image/png');
 }
 
 const insideExtension = z

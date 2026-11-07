@@ -1,16 +1,28 @@
 import { browser } from 'wxt/browser';
 import { z } from 'zod';
 
+import {
+  areaSchema,
+  pickForPopup,
+  type SelectAreaRequest,
+  selectArea,
+  selectAreaRequestSchema,
+  stillShowing,
+} from '@/lib/area';
+import { saveAttachment } from '@/lib/attachments';
 import { migrateStoredLegacyData } from '@/lib/legacy';
 import { parseMenuId, rebuildMenus } from '@/lib/menus';
 import {
   clearFailureBadge,
   pruneUnsentFiles,
+  recordUnsent,
   send,
   type SendRequest,
   sendRequestSchema,
   showBadge,
+  showWaitingBadge,
 } from '@/lib/send';
+import { attachmentInfo, captureFailure, captureTab } from '@/lib/screenshot';
 import { defaultSettings, settingsStore } from '@/lib/settings';
 import { activeTab, pageUrlOf, readSelection } from '@/lib/tabs';
 import {
@@ -32,8 +44,27 @@ const PENDING_FOR = 5 * 60_000;
 /** Keeps session storage small; the oldest go first. */
 const MAX_PENDING = 20;
 
+/**
+ * A screenshot waits as the tab to capture, and the area picked in it, not
+ * as the picture: nothing could seal it while locked, and session storage is
+ * small.
+ */
+const captureSchema = z.object({
+  tabId: z.number(),
+  windowId: z.number(),
+  area: areaSchema.optional(),
+});
+
+type Capture = z.infer<typeof captureSchema>;
+
 const pendingSchema = z
-  .array(z.object({ request: sendRequestSchema, at: z.number() }))
+  .array(
+    z.object({
+      request: sendRequestSchema,
+      at: z.number(),
+      capture: captureSchema.optional(),
+    })
+  )
   .catch([]);
 
 type PendingSends = z.infer<typeof pendingSchema>;
@@ -61,9 +92,12 @@ function changePending(
   return run;
 }
 
-async function sendWhenUnlocked(request: SendRequest) {
+async function sendWhenUnlocked(request: SendRequest, capture?: Capture) {
   await changePending((pending) =>
-    [...pending, { request, at: Date.now() }].slice(-MAX_PENDING)
+    [
+      ...pending,
+      { request, at: Date.now(), ...(capture && { capture }) },
+    ].slice(-MAX_PENDING)
   );
 
   try {
@@ -78,8 +112,112 @@ async function sendWhenUnlocked(request: SendRequest) {
 async function sendPending() {
   const pending = await changePending(() => []);
 
-  for (const { request, at } of pending) {
-    if (Date.now() - at < PENDING_FOR) await sendFromBrowser(request);
+  for (const { request, at, capture } of pending) {
+    if (Date.now() - at >= PENDING_FOR) continue;
+
+    if (capture) await sendScreenshotOnceShowing(request, capture);
+    else await sendFromBrowser(request);
+  }
+}
+
+/**
+ * Captures the tab only if it still shows what was asked for: the same tab in
+ * its window and, for an area, scrolled where it was. A screenshot asked for
+ * before unlocking never shows another tab or another part of the page.
+ */
+async function sendScreenshotOnceShowing(
+  request: SendRequest,
+  capture: Capture
+) {
+  const [showing] = await browser.tabs.query({
+    active: true,
+    windowId: capture.windowId,
+  });
+
+  if (showing?.id !== capture.tabId) {
+    await recordUnsent(
+      request.draft,
+      request.incognito,
+      'You switched tabs before unlocking, so no screenshot was taken. Take it again from the page.'
+    );
+  } else if (
+    capture.area &&
+    !(await stillShowing(capture.tabId, capture.area))
+  ) {
+    await recordUnsent(
+      request.draft,
+      request.incognito,
+      'The page moved before you unlocked, so no screenshot was taken. Select the area again.'
+    );
+  } else {
+    await sendScreenshot(request, capture);
+  }
+}
+
+/** Captures what the tab shows and sends it with the request's page link. */
+async function sendScreenshot(request: SendRequest, capture: Capture) {
+  // Nothing can seal the picture while locked, so the capture waits too.
+  if ((await lockState()) === 'locked') {
+    await sendWhenUnlocked(request, capture);
+
+    return;
+  }
+
+  let draft: SendRequest['draft'];
+
+  try {
+    const file = await captureTab(capture.windowId, capture.area);
+    const attachment = attachmentInfo(file);
+
+    await saveAttachment(attachment.id, file);
+    draft = { ...request.draft, attachment };
+  } catch (cause) {
+    console.error('Could not take the screenshot', cause);
+    await recordUnsent(request.draft, request.incognito, captureFailure(cause));
+
+    return;
+  }
+
+  await sendFromBrowser({ ...request, draft });
+}
+
+/**
+ * Lets you drag out an area of the tab, then sends it. The area is picked
+ * first even while locked, so unlocking captures just that.
+ */
+async function sendAreaScreenshot(request: SendRequest, capture: Capture) {
+  let picked;
+
+  try {
+    picked = await selectArea(capture.tabId);
+  } catch (cause) {
+    console.error('Could not select an area', cause);
+    await recordUnsent(request.draft, request.incognito, captureFailure(cause));
+
+    return;
+  }
+
+  // Escape sends nothing, and a pick already under way carries on alone.
+  if (picked === 'cancelled' || picked === 'busy') return;
+
+  await sendScreenshot(request, { ...capture, area: picked });
+}
+
+/**
+ * Picks an area for the popup, which closed when the page was clicked, and
+ * opens it again with the screenshot attached to its draft.
+ */
+async function selectAreaForPopup(request: SelectAreaRequest) {
+  const reopen = await pickForPopup(request, () => selectArea(request.tabId));
+
+  if (!reopen) return;
+
+  try {
+    await browser.action.openPopup({ windowId: request.windowId });
+  } catch {
+    // Firefox opens the popup only on a click it can still see; the badge
+    // points to the toolbar button, and the popup picks the draft up there.
+    await showWaitingBadge();
   }
 }
 
@@ -158,11 +296,33 @@ export default defineBackground({
     });
 
     browser.contextMenus.onClicked.addListener(async (info, tab) => {
-      const target = parseMenuId(info.menuItemId);
+      const parsed = parseMenuId(info.menuItemId);
 
-      if (!target) return;
+      if (!parsed) return;
 
+      const { draft: target, capture } = parsed;
       const pageUrl = pageUrlOf(tab, info.frameUrl);
+
+      if (capture) {
+        if (tab?.id === undefined) return;
+
+        const request: SendRequest = {
+          type: 'send',
+          incognito: tab.incognito,
+          draft: {
+            ...target,
+            ...(pageUrl && { pageUrl }),
+            ...(tab.title && { pageTitle: tab.title }),
+          },
+        };
+
+        const where = { tabId: tab.id, windowId: tab.windowId };
+
+        if (capture === 'area') await sendAreaScreenshot(request, where);
+        else await sendScreenshot(request, where);
+
+        return;
+      }
 
       const text =
         target.kind === 'selection'
@@ -190,13 +350,19 @@ export default defineBackground({
     });
 
     browser.commands.onCommand.addListener(async (command) => {
-      if (command !== 'send-page') return;
+      if (
+        command !== 'send-page' &&
+        command !== 'send-screenshot' &&
+        command !== 'send-area-screenshot'
+      ) {
+        return;
+      }
 
       const tab = await activeTab();
 
       if (!tab?.url) return;
 
-      await sendFromBrowser({
+      const request: SendRequest = {
         type: 'send',
         incognito: tab.incognito,
         draft: {
@@ -204,10 +370,36 @@ export default defineBackground({
           pageUrl: tab.url,
           ...(tab.title && { pageTitle: tab.title }),
         },
-      });
+      };
+
+      if (command === 'send-page') {
+        await sendFromBrowser(request);
+
+        return;
+      }
+
+      if (tab.id === undefined) return;
+
+      const where = { tabId: tab.id, windowId: tab.windowId };
+
+      if (command === 'send-area-screenshot') {
+        await sendAreaScreenshot(request, where);
+      } else {
+        await sendScreenshot(request, where);
+      }
     });
 
     browser.runtime.onMessage.addListener((message, _sender, respond) => {
+      const area = selectAreaRequestSchema.safeParse(message);
+
+      if (area.success) {
+        // Answered at once: the popup closes as soon as the page is clicked.
+        respond(true);
+        void selectAreaForPopup(area.data);
+
+        return false;
+      }
+
       const request = sendRequestSchema.safeParse(message);
 
       if (!request.success) return false;

@@ -1,7 +1,10 @@
 import {
   ArrowLeft01Icon,
   Attachment01Icon,
+  Camera01Icon,
   Cancel01Icon,
+  CropIcon,
+  Folder01Icon,
   Link01Icon,
   Search01Icon,
   Settings01Icon,
@@ -12,6 +15,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   type RefObject,
+  use,
   useDeferredValue,
   useEffect,
   useId,
@@ -63,6 +67,13 @@ import {
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ContextMenuContent } from '@/components/ui/context-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -81,7 +92,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAttachment } from '@/hooks/use-attachment';
+import { CANT_ATTACH, useAttachment } from '@/hooks/use-attachment';
 import { chatKey, useChatItems } from '@/hooks/use-chat-items';
 import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
@@ -89,11 +100,17 @@ import { useLock } from '@/hooks/use-lock';
 import { useStore } from '@/hooks/use-store';
 import { saveAttachment } from '@/lib/attachments';
 import { deleteMessages } from '@/lib/chat-actions';
-import { draftFromEntry, openExtensionPage, requestSend } from '@/lib/client';
+import {
+  draftFromEntry,
+  openExtensionPage,
+  requestAreaScreenshot,
+  requestSend,
+} from '@/lib/client';
 import { plural } from '@/lib/format';
 import { lockNow } from '@/lib/lock';
 import type { Draft } from '@/lib/compose';
 import { revealMessage } from '@/lib/reveal';
+import { captureFailure, captureTab } from '@/lib/screenshot';
 import { matchChatItems } from '@/lib/search';
 import {
   avatarSeed,
@@ -106,7 +123,9 @@ import {
 } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
-import type { PageContext } from './page';
+import { type PageContext, resumedFile } from './page';
+
+const CANT_SCREENSHOT = 'Can’t take a screenshot';
 
 type Phase =
   | { name: 'idle' }
@@ -228,8 +247,12 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
     noteRef.current?.focus();
   }
 
+  // Back from picking an area, the draft goes to the chat it was going to.
   const [destinationId, setDestinationId] = useState(
-    defaultDestination(settings)?.id
+    () =>
+      settings.destinations.find(
+        (item) => item.id === page.resume?.destinationId
+      )?.id ?? defaultDestination(settings)?.id
   );
 
   const chatShown =
@@ -543,7 +566,7 @@ function Composer({
     page.selection ? 'selection' : 'page'
   );
 
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(page.resume?.note ?? '');
   const chatRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const tags = settings.tags.enabled ? settings.tags.list : [];
@@ -557,7 +580,26 @@ function Composer({
     (item) => item.id === destinationId
   );
 
-  const { attached, problem, attach, remove, refuse } = useAttachment();
+  // Back from picking an area, the draft gets its file again. It's read
+  // here, where the popup is unlocked, because it may be sealed.
+  const resume = page.resume;
+
+  const resumed = resume?.attachment
+    ? use(resumedFile(resume.attachment))
+    : undefined;
+
+  const { attached, problem, attach, remove, refuse } = useAttachment({
+    file: resumed,
+    problem: resume?.problem
+      ? { title: CANT_SCREENSHOT, message: resume.problem }
+      : resume?.attachment && !resumed
+        ? {
+            title: CANT_ATTACH,
+            message: 'Couldn’t get the file back. Attach it again.',
+          }
+        : undefined,
+  });
+
   const [dropping, setDropping] = useState(false);
   const canAttach = destination !== undefined;
 
@@ -567,6 +609,57 @@ function Composer({
       refuse('Connect a chat first, then attach the file.');
     }
   }
+
+  const [capturing, setCapturing] = useState(false);
+  const windowId = page.windowId;
+
+  /** Attaches what the tab under the popup shows; the popup isn't in it. */
+  async function takeScreenshot(from: number) {
+    setCapturing(true);
+
+    try {
+      attachOrRefuse(await captureTab(from));
+    } catch (cause) {
+      console.error('Could not take the screenshot', cause);
+      refuse(captureFailure(cause), CANT_SCREENSHOT);
+    } finally {
+      setCapturing(false);
+      // After the menu hands focus back to its button.
+      noteRef.current?.focus();
+    }
+  }
+
+  /**
+   * Clicking the page closes the popup, so the background picks the area and
+   * opens the popup again with it attached and the note kept. The file
+   * attached now is saved, so cancelling gives it back.
+   */
+  async function screenshotArea(tabId: number, from: number) {
+    setCapturing(true);
+
+    try {
+      if (attached) await saveAttachment(attached.info.id, attached.file);
+
+      await requestAreaScreenshot({
+        type: 'select-area',
+        tabId,
+        windowId: from,
+        ...(note.trim() && { note }),
+        ...(destinationId && { destinationId }),
+        ...(attached && { attachment: attached.info }),
+      });
+    } catch (cause) {
+      console.error('Could not start selecting an area', cause);
+      refuse('Couldn’t start selecting an area. Try again.', CANT_SCREENSHOT);
+      setCapturing(false);
+
+      return;
+    }
+
+    close();
+  }
+
+  const tabId = page.tabId;
 
   // Earlier messages, and what people send your bot, show in the chat.
   const showsHistory =
@@ -890,8 +983,8 @@ function Composer({
 
               {problem ? (
                 <Alert variant="destructive">
-                  <AlertTitle>Can’t attach this file</AlertTitle>
-                  <AlertDescription>{problem}</AlertDescription>
+                  <AlertTitle>{problem.title}</AlertTitle>
+                  <AlertDescription>{problem.message}</AlertDescription>
                 </Alert>
               ) : null}
 
@@ -937,7 +1030,20 @@ function Composer({
           />
         ) : null}
         {canAttach ? (
-          <AttachButton disabled={busy} onPick={attachOrRefuse} />
+          <AttachButton
+            disabled={busy || capturing}
+            onPick={attachOrRefuse}
+            screenshot={
+              windowId === undefined ||
+              tabId === undefined ||
+              page.url === undefined
+                ? undefined
+                : {
+                    onVisible: () => void takeScreenshot(windowId),
+                    onArea: () => void screenshotArea(tabId, windowId),
+                  }
+            }
+          />
         ) : null}
         <label htmlFor={noteId} className="sr-only">
           Note
@@ -969,37 +1075,69 @@ function Composer({
   );
 }
 
-/** Opens the file picker; pasting or dropping a file does the same. */
+/**
+ * Opens a menu to take a screenshot or pick a file, as Telegram's paperclip
+ * opens one; with nothing to capture, it opens the file picker. Pasting or
+ * dropping a file attaches it too.
+ */
 function AttachButton({
   disabled,
   onPick,
+  screenshot,
 }: {
   disabled: boolean;
   onPick: (file: File) => void;
+  /** Absent where the browser gives no tab to capture. */
+  screenshot: { onVisible: () => void; onArea: () => void } | undefined;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const label = screenshot ? 'Attach' : 'Attach a file';
+
+  const button = (
+    <Button
+      variant="ghost"
+      size="icon"
+      tone="muted"
+      aria-label={label}
+      disabled={disabled}
+      {...(!screenshot && { onClick: () => input.current?.click() })}
+    />
+  );
 
   return (
     // As tall as the send button, so on a one-line note both glyphs share
     // the line's centre.
     <div className="flex h-9 shrink-0 items-center">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              tone="muted"
-              aria-label="Attach a file"
-              disabled={disabled}
-              onClick={() => input.current?.click()}
-            />
-          }
-        >
-          <HugeiconsIcon icon={Attachment01Icon} strokeWidth={1.8} />
-        </TooltipTrigger>
-        <TooltipContent>Attach a file</TooltipContent>
-      </Tooltip>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              screenshot ? <DropdownMenuTrigger render={button} /> : button
+            }
+          >
+            <HugeiconsIcon icon={Attachment01Icon} strokeWidth={1.8} />
+          </TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+        {screenshot ? (
+          <DropdownMenuContent side="top" align="start" className="w-auto">
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={screenshot.onVisible}>
+                <HugeiconsIcon icon={Camera01Icon} strokeWidth={1.8} />
+                Screenshot visible area
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={screenshot.onArea}>
+                <HugeiconsIcon icon={CropIcon} strokeWidth={1.8} />
+                Screenshot an area
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => input.current?.click()}>
+                <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.8} />
+                Choose file
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        ) : null}
+      </DropdownMenu>
       <input
         ref={input}
         type="file"

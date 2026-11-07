@@ -36,6 +36,8 @@ export default defineConfig({
       'Send text, links, images and pages to a Telegram chat from the right-click menu.',
     // 1.x shipped contextMenus and storage. activeTab and scripting add no
     // install warning, so updating users are not asked to re-approve.
+    // activeTab also allows screenshots of the tab the popup, menu or
+    // shortcut was used on, and scripting the overlay that picks an area.
     permissions: ['contextMenus', 'storage', 'activeTab', 'scripting'],
     // Telegram's file host leaves out Access-Control-Allow-Origin on
     // successful downloads (only its errors carry it), so showing media sent
@@ -51,6 +53,15 @@ export default defineConfig({
       'send-page': {
         suggested_key: { default: 'Alt+Shift+S' },
         description: 'Send the current page',
+      },
+      'send-screenshot': {
+        suggested_key: { default: 'Alt+Shift+P' },
+        description: 'Send a screenshot of the current page',
+      },
+      // Chrome takes four suggested keys at most; this is the fourth.
+      'send-area-screenshot': {
+        suggested_key: { default: 'Alt+Shift+A' },
+        description: 'Select an area of the page to send',
       },
     },
     // Tailwind v4 needs Chrome 111. Older browsers stay on 1.x instead of

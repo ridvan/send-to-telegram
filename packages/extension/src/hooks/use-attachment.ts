@@ -1,5 +1,5 @@
 import { UPLOAD_LIMIT } from '@send-to-telegram/core';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { formatBytes } from '@/lib/format';
 import type { Attachment } from '@/lib/settings';
@@ -22,48 +22,81 @@ function refusal(file: File): string | undefined {
   return undefined;
 }
 
-/** One file to send with the message, picked, pasted or dropped. */
-export function useAttachment() {
-  const [attached, setAttached] = useState<AttachedFile>();
-  const [problem, setProblem] = useState<string>();
-  const shown = useRef<string>(undefined);
+/** Why nothing was attached: the alert's title, then what to do. */
+export type AttachProblem = { title: string; message: string };
 
-  /** Frees the URL the preview showed, once its file is replaced or gone. */
-  function release() {
-    if (shown.current) URL.revokeObjectURL(shown.current);
+export const CANT_ATTACH = 'Can’t attach this file';
 
-    shown.current = undefined;
-  }
+function problemWith(file: File): AttachProblem | undefined {
+  const reason = refusal(file);
 
-  useEffect(() => release, []);
+  return reason === undefined
+    ? undefined
+    : { title: CANT_ATTACH, message: reason };
+}
 
-  function attach(file: File) {
-    const reason = refusal(file);
+function toAttached(file: File): AttachedFile {
+  return {
+    file,
+    url: URL.createObjectURL(file),
+    info: {
+      id: crypto.randomUUID(),
+      name: file.name || 'file',
+      type: file.type,
+      size: file.size,
+    },
+  };
+}
 
-    setProblem(reason);
+/**
+ * One file to send with the message, picked, pasted, dropped or captured.
+ * `initial` is what the popup comes back with after picking an area. The last
+ * preview URL is freed with the page, which lives as long as the draft.
+ */
+export function useAttachment(initial?: {
+  file?: File | undefined;
+  problem?: AttachProblem | undefined;
+}) {
+  const [attached, setAttached] = useState<AttachedFile | undefined>(() =>
+    initial?.file && !problemWith(initial.file)
+      ? toAttached(initial.file)
+      : undefined
+  );
 
-    if (reason) return;
+  const [problem, setProblem] = useState<AttachProblem | undefined>(
+    () => initial?.problem ?? (initial?.file && problemWith(initial.file))
+  );
 
-    release();
-    shown.current = URL.createObjectURL(file);
+  /**
+   * Swaps the file, freeing the URL of the one it replaces. Reads the current
+   * file rather than this render's, so a file attached while a screenshot
+   * was being taken is freed too.
+   */
+  function replace(next: AttachedFile | undefined) {
+    setAttached((current) => {
+      if (current && current !== next) URL.revokeObjectURL(current.url);
 
-    setAttached({
-      file,
-      url: shown.current,
-      info: {
-        id: crypto.randomUUID(),
-        name: file.name || 'file',
-        type: file.type,
-        size: file.size,
-      },
+      return next;
     });
   }
 
+  function attach(file: File) {
+    const reason = problemWith(file);
+
+    setProblem(reason);
+
+    if (!reason) replace(toAttached(file));
+  }
+
   function remove() {
-    release();
-    setAttached(undefined);
+    replace(undefined);
     setProblem(undefined);
   }
 
-  return { attached, problem, attach, remove, refuse: setProblem };
+  /** Shows why nothing was attached, or clears it when `message` is undefined. */
+  function refuse(message: string | undefined, title = CANT_ATTACH) {
+    setProblem(message === undefined ? undefined : { title, message });
+  }
+
+  return { attached, problem, attach, remove, refuse };
 }
