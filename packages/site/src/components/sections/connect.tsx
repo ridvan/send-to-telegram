@@ -405,7 +405,7 @@ function Dot({
 }
 
 /** A voice message as Telegram draws it: play, a waveform, its length. */
-function VoiceMessage() {
+export function VoiceMessage() {
   return (
     <span className="flex items-center gap-2.5 py-1">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground">

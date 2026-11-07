@@ -15,11 +15,9 @@ import { PhotoArt } from '@/components/photo-art';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { ingredients, note } from '@/lib/demo';
 import { useInView, usePrefersStill } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-
-/** The note typed in the popup, one character at a time. */
-const note = 'For Sunday #recipes';
 
 /** How long each typed character takes, in milliseconds. */
 const keystroke = 55;
@@ -195,7 +193,7 @@ export function HeroDemo({
 }
 
 /** A note with its hashtag in the link color, as the chat shows it. */
-function Caption({ text }: { text: string }) {
+export function Caption({ text }: { text: string }) {
   const [words, tag] = text.split('#');
 
   return (
@@ -206,18 +204,11 @@ function Caption({ text }: { text: string }) {
   );
 }
 
-const ingredients = [
-  'Sourdough starter, 100 g',
-  'Water, 350 g',
-  'Bread flour, 500 g',
-  'Salt, 10 g',
-];
-
 /**
  * A page in a browser, with a recipe's ingredients being selected, and the
  * toolbar the extension's button sits in.
  */
-function BrowserWindow({
+export function BrowserWindow({
   selected,
   badge,
   pressed,
@@ -329,7 +320,7 @@ const chats = [
 ] as const;
 
 /** The browser's right-click menu, with the extension's item and its chats. */
-function ContextMenu({
+export function ContextMenu({
   submenu,
   picked,
 }: {

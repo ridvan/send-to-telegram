@@ -9,49 +9,25 @@ import { SectionHeading } from '@/components/section-heading';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { features, type Feature, type FeatureId } from '@/lib/features';
 import { cn } from '@/lib/utils';
 
-type Feature = { title: string; text: string; art: ReactNode };
-
-const features: Feature[] = [
-  {
-    title: 'More than one chat',
-    text: 'Send to yourself, a group or a channel. With several chats, the menu asks which one.',
-    art: <ChatsArt />,
-  },
-  {
-    title: 'Hashtags as you type',
-    text: 'Type # in the note to pick a saved tag, so messages are easy to find in Telegram later.',
-    art: <HashtagArt />,
-  },
-  {
-    title: 'One shortcut for the page',
-    text: 'Sends the page you’re on without opening anything. Another one opens the popup.',
-    art: <ShortcutArt />,
-  },
-  {
-    title: 'History you control',
-    text: 'Search what you sent and send it again, or keep only the times, or nothing. Private windows never leave a trace.',
-    art: <HistoryArt />,
-  },
-  {
-    title: 'An optional password lock',
-    text: 'Encrypts your chats, tokens and history in the browser, and asks for the password when the browser starts.',
-    art: <LockArt />,
-  },
-  {
-    title: 'Your chat, your look',
-    text: 'Light and dark, six backgrounds, or a photo of your own.',
-    art: <LooksArt />,
-  },
-];
+/** Each detail's picture. */
+const arts = {
+  chats: <ChatsArt />,
+  hashtags: <HashtagArt />,
+  shortcut: <ShortcutArt />,
+  history: <HistoryArt />,
+  lock: <LockArt />,
+  looks: <LooksArt />,
+} satisfies { [id in FeatureId]: ReactNode };
 
 /** Every detail's picture and name, larger, for the store pictures. */
 export function FeatureTiles() {
   return (
     <ul className="grid grid-cols-3 gap-x-12 gap-y-10">
       {features.map((feature) => (
-        <FeatureItem key={feature.title} feature={feature} large />
+        <FeatureItem key={feature.id} feature={feature} large />
       ))}
     </ul>
   );
@@ -66,7 +42,7 @@ export function Features() {
       <SectionHeading id="details" title="The details" />
       <ul className="grid gap-x-12 gap-y-12 sm:grid-cols-2 sm:gap-y-16 lg:grid-cols-3">
         {features.map((feature) => (
-          <FeatureItem key={feature.title} feature={feature} />
+          <FeatureItem key={feature.id} feature={feature} />
         ))}
       </ul>
     </section>
@@ -96,7 +72,7 @@ function FeatureItem({
           !large && 'sm:h-36'
         )}
       >
-        {feature.art}
+        {arts[feature.id]}
       </div>
       <div className="flex flex-col gap-1.5">
         <Heading className={cn('font-semibold', large && 'text-xl')}>

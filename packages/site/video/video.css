@@ -1,0 +1,40 @@
+@import '../src/styles.css';
+
+@source '../src';
+@source './';
+
+/*
+ * Every frame is drawn on its own, so motion that runs on the clock would land
+ * somewhere different each time. The scenes move things by frame instead.
+ */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/*
+ * The recipe's selection, line by line as the pointer drags over it, set by
+ * the frame through `--sweep-1` to `--sweep-4` on a parent.
+ */
+.selection-sweep,
+.selection-sweep[data-selected] {
+  background-size: 0% 100% !important;
+}
+
+li:nth-child(1) > .selection-sweep {
+  background-size: var(--sweep-1, 0%) 100% !important;
+}
+
+li:nth-child(2) > .selection-sweep {
+  background-size: var(--sweep-2, 0%) 100% !important;
+}
+
+li:nth-child(3) > .selection-sweep {
+  background-size: var(--sweep-3, 0%) 100% !important;
+}
+
+li:nth-child(4) > .selection-sweep {
+  background-size: var(--sweep-4, 0%) 100% !important;
+}

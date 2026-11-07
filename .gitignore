@@ -3,6 +3,7 @@ node_modules
 .wxt
 .wrangler
 dist
+packages/site/out
 .tanstack
 .dev.vars
 .env

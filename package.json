@@ -27,6 +27,8 @@
     "dev:site": "pnpm --filter site dev",
     "build": "pnpm --filter extension build && pnpm --filter extension build:firefox",
     "build:site": "pnpm --filter site build",
+    "video": "pnpm --filter site video",
+    "video:render": "pnpm --filter site video:render",
     "zip": "pnpm --filter extension zip && pnpm --filter extension zip:firefox",
     "deploy:relay": "pnpm --filter relay run deploy",
     "deploy:site": "pnpm --filter site run deploy",
