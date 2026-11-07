@@ -356,6 +356,21 @@ export const onboardingStore = defineStore(
   () => ({})
 );
 
+/**
+ * Which feature announcements (see `announcements.ts`) the person has seen,
+ * by id. Ids only, so it isn't sealed: the popup can tell what's new while
+ * locked.
+ */
+export const announcementsSchema = z.object({
+  seen: z.array(z.string()).catch([]),
+});
+
+export const announcementsStore = defineStore(
+  'announcements',
+  announcementsSchema.catch({ seen: [] }),
+  () => ({ seen: [] })
+);
+
 export function destinationName(destination: Destination): string {
   if (destination.label) return destination.label;
 

@@ -9,6 +9,10 @@ import {
   selectAreaRequestSchema,
   stillShowing,
 } from '@/lib/area';
+import {
+  markAllAnnouncementsSeen,
+  markAnnouncementSeen,
+} from '@/lib/announcements';
 import { saveAttachment } from '@/lib/attachments';
 import { migrateStoredLegacyData } from '@/lib/legacy';
 import { parseMenuId, rebuildMenus } from '@/lib/menus';
@@ -256,6 +260,9 @@ export default defineBackground({
 
         await refreshMenus();
 
+        // Setup shows what's there; announcements are for what's new since.
+        if (reason === 'install') await markAllAnnouncementsSeen();
+
         if (reason === 'install' || migration) {
           await browser.tabs.create({
             url: browser.runtime.getURL('/welcome.html'),
@@ -317,6 +324,8 @@ export default defineBackground({
         };
 
         const where = { tabId: tab.id, windowId: tab.windowId };
+
+        void markAnnouncementSeen('screenshots');
 
         if (capture === 'area') await sendAreaScreenshot(request, where);
         else await sendScreenshot(request, where);
@@ -381,6 +390,8 @@ export default defineBackground({
       if (tab.id === undefined) return;
 
       const where = { tabId: tab.id, windowId: tab.windowId };
+
+      void markAnnouncementSeen('screenshots');
 
       if (command === 'send-area-screenshot') {
         await sendAreaScreenshot(request, where);

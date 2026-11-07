@@ -6,6 +6,7 @@
 
 import { browser } from 'wxt/browser';
 
+import { markAllAnnouncementsSeen } from './announcements.ts';
 import { rewriteAttachments } from './attachments.ts';
 // Defines the sealed stores, so turning the lock on or off rewrites them all.
 import './settings.ts';
@@ -198,6 +199,8 @@ export async function lockNow() {
  */
 export async function resetExtension() {
   await browser.storage.local.clear();
+  // Setting up again shows what's there, so nothing is new.
+  await markAllAnnouncementsSeen();
   await clearSessionKey();
   // Received photos are cached apart from storage.
   await forgetFiles();

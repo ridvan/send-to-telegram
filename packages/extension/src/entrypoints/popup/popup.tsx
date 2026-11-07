@@ -30,6 +30,7 @@ import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { browser } from 'wxt/browser';
 
+import { Announcement } from '@/components/announcement';
 import { AppMark } from '@/components/app-mark';
 import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatHistory } from '@/components/chat-history';
@@ -98,6 +99,7 @@ import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
 import { useLock } from '@/hooks/use-lock';
 import { useStore } from '@/hooks/use-store';
+import { markAnnouncementSeen } from '@/lib/announcements';
 import { saveAttachment } from '@/lib/attachments';
 import { deleteMessages } from '@/lib/chat-actions';
 import {
@@ -611,11 +613,13 @@ function Composer({
   }
 
   const [capturing, setCapturing] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const windowId = page.windowId;
 
   /** Attaches what the tab under the popup shows; the popup isn't in it. */
   async function takeScreenshot(from: number) {
     setCapturing(true);
+    void markAnnouncementSeen('screenshots');
 
     try {
       attachOrRefuse(await captureTab(from));
@@ -636,6 +640,7 @@ function Composer({
    */
   async function screenshotArea(tabId: number, from: number) {
     setCapturing(true);
+    void markAnnouncementSeen('screenshots');
 
     try {
       if (attached) await saveAttachment(attached.info.id, attached.file);
@@ -660,6 +665,17 @@ function Composer({
   }
 
   const tabId = page.tabId;
+
+  const screenshot =
+    !canAttach ||
+    windowId === undefined ||
+    tabId === undefined ||
+    page.url === undefined
+      ? undefined
+      : {
+          onVisible: () => void takeScreenshot(windowId),
+          onArea: () => void screenshotArea(tabId, windowId),
+        };
 
   // Earlier messages, and what people send your bot, show in the chat.
   const showsHistory =
@@ -935,6 +951,15 @@ function Composer({
               hidden={term !== ''}
               className="flex flex-col gap-3 transition-opacity duration-150 inert:opacity-50"
             >
+              <Announcement
+                actions={{
+                  // Opens the paperclip's menu, which is where to find it.
+                  ...(screenshot &&
+                    !busy && { screenshots: () => setAttachMenuOpen(true) }),
+                }}
+                onDismiss={() => noteRef.current?.focus()}
+              />
+
               {page.selection ? (
                 <ToggleGroup
                   variant="segmented"
@@ -1033,16 +1058,9 @@ function Composer({
           <AttachButton
             disabled={busy || capturing}
             onPick={attachOrRefuse}
-            screenshot={
-              windowId === undefined ||
-              tabId === undefined ||
-              page.url === undefined
-                ? undefined
-                : {
-                    onVisible: () => void takeScreenshot(windowId),
-                    onArea: () => void screenshotArea(tabId, windowId),
-                  }
-            }
+            screenshot={screenshot}
+            menuOpen={attachMenuOpen}
+            onMenuOpenChange={setAttachMenuOpen}
           />
         ) : null}
         <label htmlFor={noteId} className="sr-only">
@@ -1084,11 +1102,16 @@ function AttachButton({
   disabled,
   onPick,
   screenshot,
+  menuOpen,
+  onMenuOpenChange,
 }: {
   disabled: boolean;
   onPick: (file: File) => void;
   /** Absent where the browser gives no tab to capture. */
   screenshot: { onVisible: () => void; onArea: () => void } | undefined;
+  /** Also opened from the screenshots announcement. */
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const label = screenshot ? 'Attach' : 'Attach a file';
@@ -1108,7 +1131,7 @@ function AttachButton({
     // As tall as the send button, so on a one-line note both glyphs share
     // the line's centre.
     <div className="flex h-9 shrink-0 items-center">
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
         <Tooltip>
           <TooltipTrigger
             render={

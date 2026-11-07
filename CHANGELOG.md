@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Screenshots. Send what the page shows, or drag out an area of it, from the popup's paperclip, the page's right-click menu, or Alt+Shift+P and Alt+Shift+A.
+- New features are announced once in the popup's chat, with a way to try them. Fresh installs skip them, since setup shows what's there.
+
 ## [2.0.0] - Unreleased
 
 A rewrite from the ground up. Existing settings, chats, hashtags and history move over automatically on update.
