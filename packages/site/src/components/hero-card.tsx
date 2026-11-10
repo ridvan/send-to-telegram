@@ -47,7 +47,11 @@ export function HeroCard({
           {prefix}{' '}
           {browsers.map((browser, index) => (
             <Fragment key={browser}>
-              {index > 0 ? ' and ' : null}
+              {index === 0
+                ? null
+                : index === browsers.length - 1
+                  ? ' and '
+                  : ', '}
               <span className="inline-flex items-center gap-2 align-middle text-foreground">
                 <BrowserLogo src={storeBrowsers[browser].logo} />
                 {storeBrowsers[browser].name}

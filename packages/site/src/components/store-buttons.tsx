@@ -3,7 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 
 import { Button } from '@/components/ui/button';
 import { links } from '@/lib/links';
-import { storeBrowsers } from '@/lib/store-look';
+import { storeBrowsers, type StoreBrowser } from '@/lib/store-look';
 import { cn } from '@/lib/utils';
 
 /** A browser's own logo, drawn at the size of the button's icons. */
@@ -27,6 +27,12 @@ export function BrowserLogo({
   );
 }
 
+/**
+ * The other stores, named without “Add to”: the Chrome button before them
+ * already says what they do, and the row keeps to one line.
+ */
+const otherStores: readonly StoreBrowser[] = ['edge', 'firefox'];
+
 /** Where to get the extension, in the order most people need it, then a star. */
 export function StoreButtons() {
   return (
@@ -39,15 +45,23 @@ export function StoreButtons() {
         <BrowserLogo src={storeBrowsers.chrome.logo} />
         Add to {storeBrowsers.chrome.name}
       </Button>
-      <Button
-        size="cta"
-        variant="outline"
-        render={<a href={links.edge} />}
-        nativeButton={false}
-      >
-        <BrowserLogo src={storeBrowsers.edge.logo} />
-        Add to {storeBrowsers.edge.name}
-      </Button>
+      {otherStores.map((browser) => (
+        <Button
+          key={browser}
+          size="cta"
+          variant="outline"
+          render={
+            <a
+              href={links[browser]}
+              aria-label={`Add to ${storeBrowsers[browser].name}`}
+            />
+          }
+          nativeButton={false}
+        >
+          <BrowserLogo src={storeBrowsers[browser].logo} />
+          {storeBrowsers[browser].name}
+        </Button>
+      ))}
       <Button
         size="cta"
         variant="ghost"

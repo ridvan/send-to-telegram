@@ -10,7 +10,7 @@ export function OgCard() {
       <HeroCard
         layout="og"
         prefix="Free extension for"
-        browsers={['chrome', 'edge']}
+        browsers={['chrome', 'edge', 'firefox']}
       />
     </div>
   );

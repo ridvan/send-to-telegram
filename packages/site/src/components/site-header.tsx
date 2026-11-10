@@ -5,7 +5,7 @@ import { AppMark } from '@/components/app-mark';
 import { BrowserLogo } from '@/components/store-buttons';
 import { Button } from '@/components/ui/button';
 import { links } from '@/lib/links';
-import { storeBrowsers } from '@/lib/store-look';
+import { storeBrowsers, type StoreBrowser } from '@/lib/store-look';
 
 // Router links, so a #section link scrolls there instead of being reset to
 // the top by the router's own scroll handling.
@@ -80,8 +80,12 @@ export function SiteHeader() {
  * it's left out there.
  */
 function HeaderInstall() {
-  const edge = useSyncExternalStore(ignore, isEdge, () => false);
-  const browser = edge ? 'edge' : 'chrome';
+  const browser = useSyncExternalStore<StoreBrowser>(
+    ignore,
+    currentBrowser,
+    () => 'chrome'
+  );
+
   const { name, logo } = storeBrowsers[browser];
 
   return (
@@ -100,4 +104,13 @@ function HeaderInstall() {
 
 const ignore = () => () => {};
 
-const isEdge = () => navigator.userAgent.includes('Edg/');
+/** Edge and Firefox get their own store; every other browser gets Chrome's. */
+function currentBrowser(): StoreBrowser {
+  const agent = navigator.userAgent;
+
+  if (agent.includes('Edg/')) return 'edge';
+
+  if (agent.includes('Firefox/')) return 'firefox';
+
+  return 'chrome';
+}

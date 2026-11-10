@@ -10,9 +10,8 @@ const questions: { question: string; answer: ReactNode }[] = [
     question: 'Which browsers does it work in?',
     answer: (
       <p>
-        Chrome and Edge. Other browsers built on Chromium, such as Brave and
-        Arc, can install it from the Chrome Web Store too. A Firefox version is
-        on its way.
+        Chrome, Edge and Firefox. Other browsers built on Chromium, such as
+        Brave and Arc, can install it from the Chrome Web Store too.
       </p>
     ),
   },

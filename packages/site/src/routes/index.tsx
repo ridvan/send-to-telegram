@@ -5,7 +5,7 @@ import { Home } from '@/components/home';
 const title = 'Send to Telegram · A browser extension for sending to Telegram';
 
 const description =
-  'A free, open-source browser extension for Chrome and Edge. Right-click text, a link, an image or the page to send it to your Telegram chat, group or channel.';
+  'A free, open-source browser extension for Chrome, Edge and Firefox. Right-click text, a link, an image or the page to send it to your Telegram chat, group or channel.';
 
 /** Tells search engines what this is: a free browser extension. */
 const softwareApplication = {
@@ -13,7 +13,7 @@ const softwareApplication = {
   '@type': 'SoftwareApplication',
   name: 'Send to Telegram',
   applicationCategory: 'BrowserApplication',
-  operatingSystem: 'Chrome, Edge',
+  operatingSystem: 'Chrome, Edge, Firefox',
   description,
   url: 'https://s2t.dev',
   image: 'https://s2t.dev/og.png',
