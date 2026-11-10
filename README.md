@@ -5,8 +5,9 @@
 <p align="center">Send text, links, images and pages to a Telegram chat from the right-click menu.</p>
 
 <p align="center">
-<a href="https://chromewebstore.google.com/detail/send-to-telegram/jejaagembgeeipilhpjpndednmcphenh">Chrome Web Store</a> ·
-<a href="https://microsoftedge.microsoft.com/addons/detail/send-to-telegram/gefemahopiogjhmaailegnjippcpfgbb">Edge Add-ons</a>
+<a href="https://chromewebstore.google.com/detail/send-to-telegram/jejaagembgeeipilhpjpndednmcphenh"><picture><source media="(prefers-color-scheme: dark)" srcset="./.github/badges/chrome-dark.svg"><img src="./.github/badges/chrome-light.svg" height="32" alt="Add to Chrome"></picture></a>
+<a href="https://microsoftedge.microsoft.com/addons/detail/send-to-telegram/gefemahopiogjhmaailegnjippcpfgbb"><picture><source media="(prefers-color-scheme: dark)" srcset="./.github/badges/edge-dark.svg"><img src="./.github/badges/edge-light.svg" height="32" alt="Add to Edge"></picture></a>
+<a href="https://addons.mozilla.org/firefox/addon/send-to-telegram-addon/"><picture><source media="(prefers-color-scheme: dark)" srcset="./.github/badges/firefox-dark.svg"><img src="./.github/badges/firefox-light.svg" height="32" alt="Add to Firefox"></picture></a>
 </p>
 
 ---
