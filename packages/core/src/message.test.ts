@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { deliver, isTopicUnavailable, splitText } from './message.ts';
+import {
+  deliver,
+  deliverAlbum,
+  isTopicUnavailable,
+  splitText,
+} from './message.ts';
 import {
   TelegramError,
   Upload,
@@ -319,5 +324,119 @@ describe('deliver', () => {
       ).toBe(true);
       expect(isTopicUnavailable(rejected)).toBe(false);
     });
+  });
+});
+
+/** A bot that answers `sendMediaGroup` with one message per item. */
+function albumBot() {
+  const calls: Call[] = [];
+
+  const bot: BotClient = {
+    async call(method, params) {
+      calls.push({ method, params });
+
+      const count =
+        params && 'media' in params && Array.isArray(params.media)
+          ? params.media.length
+          : 0;
+
+      const sent = Array.from({ length: count }, (_, index) => ({
+        message_id: 40 + index,
+        chat: { id: 1, type: 'private' as const },
+      }));
+
+      // SAFETY: the fake only serves sendMediaGroup, which returns messages.
+      return sent as never;
+    },
+  };
+
+  return { bot, calls };
+}
+
+const uploads = (count: number) =>
+  Array.from(
+    { length: count },
+    (_, index) => new Upload(new Blob(['x']), `${index}.png`)
+  );
+
+describe('deliverAlbum', () => {
+  it('records every message of the album, in order', async () => {
+    const { bot } = albumBot();
+
+    const delivery = await deliverAlbum(bot, 1, {
+      kind: 'photo',
+      uploads: uploads(3),
+      silent: true,
+    });
+
+    expect(delivery).toMatchObject({
+      messageId: 42,
+      messageIds: [40, 41, 42],
+      via: 'photo',
+    });
+    expect(delivery.album).toHaveLength(3);
+  });
+
+  it('puts a photo album’s caption on the first photo', async () => {
+    const { bot, calls } = albumBot();
+
+    await deliverAlbum(bot, 1, {
+      kind: 'photo',
+      uploads: uploads(2),
+      caption: 'Two shots',
+      silent: false,
+    });
+
+    expect(calls[0]?.method).toBe('sendMediaGroup');
+    expect(calls[0]?.params).toMatchObject({
+      chat_id: 1,
+      disable_notification: false,
+      media: [{ type: 'photo', caption: 'Two shots' }, { type: 'photo' }],
+    });
+    expect(calls[0]?.params).not.toHaveProperty('reply_markup');
+  });
+
+  it('puts a file album’s caption on the last file', async () => {
+    const { bot, calls } = albumBot();
+
+    await deliverAlbum(bot, 1, {
+      kind: 'document',
+      uploads: uploads(2),
+      caption: 'Notes',
+      silent: true,
+    });
+
+    expect(calls[0]?.params).toMatchObject({
+      media: [{ type: 'document' }, { type: 'document', caption: 'Notes' }],
+    });
+  });
+
+  it('sends the album to the topic', async () => {
+    const { bot, calls } = albumBot();
+
+    await deliverAlbum(
+      bot,
+      -100,
+      { kind: 'photo', uploads: uploads(2), silent: true },
+      77
+    );
+
+    expect(calls[0]?.params).toMatchObject({ message_thread_id: 77 });
+  });
+
+  it('refuses fewer than 2 or more than 10 files', async () => {
+    const { bot, calls } = albumBot();
+
+    for (const count of [1, 11]) {
+      await expect(
+        deliverAlbum(bot, 1, {
+          kind: 'photo',
+          uploads: uploads(count),
+          silent: true,
+        })
+      ).rejects.toThrow(RangeError);
+    }
+
+    expect(calls).toHaveLength(0);
   });
 });

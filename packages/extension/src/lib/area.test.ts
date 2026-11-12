@@ -21,7 +21,7 @@ const request: SelectAreaRequest = {
   windowId: 1,
   note: 'Look',
   destinationId: 'd1',
-  attachment: file,
+  attachments: [file],
 };
 
 async function stored(id: string) {
@@ -41,7 +41,7 @@ describe('pickForPopup', () => {
     expect(await takeHandoff(3)).toMatchObject({
       note: 'Look',
       destinationId: 'd1',
-      attachment: file,
+      attachments: [file],
     });
     expect(await stored(file.id)).toBe('hello');
   });
@@ -52,9 +52,34 @@ describe('pickForPopup', () => {
     });
 
     expect(await takeHandoff(3)).toMatchObject({
-      attachment: file,
+      attachments: [file],
       problem: 'Open a website and try again.',
     });
+  });
+
+  it('adds the screenshot to the draft’s files instead of replacing them', async () => {
+    const area = {
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      viewportWidth: 100,
+      scrollX: 0,
+      scrollY: 0,
+    };
+
+    await pickForPopup(
+      request,
+      async () => area,
+      async () => new File(['png'], 'Screenshot.png', { type: 'image/png' })
+    );
+
+    const handoff = await takeHandoff(3);
+
+    expect(handoff?.attachments).toHaveLength(2);
+    expect(handoff?.attachments?.[0]).toEqual(file);
+    expect(handoff?.attachments?.[1]?.type).toBe('image/png');
+    expect(await stored(file.id)).toBe('hello');
   });
 
   it('leaves the pick under way to reopen the popup', async () => {
@@ -67,7 +92,7 @@ describe('pickForPopup', () => {
   it('deletes the file of a draft it replaces', async () => {
     await pickForPopup(request, async () => 'cancelled');
     await pickForPopup(
-      { ...request, tabId: 4, attachment: undefined },
+      { ...request, tabId: 4, attachments: undefined },
       async () => 'cancelled'
     );
 

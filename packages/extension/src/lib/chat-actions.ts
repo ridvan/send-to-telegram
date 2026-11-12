@@ -78,6 +78,10 @@ export function deletionOf(items: ChatItem[]) {
     if (item.direction === 'out') {
       sent.add(item.entry.id);
       files.push(...cachedIds(item.entry.content?.sentMedia?.file));
+
+      for (const sent of item.entry.content?.sentAlbum ?? []) {
+        files.push(...cachedIds(sent.file));
+      }
     } else {
       received.add(item.message.id);
       files.push(...cachedIds(item.message.file));

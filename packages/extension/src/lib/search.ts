@@ -14,6 +14,7 @@ export function sentText(entry: HistoryEntry): string {
     content?.pageUrl,
     content?.pageTitle,
     content?.attachment?.name,
+    ...(content?.attachments?.map((file) => file.name) ?? []),
     entry.tag && `#${entry.tag}`,
     entry.destinationName,
   ]

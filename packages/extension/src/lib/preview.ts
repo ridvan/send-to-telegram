@@ -2,7 +2,7 @@
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
- * `?fail` to make sends, deletes, downloads and chat lookups fail, `?nocapture` to make screenshots
+ * `?fail` to make sends, albums, deletes, downloads and chat lookups fail, `?nocapture` to make screenshots
  * fail, and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
@@ -162,6 +162,35 @@ function demoData(now: number) {
               preview: { id: 'photo', uniqueId: 'P', width: 800, height: 533 },
             },
           },
+        },
+      },
+      {
+        id: 'h1c',
+        sentAt: now - 24 * minute,
+        kind: 'page',
+        status: 'sent',
+        destinationId: 'team',
+        destinationName: 'Design crit',
+        via: 'photo',
+        telegram: { botId: 1, chatId: -100_123, messageIds: [103, 104, 105] },
+        content: {
+          note: 'Three takes on the sidebar',
+          attachments: ['one', 'two', 'three'].map((name, index) => ({
+            id: `album-${index}`,
+            name: `sidebar-${name}.png`,
+            type: 'image/png',
+            size: 380_000,
+          })),
+          sentAlbum: ['A', 'B', 'C'].map((uniqueId) => ({
+            media: 'photo',
+            file: {
+              id: 'photo',
+              uniqueId,
+              width: 800,
+              height: 533,
+              preview: { id: 'photo-s', uniqueId: `${uniqueId}s` },
+            },
+          })),
         },
       },
       {
@@ -539,6 +568,79 @@ const demoFiles = new Map<string, () => BodyInit | Promise<BodyInit>>([
   ['notes', () => 'Notes from the design crit.\n'],
 ]);
 
+/** One message of an album the demo bot sent, with its file to download. */
+type AlbumMessage = {
+  message_id: number;
+  chat: Chat;
+  photo?: { file_id: string; file_unique_id: string }[];
+  document?: {
+    file_id: string;
+    file_unique_id: string;
+    file_name: string;
+    file_size: number;
+  };
+};
+
+const albumItemSchema = z.object({
+  type: z.enum(['photo', 'document']),
+  media: z.string(),
+});
+
+let albumFiles = 0;
+
+/**
+ * Answers `sendMediaGroup` as Telegram would, keeping each file so the chat
+ * can download it again. `fail` answers as for a photo Telegram can't
+ * process.
+ */
+async function fakeAlbum(
+  body: BodyInit | null | undefined,
+  fail: boolean
+): Promise<FakeAnswer> {
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  if (fail) {
+    return {
+      ok: false,
+      error_code: 400,
+      description: 'Bad Request: IMAGE_PROCESS_FAILED',
+    };
+  }
+
+  const form = body instanceof FormData ? body : new FormData();
+
+  const items = z
+    .array(albumItemSchema)
+    .parse(JSON.parse(String(form.get('media'))));
+
+  const chat: Chat = { id: 1001, type: 'private' };
+
+  return {
+    ok: true,
+    result: items.map((item, index) => {
+      const part = form.get(item.media.replace('attach://', ''));
+      const file = part instanceof File ? part : new File([], 'file');
+      const id = `album-file-${(albumFiles += 1)}`;
+
+      demoFiles.set(id, () => file);
+
+      const message = { message_id: (Date.now() % 1e6) + index, chat };
+
+      return item.type === 'photo'
+        ? { ...message, photo: [{ file_id: id, file_unique_id: id }] }
+        : {
+            ...message,
+            document: {
+              file_id: id,
+              file_unique_id: id,
+              file_name: file.name,
+              file_size: file.size,
+            },
+          };
+    }),
+  };
+}
+
 /** What the fake Bot API answers. */
 type FakeAnswer =
   | {
@@ -548,6 +650,7 @@ type FakeAnswer =
         | Chat
         | { id: number; is_bot: boolean; first_name: string; username: string }
         | { message_id: number; chat: Chat }
+        | AlbumMessage[]
         | { file_id: string; file_path: string }
         | true;
     }
@@ -662,6 +765,10 @@ function fakeTelegram(
         : json({ ok: true, result: true });
     }
 
+    if (url.href === 'https://api.telegram.org/bot1:x/sendMediaGroup') {
+      return json(await fakeAlbum(init?.body, failDownloads));
+    }
+
     if (url.href === 'https://api.telegram.org/bot1:x/getFile') {
       const { file_id: id } = z
         .object({ file_id: z.string() })
@@ -747,6 +854,14 @@ function install() {
           void pickAreaOnThisPage(message);
 
           return true;
+        }
+
+        // An album goes through the real send, to the fake Bot API, so its
+        // files land in the chat; `?fail` makes Telegram refuse it.
+        if ((message.draft.attachments?.length ?? 0) > 1) {
+          const { send } = await import('./send.ts');
+
+          return send(message);
         }
 
         await new Promise((resolve) => setTimeout(resolve, 700));

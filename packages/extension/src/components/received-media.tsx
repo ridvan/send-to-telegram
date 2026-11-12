@@ -298,14 +298,18 @@ function PhotoMedia({
   message,
   file,
   hidden,
+  aspect,
 }: {
   token: string;
   message: InboxEntry;
   file: InboxFile;
   /** Blurred until the first click, which only reveals it. */
   hidden: boolean;
+  /** A tile's shape, in an album, in place of the photo's own. */
+  aspect: string | undefined;
 }) {
   const preview = file.preview ?? file;
+  const ratio = aspect ?? aspectOf(preview);
   const [open, setOpen] = useState(false);
   // Until the popup closes, so a revealed photo stays revealed.
   const [revealed, setRevealed] = useState(false);
@@ -321,7 +325,7 @@ function PhotoMedia({
     return (
       <span
         className="flex aspect-(--aspect) w-full flex-col items-center justify-center gap-1.5 bg-received-muted/10 p-3 text-center"
-        style={{ '--aspect': aspectOf(preview) }}
+        style={{ '--aspect': ratio }}
       >
         <HugeiconsIcon
           icon={ImageNotFound01Icon}
@@ -342,7 +346,7 @@ function PhotoMedia({
         disabled={state.status !== 'ready'}
         onClick={() => (covered ? setRevealed(true) : setOpen(true))}
         className="relative flex aspect-(--aspect) max-h-80 w-full items-center justify-center overflow-hidden bg-received-muted/10 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
-        style={{ '--aspect': aspectOf(preview) }}
+        style={{ '--aspect': ratio }}
       >
         {state.status === 'ready' ? (
           <>
@@ -380,6 +384,7 @@ function VideoMedia({
   file,
   looped,
   hidden,
+  aspect,
 }: {
   token: string;
   message: InboxEntry;
@@ -388,6 +393,8 @@ function VideoMedia({
   looped: boolean;
   /** Its first frame is blurred until the first click, which only reveals it. */
   hidden: boolean;
+  /** A tile's shape, in an album, in place of the video's own. */
+  aspect: string | undefined;
 }) {
   const [playing, setPlaying] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -405,7 +412,7 @@ function VideoMedia({
     type: 'video/mp4',
   });
 
-  const aspectRatio = aspectOf(file.preview ?? file);
+  const aspectRatio = aspect ?? aspectOf(file.preview ?? file);
   const name = fileNameOf(message, file, 'mp4');
   const saver = useSaveFile(token, file, { name, type: 'video/mp4' });
   const ready = video.state.status === 'ready' ? video.state.url : undefined;
@@ -688,10 +695,13 @@ export function ReceivedMedia({
   token,
   message,
   file,
+  aspect,
 }: {
   token: string;
   message: InboxEntry;
   file: InboxFile;
+  /** Draws a photo or video in this shape, as a tile of an album. */
+  aspect?: string | undefined;
 }) {
   const hidden = useStore(settingsStore).privacy.blurMedia;
 
@@ -703,6 +713,7 @@ export function ReceivedMedia({
           message={message}
           file={file}
           hidden={hidden}
+          aspect={aspect}
         />
       );
     case 'video':
@@ -714,6 +725,7 @@ export function ReceivedMedia({
           file={file}
           looped={message.media === 'animation'}
           hidden={hidden}
+          aspect={aspect}
         />
       );
     case 'voice':

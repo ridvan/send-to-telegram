@@ -1,4 +1,5 @@
 import {
+  ALBUM_LIMIT,
   CAPTION_LIMIT,
   MAX_TEXT_LENGTH,
   type OutgoingMessage,
@@ -28,10 +29,45 @@ export const draftSchema = z.object({
   tag: tagSchema.optional(),
   /** A file from this device; the message's text becomes its caption. */
   attachment: attachmentSchema.optional(),
+  /**
+   * Two or more files, sent as an album, in place of `attachment`: one file
+   * is always `attachment`, so a single file sends as it always has.
+   */
+  attachments: z.array(attachmentSchema).max(ALBUM_LIMIT).optional(),
   destinationId: z.string().optional(),
 });
 
 export type Draft = z.infer<typeof draftSchema>;
+
+/** The most files one message takes, as an album. */
+export const MAX_ATTACHMENTS = ALBUM_LIMIT;
+
+/** Every file the draft carries, one or an album's. */
+export function draftFiles(
+  draft: Pick<Draft, 'attachment' | 'attachments'>
+): Attachment[] {
+  if (draft.attachments) return draft.attachments;
+
+  return draft.attachment ? [draft.attachment] : [];
+}
+
+/** The fields that carry these files: `attachment` for one, `attachments` for more. */
+export function filesFields(
+  files: Attachment[]
+): Pick<Draft, 'attachment' | 'attachments'> {
+  const [only] = files;
+
+  if (files.length > 1) return { attachments: files };
+
+  return only ? { attachment: only } : {};
+}
+
+/** The draft with other files, or none. */
+export function withFiles(draft: Draft, files: Attachment[]): Draft {
+  const { attachment: _one, attachments: _many, ...rest } = draft;
+
+  return { ...rest, ...filesFields(files) };
+}
 
 export class ComposeError extends Error {
   override name = 'ComposeError';
@@ -95,6 +131,46 @@ export type ComposedUpload = Omit<UploadMessage, 'upload'> & {
   attachment: Attachment;
 };
 
+/** Files that go out together: an album, or one file sent alone. */
+export type AlbumGroup = {
+  kind: 'photo' | 'document';
+  attachments: Attachment[];
+  caption?: string;
+};
+
+/**
+ * Several files, sent as one album when Telegram allows it. Telegram groups
+ * files only with files, so photos and files go as two albums, each in the
+ * order attached; the caption goes with the last.
+ */
+export type ComposedAlbum = {
+  kind: 'album';
+  groups: AlbumGroup[];
+  silent: boolean;
+};
+
+/**
+ * Splits files into what goes as photos and what goes as files, ordered by
+ * the first file of each. Anything `sendsAsPhoto` turns down, GIFs, WebP and
+ * photos over Telegram's 10 MB, goes with the files, as it would alone.
+ */
+export function albumGroups<File extends Pick<Attachment, 'type' | 'size'>>(
+  files: File[],
+  imageMode: Settings['delivery']['imageMode']
+): { kind: AlbumGroup['kind']; attachments: File[] }[] {
+  const groups: { kind: AlbumGroup['kind']; attachments: File[] }[] = [];
+
+  for (const file of files) {
+    const kind = sendsAsPhoto(file, imageMode) ? 'photo' : 'document';
+    const group = groups.find((each) => each.kind === kind);
+
+    if (group) group.attachments.push(file);
+    else groups.push({ kind, attachments: [file] });
+  }
+
+  return groups;
+}
+
 /**
  * The text that goes with a page or selection. A caption has no link preview,
  * so an attached file always takes the page title with the link.
@@ -107,7 +183,8 @@ function bodyOf(draft: Draft, delivery: Settings['delivery']) {
       return draft.url;
     case 'page':
       // Without a preview the URL alone says little, so lead with the title.
-      return (delivery.linkPreview && !draft.attachment) || !draft.pageTitle
+      return (delivery.linkPreview && draftFiles(draft).length === 0) ||
+        !draft.pageTitle
         ? draft.pageUrl
         : `${draft.pageTitle.trim()}\n${draft.pageUrl}`;
     case 'image':
@@ -132,11 +209,24 @@ export function messageText(
   return paragraphs(draft.note, body, tag);
 }
 
+/**
+ * An album's caption. `sendMediaGroup` takes no button, so the page it came
+ * from goes as a link on the caption's last line, kept whole when the rest is
+ * cut to fit.
+ */
+function albumCaption(text: string, sourceUrl: string | undefined) {
+  const link = sourceUrl && sourceUrl.length + 2 < CAPTION_LIMIT && sourceUrl;
+
+  if (!link) return text && clip(text, CAPTION_LIMIT);
+
+  return paragraphs(clip(text, CAPTION_LIMIT - link.length - 2), link);
+}
+
 /** Turns a draft into one outgoing message, following the delivery settings. */
 export function compose(
   sourceDraft: Draft,
   delivery: Settings['delivery']
-): OutgoingMessage | ComposedUpload {
+): OutgoingMessage | ComposedUpload | ComposedAlbum {
   if (sendsPageInstead(sourceDraft) && !isHttpUrl(sourceDraft.pageUrl)) {
     throw new ComposeError(
       `Telegram can’t fetch this ${sourceDraft.kind}, and the page has no web address to send instead. Save the ${sourceDraft.kind} to this device, then attach it with the popup’s paperclip.`
@@ -156,15 +246,38 @@ export function compose(
       : undefined;
 
   const common = { silent: delivery.silent, ...(sourceUrl && { sourceUrl }) };
+  const files = draftFiles(draft);
+  const [file] = files;
 
-  if (draft.attachment) {
+  if (files.length > MAX_ATTACHMENTS) {
+    throw new ComposeError(
+      `A message takes up to ${MAX_ATTACHMENTS} files. Remove ${files.length - MAX_ATTACHMENTS}, then send again.`
+    );
+  }
+
+  if (files.length > 1) {
+    const caption = albumCaption(
+      paragraphs(note, bodyOf(draft, delivery), tag),
+      sourceUrl
+    );
+
+    const split = albumGroups(files, delivery.imageMode);
+
+    // Under the last album, so the text reads after every file, as drawn.
+    const groups = split.map((group, index) => ({
+      ...group,
+      ...(index === split.length - 1 && caption && { caption }),
+    }));
+
+    return { kind: 'album', groups, silent: delivery.silent };
+  }
+
+  if (file) {
     const caption = paragraphs(note, bodyOf(draft, delivery), tag);
 
     return {
-      kind: sendsAsPhoto(draft.attachment, delivery.imageMode)
-        ? 'photo'
-        : 'document',
-      attachment: draft.attachment,
+      kind: sendsAsPhoto(file, delivery.imageMode) ? 'photo' : 'document',
+      attachment: file,
       ...(caption && { caption: clip(caption, CAPTION_LIMIT) }),
       ...common,
     };

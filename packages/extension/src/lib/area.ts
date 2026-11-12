@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { z } from 'zod';
 
 import { deleteAttachment, saveAttachment } from './attachments.ts';
+import { MAX_ATTACHMENTS } from './compose.ts';
 import {
   attachmentInfo,
   CaptureError,
@@ -300,15 +301,15 @@ export const selectAreaRequestSchema = z.object({
   /** What the popup's draft held, to give back when it opens again. */
   note: z.string().optional(),
   destinationId: z.string().optional(),
-  /** The draft's file, saved so cancelling gives it back. */
-  attachment: attachmentSchema.optional(),
+  /** The draft's files, saved so cancelling gives them back. */
+  attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).optional(),
 });
 
 export type SelectAreaRequest = z.infer<typeof selectAreaRequestSchema>;
 
 /**
  * What the popup gets back once the area is picked: its draft, with the
- * screenshot in place of its file, and why there's no screenshot if there
+ * screenshot added to its files, and why there's no screenshot if there
  * isn't one. Kept in session storage (memory only) and read once.
  */
 const handoffSchema = z.object({
@@ -316,7 +317,7 @@ const handoffSchema = z.object({
   tabId: z.number(),
   note: z.string().optional(),
   destinationId: z.string().optional(),
-  attachment: attachmentSchema.optional(),
+  attachments: z.array(attachmentSchema).optional(),
   problem: z.string().optional(),
 });
 
@@ -335,15 +336,17 @@ async function storedHandoff(): Promise<AreaHandoff | undefined> {
 
 const fresh = (handoff: AreaHandoff) => Date.now() - handoff.at < HANDOFF_FOR;
 
-/** Leaves the draft for the popup, deleting the file of one it replaces. */
+function deleteFiles(files: Attachment[] | undefined) {
+  return Promise.all((files ?? []).map((file) => deleteAttachment(file.id)));
+}
+
+/** Leaves the draft for the popup, deleting the files of one it replaces. */
 async function leaveForPopup(handoff: AreaHandoff) {
-  const replaced = (await storedHandoff())?.attachment;
+  const kept = new Set(handoff.attachments?.map((file) => file.id));
+  const replaced = (await storedHandoff())?.attachments ?? [];
 
   await browser.storage.session.set({ [HANDOFF_KEY]: handoff });
-
-  if (replaced && replaced.id !== handoff.attachment?.id) {
-    await deleteAttachment(replaced.id);
-  }
+  await deleteFiles(replaced.filter((file) => !kept.has(file.id)));
 }
 
 /** Whether a draft waits for the popup, which the toolbar badge points to. */
@@ -365,7 +368,7 @@ export async function takeHandoff(
 
   if (fresh(handoff)) return handoff;
 
-  if (handoff.attachment) await deleteAttachment(handoff.attachment.id);
+  await deleteFiles(handoff.attachments);
 
   return undefined;
 }
@@ -377,29 +380,28 @@ export async function takeHandoff(
  */
 export async function pickForPopup(
   request: SelectAreaRequest,
-  pick: () => Promise<Picked>
+  pick: () => Promise<Picked>,
+  capture: typeof captureTab = captureTab
 ): Promise<boolean> {
-  let attachment: Attachment | undefined = request.attachment;
+  const attachments = [...(request.attachments ?? [])];
   let problem: string | undefined;
 
   try {
     const picked = await pick();
 
     if (picked === 'busy') {
-      if (attachment) await deleteAttachment(attachment.id);
+      await deleteFiles(attachments);
 
       return false;
     }
 
-    if (picked !== 'cancelled') {
-      const file = await captureTab(request.windowId, picked);
+    // The popup asks only with room for one more; this keeps to the limit.
+    if (picked !== 'cancelled' && attachments.length < MAX_ATTACHMENTS) {
+      const file = await capture(request.windowId, picked);
       const screenshot = attachmentInfo(file);
 
       await saveAttachment(screenshot.id, file);
-
-      if (attachment) await deleteAttachment(attachment.id);
-
-      attachment = screenshot;
+      attachments.push(screenshot);
     }
   } catch (cause) {
     console.error('Could not take the screenshot', cause);
@@ -411,7 +413,7 @@ export async function pickForPopup(
     tabId: request.tabId,
     ...(request.note && { note: request.note }),
     ...(request.destinationId && { destinationId: request.destinationId }),
-    ...(attachment && { attachment }),
+    ...(attachments.length > 0 && { attachments }),
     ...(problem && { problem }),
   });
 

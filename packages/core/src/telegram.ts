@@ -10,6 +10,10 @@ export const CAPTION_LIMIT = 1024;
 export const PHOTO_UPLOAD_LIMIT = 10 * 1024 * 1024;
 export const UPLOAD_LIMIT = 50 * 1024 * 1024;
 
+/** `sendMediaGroup` takes 2 to 10 items. */
+export const ALBUM_MIN = 2;
+export const ALBUM_LIMIT = 10;
+
 export const chatIdSchema = z.union([
   z.number().int(),
   z
@@ -200,6 +204,8 @@ const resultSchemas = {
   sendDocument: incomingMessageSchema,
   sendVideo: incomingMessageSchema,
   sendAudio: incomingMessageSchema,
+  /** Every message of the album, in order. */
+  sendMediaGroup: z.array(incomingMessageSchema),
   editMessageText: z.union([sentMessageSchema, z.literal(true)]),
   deleteMessage: z.literal(true),
   deleteMessages: z.literal(true),
@@ -234,15 +240,54 @@ export class Upload {
   }
 }
 
+/** One file of an album, as `sendMediaGroup` takes it. */
+export type AlbumItem = {
+  type: 'photo' | 'document';
+  media: InputFile;
+  caption?: string;
+};
+
+/** An album item whose file goes with the request. */
+const uploadItemSchema = z.looseObject({ media: z.instanceof(Upload) });
+
 /**
- * JSON, unless a parameter is a file: then multipart, with strings as they
- * are and everything else, such as `reply_markup`, as JSON. The browser sets
- * the multipart boundary, so no Content-Type here.
+ * An album's items name their uploads as `attach://<part>`, and the files go
+ * as parts of that name. The part names are generated, so a file's own name
+ * can't clash with a parameter; it stays the part's filename.
+ */
+function attachItems(items: unknown[], uploads: Upload[]): unknown[] {
+  return items.map((item) => {
+    const upload = uploadItemSchema.safeParse(item);
+
+    if (!upload.success) return item;
+
+    uploads.push(upload.data.media);
+
+    return { ...upload.data, media: `attach://file${uploads.length - 1}` };
+  });
+}
+
+/**
+ * JSON, unless a parameter is a file or an album item is: then multipart,
+ * with strings as they are and everything else, such as `reply_markup`, as
+ * JSON. The browser sets the multipart boundary, so no Content-Type here.
  */
 function requestBody(params: MethodParams[BotMethod]): RequestInit {
-  const entries = Object.entries(params ?? {});
+  const uploads: Upload[] = [];
 
-  if (!entries.some(([, value]) => value instanceof Upload)) {
+  const entries = Object.entries(params ?? {}).map(
+    ([name, value]): [string, unknown] => [
+      name,
+      name === 'media' && Array.isArray(value)
+        ? attachItems(value, uploads)
+        : value,
+    ]
+  );
+
+  if (
+    uploads.length === 0 &&
+    !entries.some(([, value]) => value instanceof Upload)
+  ) {
     return {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params ?? {}),
@@ -264,6 +309,10 @@ function requestBody(params: MethodParams[BotMethod]): RequestInit {
     form.append(name, text.success ? text.data : JSON.stringify(value));
   }
 
+  for (const [index, upload] of uploads.entries()) {
+    form.append(`file${index}`, upload.blob, upload.fileName);
+  }
+
   return { body: form };
 }
 
@@ -282,6 +331,10 @@ type MethodParams = {
   sendDocument: DeliveryOptions & { document: InputFile; caption?: string };
   sendVideo: DeliveryOptions & { video: InputFile; caption?: string };
   sendAudio: DeliveryOptions & { audio: InputFile; caption?: string };
+  /** Takes no `reply_markup`, so an album can't carry a button. */
+  sendMediaGroup: Omit<DeliveryOptions, 'reply_markup'> & {
+    media: AlbumItem[];
+  };
   editMessageText: {
     chat_id: ChatId;
     message_id: number;

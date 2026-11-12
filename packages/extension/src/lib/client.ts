@@ -49,6 +49,7 @@ export function draftFromEntry(entry: HistoryEntry): Draft | undefined {
     ...(content.pageUrl && { pageUrl: content.pageUrl }),
     ...(content.pageTitle && { pageTitle: content.pageTitle }),
     ...(content.attachment && { attachment: content.attachment }),
+    ...(content.attachments && { attachments: content.attachments }),
     ...(entry.tag && { tag: entry.tag }),
     ...(entry.destinationId && { destinationId: entry.destinationId }),
   };
