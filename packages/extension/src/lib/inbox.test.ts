@@ -2,6 +2,7 @@ import type { IncomingMessage, Update } from '@send-to-telegram/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 
+import { updateDestination } from './destinations.ts';
 import {
   checkInbox,
   inboxEntriesIn,
@@ -13,6 +14,7 @@ import {
   type BotDestination,
   inboxRemovedStore,
   inboxStore,
+  settingsStore,
 } from './settings.ts';
 
 const me = { id: 7, type: 'private', first_name: 'Rıdvan' } as const;
@@ -207,6 +209,66 @@ describe('inboxEntriesIn', () => {
   });
 });
 
+describe('inboxEntriesIn with topics', () => {
+  const reviews: BotDestination = {
+    ...destination,
+    id: 'reviews',
+    topic: { id: 50, name: 'Reviews' },
+  };
+
+  const otherBot: BotDestination = {
+    ...destination,
+    id: 'other-bot',
+    token: '2:y',
+    topic: { id: 60 },
+  };
+
+  const all = [destination, reviews, otherBot];
+
+  const inTopic = (id: number, text: string, messageId: number) =>
+    message({
+      chat: group,
+      message_id: messageId,
+      message_thread_id: id,
+      is_topic_message: true,
+      text,
+    });
+
+  const updates: Update[] = [
+    { update_id: 1, message: message({ chat: group, text: 'In General' }) },
+    { update_id: 2, message: inTopic(50, 'In Reviews', 2) },
+    { update_id: 3, message: inTopic(60, 'In Handoff', 3) },
+    {
+      update_id: 4,
+      // A reply outside a forum has a thread too, but is no topic message.
+      message: message({
+        chat: group,
+        message_id: 4,
+        message_thread_id: 1,
+        text: 'A reply',
+      }),
+    },
+  ];
+
+  const texts = (target: BotDestination) =>
+    inboxEntriesIn(updates, target, all).map((entry) => entry.text);
+
+  it('shows a topic’s messages only in the destination for it', () => {
+    expect(texts(reviews)).toEqual(['In Reviews']);
+  });
+
+  it('shows the rest of the group in the destination without a topic', () => {
+    // Handoff's destination is another bot's, so this bot still shows it here.
+    expect(texts(destination)).toEqual(['In General', 'In Handoff', 'A reply']);
+  });
+
+  it('shows the whole group when no destination has a topic, as before', () => {
+    expect(
+      inboxEntriesIn(updates, destination).map((entry) => entry.text)
+    ).toEqual(['In General', 'In Reviews', 'In Handoff', 'A reply']);
+  });
+});
+
 describe('checkInbox', () => {
   const signal = new AbortController().signal;
 
@@ -222,6 +284,11 @@ describe('checkInbox', () => {
     );
   }
 
+  /** Stores the chats as settings, where each read finds them. */
+  async function connect(...destinations: BotDestination[]) {
+    await settingsStore.update((settings) => ({ ...settings, destinations }));
+  }
+
   beforeEach(() => fakeBrowser.reset());
   afterEach(() => vi.unstubAllGlobals());
 
@@ -232,12 +299,81 @@ describe('checkInbox', () => {
         { update_id: 1, message: message({ chat: group, text: 'One' }) },
       ],
     });
+    await connect(destination);
 
     expect(await checkInbox(destination, signal)).toBe('ok');
     expect(await checkInbox(destination, signal)).toBe('ok');
     expect((await inboxStore.get()).map((entry) => entry.text)).toEqual([
       'One',
     ]);
+  });
+
+  it('keeps a topic’s messages with its destination, from either one', async () => {
+    const reviews: BotDestination = {
+      ...destination,
+      id: 'reviews',
+      topic: { id: 50 },
+    };
+
+    answer({
+      ok: true,
+      result: [
+        { update_id: 1, message: message({ chat: group, text: 'General' }) },
+        {
+          update_id: 2,
+          message: message({
+            chat: group,
+            message_id: 2,
+            message_thread_id: 50,
+            is_topic_message: true,
+            text: 'Topic',
+          }),
+        },
+      ],
+    });
+    await connect(destination, reviews);
+
+    expect(await checkInbox(destination, signal)).toBe('ok');
+
+    const inbox = await inboxStore.get();
+
+    expect(
+      inbox.map(({ text, destinationId }) => [text, destinationId])
+    ).toEqual(
+      expect.arrayContaining([
+        ['General', 'd1'],
+        ['Topic', 'reviews'],
+      ])
+    );
+    expect(inbox).toHaveLength(2);
+  });
+
+  it('moves a message kept for the group to a topic added since', async () => {
+    const reviews: BotDestination = {
+      ...destination,
+      id: 'reviews',
+      topic: { id: 50 },
+    };
+
+    const topicMessage = message({
+      chat: group,
+      message_id: 2,
+      message_thread_id: 50,
+      is_topic_message: true,
+      text: 'Topic',
+    });
+
+    answer({ ok: true, result: [{ update_id: 2, message: topicMessage }] });
+
+    await connect(destination);
+    await checkInbox(destination, signal);
+    expect((await inboxStore.get())[0]?.destinationId).toBe('d1');
+
+    await connect(destination, reviews);
+    await checkInbox(destination, signal);
+    expect(
+      (await inboxStore.get()).map((entry) => entry.destinationId)
+    ).toEqual(['reviews']);
   });
 
   it('reports a bot whose updates go to a webhook', async () => {
@@ -248,6 +384,98 @@ describe('checkInbox', () => {
     });
 
     expect(await checkInbox(destination, signal)).toBe('elsewhere');
+    expect(await inboxStore.get()).toEqual([]);
+  });
+
+  it('files a read by the topics chosen when it lands, not when it started', async () => {
+    const reviews: BotDestination = { ...destination, topic: { id: 50 } };
+
+    await connect(reviews);
+
+    // The topic changes to 60 while Telegram is still answering.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        await updateDestination('d1', { topic: { id: 60 } });
+
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: [
+              {
+                update_id: 1,
+                message: message({
+                  chat: group,
+                  message_thread_id: 50,
+                  is_topic_message: true,
+                  text: 'In Reviews',
+                }),
+              },
+            ],
+          })
+        );
+      })
+    );
+
+    await checkInbox(reviews, signal);
+
+    expect(await inboxStore.get()).toEqual([]);
+  });
+
+  it('drops a message kept for an old topic once a read shows it isn’t there', async () => {
+    const reviews: BotDestination = { ...destination, topic: { id: 60 } };
+
+    const elsewhereBot: BotDestination = {
+      ...destination,
+      id: 'other-bot',
+      token: '2:y',
+    };
+
+    await connect(reviews, elsewhereBot);
+    // Left by a read that landed after the topic moved from 50 to 60, and the
+    // same message as another bot in the group keeps it.
+    await inboxStore.set([
+      { id: '-100123:1', destinationId: 'd1', receivedAt: 1, text: 'Old' },
+      {
+        id: '-100123:1',
+        destinationId: 'other-bot',
+        receivedAt: 1,
+        text: 'Old',
+      },
+    ]);
+
+    answer({
+      ok: true,
+      result: [
+        {
+          update_id: 1,
+          message: message({
+            chat: group,
+            message_thread_id: 50,
+            is_topic_message: true,
+            text: 'Old',
+          }),
+        },
+      ],
+    });
+
+    await checkInbox(reviews, signal);
+
+    expect(
+      (await inboxStore.get()).map((entry) => entry.destinationId)
+    ).toEqual(['other-bot']);
+  });
+
+  it('keeps nothing for a chat removed while it reads', async () => {
+    answer({
+      ok: true,
+      result: [
+        { update_id: 1, message: message({ chat: group, text: 'One' }) },
+      ],
+    });
+
+    await checkInbox(destination, signal);
+
     expect(await inboxStore.get()).toEqual([]);
   });
 });

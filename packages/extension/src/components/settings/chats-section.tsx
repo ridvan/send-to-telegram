@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { ChatAvatar } from '@/components/chat-avatar';
 import { AvatarDialog } from '@/components/settings/avatar-dialog';
+import { TopicDialog } from '@/components/settings/topic-dialog';
 import { ConnectBot } from '@/components/connect/connect-bot';
 import { SettingsSection } from '@/components/setting-row';
 import {
@@ -71,9 +72,11 @@ import {
 } from '@/lib/settings';
 
 function via(destination: Destination) {
-  const type = destination.chatType
-    ? chatTypeLabel[destination.chatType]
-    : 'Chat';
+  const type = destination.topic
+    ? 'Topic'
+    : destination.chatType
+      ? chatTypeLabel[destination.chatType]
+      : 'Chat';
 
   return destination.botUsername
     ? `${type} · @${destination.botUsername}`
@@ -177,7 +180,7 @@ function RemoveDialog({
 }
 
 type Editing = {
-  action: 'rename' | 'avatar' | 'remove';
+  action: 'rename' | 'avatar' | 'topic' | 'remove';
   destination: Destination;
 };
 
@@ -261,6 +264,13 @@ function ChatRow({
               >
                 Change avatar
               </DropdownMenuItem>
+              {destination.chatType === 'supergroup' || destination.topic ? (
+                <DropdownMenuItem
+                  onClick={() => onEdit({ action: 'topic', destination })}
+                >
+                  {destination.topic ? 'Change topic' : 'Choose a topic'}
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -367,6 +377,12 @@ export function ChatsSection({
       ) : null}
       {editing?.action === 'avatar' ? (
         <AvatarDialog
+          destination={editing.destination}
+          onClose={() => setEditing(undefined)}
+        />
+      ) : null}
+      {editing?.action === 'topic' ? (
+        <TopicDialog
           destination={editing.destination}
           onClose={() => setEditing(undefined)}
         />

@@ -74,16 +74,19 @@ export async function transmit(
 
     const { attachment, ...rest } = message;
 
-    return deliver(createBotClient(destination.token), destination.chatId, {
-      ...rest,
-      upload: new Upload(blob, attachment.name),
-    });
+    return deliver(
+      createBotClient(destination.token),
+      destination.chatId,
+      { ...rest, upload: new Upload(blob, attachment.name) },
+      destination.topic?.id
+    );
   }
 
   return deliver(
     createBotClient(destination.token),
     destination.chatId,
-    message
+    message,
+    destination.topic?.id
   );
 }
 

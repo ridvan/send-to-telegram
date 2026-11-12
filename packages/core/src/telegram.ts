@@ -36,6 +36,8 @@ export const chatSchema = z.object({
   username: z.string().optional(),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
+  /** A supergroup with topics, each its own thread. */
+  is_forum: z.boolean().optional(),
 });
 
 export type Chat = z.infer<typeof chatSchema>;
@@ -94,9 +96,31 @@ const playableSchema = z.object({
   thumbnail: photoSizeSchema.optional(),
 });
 
+/** Names a topic: on the message that created it, or on one that renamed it. */
+const topicNameSchema = z
+  .object({ name: z.string().optional() })
+  .optional()
+  .catch(undefined);
+
 const incomingMessageSchema = z.object({
   message_id: z.number(),
   chat: chatSchema,
+  /**
+   * The topic, or for replies outside forums the thread replied to; only
+   * `is_topic_message` tells them apart. General carries neither.
+   */
+  message_thread_id: z.number().optional(),
+  is_topic_message: z.boolean().optional(),
+  forum_topic_created: topicNameSchema,
+  forum_topic_edited: topicNameSchema,
+  /**
+   * Only what names a topic: Telegram sets the topic's first message here on
+   * messages in it that reply to nothing else.
+   */
+  reply_to_message: z
+    .object({ message_id: z.number(), forum_topic_created: topicNameSchema })
+    .optional()
+    .catch(undefined),
   from: userSchema.optional(),
   /** Set when a group became a supergroup, which gets a new chat ID. */
   migrate_to_chat_id: z.number().optional(),
@@ -188,6 +212,8 @@ type InlineKeyboard = {
 
 export type DeliveryOptions = {
   chat_id: ChatId;
+  /** A forum topic; absent posts to General. */
+  message_thread_id?: number;
   disable_notification?: boolean;
   reply_markup?: InlineKeyboard;
 };

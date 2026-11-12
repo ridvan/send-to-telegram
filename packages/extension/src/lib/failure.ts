@@ -1,4 +1,4 @@
-import { TelegramError } from '@send-to-telegram/core';
+import { isTopicUnavailable, TelegramError } from '@send-to-telegram/core';
 import { z } from 'zod';
 
 import { ComposeError } from './compose.ts';
@@ -35,6 +35,8 @@ export const failureCopy = {
     'Telegram rejected the bot token. It may have been revoked in BotFather. Update it in settings.',
   chat_unavailable:
     'The bot can’t post to this chat. Open the chat in Telegram and press Start, or add the bot back to the group.',
+  topic_unavailable:
+    'The topic was closed or deleted. Reopen it in Telegram, or choose another one in settings.',
   rate_limited: 'Telegram is limiting messages. Try again in a few seconds.',
   network: 'Couldn’t reach Telegram. Check your connection and try again.',
   attachment_missing:
@@ -60,6 +62,14 @@ function telegramFailure(error: TelegramError): SendFailure {
     return new SendFailure(
       'chat_unavailable',
       failureCopy.chat_unavailable,
+      options
+    );
+  }
+
+  if (isTopicUnavailable(error)) {
+    return new SendFailure(
+      'chat_unavailable',
+      failureCopy.topic_unavailable,
       options
     );
   }
