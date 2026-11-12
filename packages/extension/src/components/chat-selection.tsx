@@ -1,19 +1,10 @@
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { useState } from 'react';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { DeleteDialog } from '@/components/delete-dialog';
 import { Button } from '@/components/ui/button';
-import { formatCount, plural } from '@/lib/format';
+import { formatCount } from '@/lib/format';
 
 /**
  * The header while selecting messages, in place of the chat's name like
@@ -21,13 +12,18 @@ import { formatCount, plural } from '@/lib/format';
  */
 export function SelectionBar({
   count,
+  deletable,
   onCancel,
   onDelete,
 }: {
   count: number;
+  /** How many of them Telegram would delete too. */
+  deletable: number;
   onCancel: () => void;
-  onDelete: () => void;
+  onDelete: (inTelegram: boolean) => Promise<void>;
 }) {
+  const [asking, setAsking] = useState(false);
+
   return (
     <>
       <Button
@@ -45,34 +41,21 @@ export function SelectionBar({
       >
         {`${formatCount(count)} selected`}
       </h1>
-      <AlertDialog>
-        <AlertDialogTrigger
-          render={
-            <Button variant="destructive" size="sm" disabled={count === 0} />
-          }
-        >
-          Delete
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {plural(count, {
-                one: 'Delete # message?',
-                other: 'Delete # messages?',
-              })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              They’re removed from this browser only. Messages in Telegram stay.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onDelete}>
-              {count === 1 ? 'Delete message' : 'Delete messages'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={count === 0}
+        onClick={() => setAsking(true)}
+      >
+        Delete
+      </Button>
+      <DeleteDialog
+        open={asking}
+        onOpenChange={setAsking}
+        count={count}
+        deletable={deletable}
+        onConfirm={onDelete}
+      />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 
 import * as attachments from './attachments.ts';
+import { deleteCopy, deleteMessages, undoSend } from './chat-actions.ts';
 import { loadAttachment, saveAttachment } from './attachments.ts';
 import {
   changePassword,
@@ -17,7 +18,7 @@ import {
   unlock,
 } from './lock.ts';
 import { pruneUnsentFiles, send } from './send.ts';
-import { historyStore, settingsStore } from './settings.ts';
+import { historyEntrySchema, historyStore, settingsStore } from './settings.ts';
 import {
   envelopeSchema,
   fromBase64,
@@ -147,6 +148,30 @@ describe('while locked', () => {
 
     expect(outcome).toMatchObject({ ok: false, reason: 'locked' });
     expect(await stored('history')).toBe(before);
+  });
+
+  it('deletes nothing, in Telegram or here', async () => {
+    const before = await stored('history');
+    const fetch = vi.fn();
+
+    vi.stubGlobal('fetch', fetch);
+
+    const entry = historyEntrySchema.parse(sent);
+    const item = { direction: 'out', time: entry.sentAt, entry } as const;
+
+    const outcome = await deleteMessages([item], { inTelegram: true });
+
+    expect(outcome).toEqual({
+      inTelegram: 0,
+      kept: [item],
+      locked: true,
+    });
+    expect(await undoSend({ botId: 123, chatId: 42, messageIds: [1] })).toBe(
+      deleteCopy.locked
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await stored('history')).toBe(before);
+    vi.unstubAllGlobals();
   });
 
   it('unlocks with the password only', async () => {

@@ -61,7 +61,10 @@ export const deliveredViaSchema = z.enum([
 export type DeliveredVia = z.infer<typeof deliveredViaSchema>;
 
 export type Delivery = {
+  /** The last message posted; the one a source button goes on. */
   messageId: number;
+  /** Every message posted, in order: a long text goes in several. */
+  messageIds: number[];
   /** How Telegram finally accepted it, after any fallbacks. */
   via: DeliveredVia;
   /** An upload as Telegram keeps it, with the IDs to download it again. */
@@ -142,9 +145,9 @@ async function sendText(
   bot: BotClient,
   target: Target,
   message: Extract<OutgoingMessage, { kind: 'text' }>
-): Promise<number> {
+): Promise<number[]> {
   const parts = splitText(message.text);
-  let lastId = 0;
+  const ids: number[] = [];
 
   for (const [index, text] of parts.entries()) {
     const isLast = index === parts.length - 1;
@@ -158,10 +161,15 @@ async function sendText(
       ...(keyboard && { reply_markup: keyboard }),
     });
 
-    lastId = sent.message_id;
+    ids.push(sent.message_id);
   }
 
-  return lastId;
+  return ids;
+}
+
+/** A delivery of the messages a text went out as. */
+function textDelivery(ids: number[], via: 'text' | 'link'): Delivery {
+  return { messageId: ids.at(-1) ?? 0, messageIds: ids, via };
 }
 
 /** Sends a file as the media Telegram plays or shows inline. */
@@ -200,7 +208,7 @@ export async function deliver(
   const target = targetOf(chatId, topic);
 
   if (message.kind === 'text') {
-    return { messageId: await sendText(bot, target, message), via: 'text' };
+    return textDelivery(await sendText(bot, target, message), 'text');
   }
 
   const keyboard = sourceKeyboard(message.sourceUrl);
@@ -220,6 +228,7 @@ export async function deliver(
 
       return {
         messageId: sent.message_id,
+        messageIds: [sent.message_id],
         via: message.kind,
         ...('upload' in message && { sent }),
       };
@@ -233,6 +242,7 @@ export async function deliver(
 
     return {
       messageId: sent.message_id,
+      messageIds: [sent.message_id],
       via: 'document',
       ...('upload' in message && { sent }),
     };
@@ -244,7 +254,7 @@ export async function deliver(
     ? `${message.url}\n\n${message.caption}`
     : message.url;
 
-  const messageId = await sendText(bot, target, {
+  const ids = await sendText(bot, target, {
     kind: 'text',
     text,
     linkPreview: true,
@@ -252,5 +262,5 @@ export async function deliver(
     ...(message.sourceUrl && { sourceUrl: message.sourceUrl }),
   });
 
-  return { messageId, via: 'link' };
+  return textDelivery(ids, 'link');
 }

@@ -201,6 +201,8 @@ const resultSchemas = {
   sendVideo: incomingMessageSchema,
   sendAudio: incomingMessageSchema,
   editMessageText: z.union([sentMessageSchema, z.literal(true)]),
+  deleteMessage: z.literal(true),
+  deleteMessages: z.literal(true),
   answerCallbackQuery: z.literal(true),
   setWebhook: z.literal(true),
   setMyCommands: z.literal(true),
@@ -286,6 +288,10 @@ type MethodParams = {
     text: string;
     reply_markup?: InlineKeyboard;
   };
+  /** 1 to 100 messages of one chat; ones Telegram can't find are skipped. */
+  deleteMessage: { chat_id: ChatId; message_id: number };
+  /** Answers true whether or not each message went; see `deleteMessage`. */
+  deleteMessages: { chat_id: ChatId; message_ids: number[] };
   answerCallbackQuery: { callback_query_id: string; text?: string };
   setWebhook: {
     url: string;
@@ -400,6 +406,16 @@ export const botTokenSchema = z
   .string()
   .trim()
   .regex(/^\d{5,}:[\w-]{30,}$/, 'This does not look like a bot token');
+
+/**
+ * The bot's user ID, which a token starts with. It names the bot without
+ * the secret part, and stays when the token is revoked and replaced.
+ */
+export function botIdOf(token: string): number | undefined {
+  const id = /^(\d+):/.exec(token)?.[1];
+
+  return id === undefined ? undefined : Number(id);
+}
 
 /** Human name for a chat, the way Telegram clients title it. */
 export function chatTitle(chat: Chat): string {

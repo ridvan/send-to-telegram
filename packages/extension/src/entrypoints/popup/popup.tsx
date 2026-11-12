@@ -44,6 +44,7 @@ import {
   NoMatches,
 } from '@/components/chat-search';
 import { HashtagSuggestions } from '@/components/hashtag-suggestions';
+import { announceDeletion } from '@/components/announce-deletion';
 import { MenuItem } from '@/components/message-menu';
 import { PlaneIcon } from '@/components/plane-icon';
 import {
@@ -101,7 +102,12 @@ import { useLock } from '@/hooks/use-lock';
 import { useStore } from '@/hooks/use-store';
 import { markAnnouncementSeen } from '@/lib/announcements';
 import { saveAttachment } from '@/lib/attachments';
-import { deleteMessages } from '@/lib/chat-actions';
+import {
+  deletableInTelegram,
+  deleteMessages,
+  type SentMessages,
+  undoSend,
+} from '@/lib/chat-actions';
 import {
   draftFromEntry,
   openExtensionPage,
@@ -128,6 +134,12 @@ import { cn } from '@/lib/utils';
 import { type PageContext, resumedFile } from './page';
 
 const CANT_SCREENSHOT = 'Can’t take a screenshot';
+
+/** How long a send can be undone from the popup. */
+const UNDO_FOR = 6000;
+
+/** Over the chat's name, so the note stays free for the next message. */
+const UNDO_TOAST = { position: 'top-center' } as const;
 
 type Phase =
   | { name: 'idle' }
@@ -265,8 +277,12 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
   // Read from the chat, so a message deleted elsewhere no longer counts.
   const chosen = items.filter((item) => selected.has(chatKey(item)));
 
+  // When selecting began, for which messages Telegram still lets go.
+  const [selectedAt, setSelectedAt] = useState(() => Date.now());
+
   function startSelecting(key: string) {
     setSelected(new Set([key]));
+    setSelectedAt(Date.now());
     show('select');
   }
 
@@ -288,17 +304,17 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
     noteRef.current?.focus();
   }
 
-  async function deleteSelected() {
-    const count = chosen.length;
+  async function deleteSelected(inTelegram: boolean) {
+    const outcome = await deleteMessages(chosen, { inTelegram });
 
-    await deleteMessages(chosen);
-    stopSelecting();
-    toast(
-      plural(count, {
-        one: 'Deleted # message from this browser',
-        other: 'Deleted # messages from this browser',
-      })
-    );
+    announceDeletion(outcome, chosen.length);
+
+    // Ones Telegram kept stay selected, to try again or remove here only.
+    if (outcome.kept.length > 0) {
+      setSelected(new Set(outcome.kept.map(chatKey)));
+    } else {
+      stopSelecting();
+    }
   }
 
   /** Escape leaves selecting, unless it's closing the dialog that asks first. */
@@ -340,8 +356,13 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
           ) : view === 'select' ? (
             <SelectionBar
               count={chosen.length}
+              deletable={deletableInTelegram(
+                chosen,
+                settings.destinations,
+                selectedAt
+              )}
               onCancel={stopSelecting}
-              onDelete={() => void deleteSelected()}
+              onDelete={deleteSelected}
             />
           ) : (
             <>
@@ -602,6 +623,13 @@ function Composer({
         : undefined,
   });
 
+  // Read by Undo, which runs after this render's values have moved on.
+  const draftNow = useRef({ note, attached });
+
+  useEffect(() => {
+    draftNow.current = { note, attached };
+  });
+
   const [dropping, setDropping] = useState(false);
   const canAttach = destination !== undefined;
 
@@ -734,6 +762,9 @@ function Composer({
     const outcome = await requestSend(draft, { incognito: page.incognito });
 
     if (outcome.ok) {
+      const before = { note, file: attached?.file, mode };
+      const { sent } = outcome;
+
       setPhase({ name: 'sent', destination: outcome.destination });
       // The draft shows its tick, then takes its place in the chat, and the
       // field clears for the next message, as in Telegram.
@@ -746,6 +777,15 @@ function Composer({
         noteRef.current?.focus();
         // Once the sent message and the fresh draft have rendered.
         requestAnimationFrame(scrollToDraft);
+
+        // Offered once the field is clear, so Undo can fill it again.
+        if (sent) {
+          toast(`Sent to ${outcome.destination}`, {
+            ...UNDO_TOAST,
+            duration: UNDO_FOR,
+            action: { label: 'Undo', onClick: () => void undo(sent, before) },
+          });
+        }
       }, 1000);
 
       return;
@@ -758,6 +798,42 @@ function Composer({
         outcome.reason === 'unauthorized' ||
         outcome.reason === 'no_destination',
     });
+  }
+
+  /**
+   * Deletes what was just sent from Telegram and the chat, and puts the
+   * draft back, unless another was started since.
+   */
+  async function undo(
+    sent: SentMessages,
+    before: { note: string; file: File | undefined; mode: typeof mode }
+  ) {
+    const problem = await undoSend(sent);
+
+    if (problem) {
+      toast.error('Couldn’t undo the send', {
+        ...UNDO_TOAST,
+        description: problem,
+      });
+
+      return;
+    }
+
+    const current = draftNow.current;
+    const restore = !current.note.trim() && !current.attached;
+
+    if (restore) {
+      setNote(before.note);
+      setMode(before.mode);
+
+      if (before.file) attach(before.file);
+    }
+
+    toast(
+      restore ? 'Message unsent. It’s back in the draft.' : 'Message unsent',
+      UNDO_TOAST
+    );
+    noteRef.current?.focus();
   }
 
   const searching = search !== undefined;
@@ -916,6 +992,7 @@ function Composer({
             <ChatHistory
               items={matches}
               delivery={settings.delivery}
+              destinations={settings.destinations}
               botToken={destination?.token}
               now={time}
               draftBelow={!term}

@@ -1,5 +1,7 @@
 import { type ReactNode, useId, useState } from 'react';
 
+import { announceDeletion } from '@/components/announce-deletion';
+import { DeleteDialog } from '@/components/delete-dialog';
 import { MessageMenu } from '@/components/message-menu';
 import { ReceivedMessage, SentMessage } from '@/components/message-preview';
 import { Button } from '@/components/ui/button';
@@ -7,8 +9,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { type ChatItem, chatKey } from '@/hooks/use-chat-items';
 import { draftFromEntry, requestSend } from '@/lib/client';
 import { dayKey, entryTitle, formatDay, groupByDay } from '@/lib/format';
+import { deleteMessages } from '@/lib/chat-actions';
 import { chatRowId } from '@/lib/reveal';
-import type { HistoryEntry, Settings } from '@/lib/settings';
+import type { Destination, HistoryEntry, Settings } from '@/lib/settings';
 
 /** A day or two of messages at a time, so the popup opens fast. */
 const PAGE = 40;
@@ -79,6 +82,7 @@ function SendAgain({ entry }: { entry: HistoryEntry }) {
 export function ChatHistory({
   items,
   delivery,
+  destinations,
   botToken,
   now,
   draftBelow,
@@ -90,6 +94,8 @@ export function ChatHistory({
   /** From `useChatItems`, newest first. */
   items: ChatItem[];
   delivery: Settings['delivery'];
+  /** Finds the bot that can delete a sent message in Telegram. */
+  destinations: Destination[];
   /** Downloads received media, for a chat with your own bot. */
   botToken: string | undefined;
   now: number;
@@ -111,6 +117,8 @@ export function ChatHistory({
   focusKey?: string | undefined;
 }) {
   const [pages, setPages] = useState(1);
+  // A sent message whose menu asked to delete it, held outside the menu.
+  const [deleting, setDeleting] = useState<ChatItem>();
   // The chat and search results can both be on the page.
   const dayIds = useId();
 
@@ -165,7 +173,10 @@ export function ChatHistory({
                   <MessageMenu
                     item={item}
                     delivery={delivery}
+                    destinations={destinations}
+                    now={now}
                     onSelect={() => select.onStart(key)}
+                    onAskDelete={() => setDeleting(item)}
                   />
                 ),
                 ...(onPick
@@ -209,6 +220,19 @@ export function ChatHistory({
           </ol>
         </section>
       ))}
+      <DeleteDialog
+        open={deleting !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(undefined);
+        }}
+        count={1}
+        deletable={1}
+        onConfirm={async (inTelegram) => {
+          if (!deleting) return;
+
+          announceDeletion(await deleteMessages([deleting], { inTelegram }), 1);
+        }}
+      />
       {/* The draft is today's, even when the last message is older. */}
       {draftBelow && lastDay !== dayKey(now) ? (
         <DayPill day={now} now={now} />

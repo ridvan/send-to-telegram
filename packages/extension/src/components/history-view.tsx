@@ -9,6 +9,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { useDeferredValue, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { announceDeletion } from '@/components/announce-deletion';
+import { DeleteDialog } from '@/components/delete-dialog';
 import { HistoryRow } from '@/components/history-row';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,12 +31,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useStore } from '@/hooks/use-store';
+import { deleteMessages, telegramDeletion } from '@/lib/chat-actions';
 import { draftFromEntry, requestSend } from '@/lib/client';
 import { isHttpUrl } from '@/lib/compose';
 import { formatDay, groupByDay, plural } from '@/lib/format';
 import { sentText } from '@/lib/search';
 import {
   type ContentKind,
+  type Destination,
   type HistoryEntry,
   historyStore,
   settingsStore,
@@ -103,7 +107,30 @@ const openLabels: Partial<Record<ContentKind, string>> = {
   audio: 'Open audio',
 };
 
-function EntryActions({ entry }: { entry: HistoryEntry }) {
+/** Deletes in Telegram too, or removes it here with a way back. */
+async function deleteEntry(entry: HistoryEntry, inTelegram: boolean) {
+  if (!inTelegram) {
+    removeEntry(entry);
+
+    return;
+  }
+
+  const item = { direction: 'out', time: entry.sentAt, entry } as const;
+
+  announceDeletion(await deleteMessages([item], { inTelegram }), 1);
+}
+
+function EntryActions({
+  entry,
+  destinations,
+  now,
+}: {
+  entry: HistoryEntry;
+  destinations: Destination[];
+  now: number;
+}) {
+  const [asking, setAsking] = useState(false);
+  const deletable = telegramDeletion(entry, destinations, now).can;
   const draft = draftFromEntry(entry);
   const content = entry.content;
   const openUrl = [content?.url, content?.pageUrl].find(isHttpUrl);
@@ -148,11 +175,21 @@ function EntryActions({ entry }: { entry: HistoryEntry }) {
           }}
         />
       ) : null}
+      {/* One only this browser keeps goes at once, with Undo. */}
       <RowAction
-        label="Remove from history"
+        label={deletable ? 'Delete' : 'Remove from history'}
         icon={Delete02Icon}
-        onClick={() => removeEntry(entry)}
+        onClick={() => (deletable ? setAsking(true) : removeEntry(entry))}
       />
+      {deletable ? (
+        <DeleteDialog
+          open={asking}
+          onOpenChange={setAsking}
+          count={1}
+          deletable={1}
+          onConfirm={(inTelegram) => deleteEntry(entry, inTelegram)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -268,7 +305,13 @@ export function HistoryView({
                 key={entry.id}
                 entry={entry}
                 now={now}
-                actions={<EntryActions entry={entry} />}
+                actions={
+                  <EntryActions
+                    entry={entry}
+                    destinations={settings.destinations}
+                    now={now}
+                  />
+                }
               />
             ))}
           </section>

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Screenshots. Send what the page shows, or drag out an area of it, from the popup's paperclip, the page's right-click menu, or Alt+Shift+P and Alt+Shift+A.
 - Videos and audio. Right-click one to send it to a chat, where it plays in Telegram. When Telegram can't play it, it goes as a file, then as its link; a video the page streams goes as the page.
 - Forum topics. Write in a group's topic while connecting and it shows up as its own chat, or choose a topic for a group in Settings > Chats. Each topic's messages show in its own chat in the popup; the group's chat shows the rest.
+- Delete in Telegram too. Deleting a message you sent, alone or a few selected at once, can delete it for everyone in the chat within Telegram's 48 hours; older ones, and ones sent before this version, are removed from this browser only. Right after a send from the popup, Undo deletes it and puts the draft back.
 - New features are announced once in the popup's chat, with a way to try them. Fresh installs skip them, since setup shows what's there.
 
 ## [2.0.0] - Unreleased
