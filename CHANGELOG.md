@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Screenshots. Send what the page shows, or drag out an area of it, from the popup's paperclip, the page's right-click menu, or Alt+Shift+P and Alt+Shift+A.
+- Videos and audio. Right-click one to send it to a chat, where it plays in Telegram. When Telegram can't play it, it goes as a file, then as its link; a video the page streams goes as the page.
 - New features are announced once in the popup's chat, with a way to try them. Fresh installs skip them, since setup shows what's there.
 
 ## [2.0.0] - Unreleased

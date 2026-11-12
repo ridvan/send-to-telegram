@@ -174,6 +174,8 @@ const resultSchemas = {
   // The whole message, so an uploaded file can be downloaded again.
   sendPhoto: incomingMessageSchema,
   sendDocument: incomingMessageSchema,
+  sendVideo: incomingMessageSchema,
+  sendAudio: incomingMessageSchema,
   editMessageText: z.union([sentMessageSchema, z.literal(true)]),
   answerCallbackQuery: z.literal(true),
   setWebhook: z.literal(true),
@@ -184,7 +186,7 @@ type InlineKeyboard = {
   inline_keyboard: { text: string; url?: string; callback_data?: string }[][];
 };
 
-type DeliveryOptions = {
+export type DeliveryOptions = {
   chat_id: ChatId;
   disable_notification?: boolean;
   reply_markup?: InlineKeyboard;
@@ -250,6 +252,8 @@ type MethodParams = {
   };
   sendPhoto: DeliveryOptions & { photo: InputFile; caption?: string };
   sendDocument: DeliveryOptions & { document: InputFile; caption?: string };
+  sendVideo: DeliveryOptions & { video: InputFile; caption?: string };
+  sendAudio: DeliveryOptions & { audio: InputFile; caption?: string };
   editMessageText: {
     chat_id: ChatId;
     message_id: number;

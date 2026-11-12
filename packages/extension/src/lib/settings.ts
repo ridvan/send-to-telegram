@@ -161,7 +161,15 @@ export const settingsStore = defineStore(
   { sealed: true }
 );
 
-export const contentKindSchema = z.enum(['selection', 'link', 'image', 'page']);
+// Widened only: history stores the kind, so a kind once written stays here.
+export const contentKindSchema = z.enum([
+  'selection',
+  'link',
+  'image',
+  'video',
+  'audio',
+  'page',
+]);
 
 export type ContentKind = z.infer<typeof contentKindSchema>;
 

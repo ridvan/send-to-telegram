@@ -33,7 +33,12 @@ import { draftFromEntry, requestSend } from '@/lib/client';
 import { isHttpUrl } from '@/lib/compose';
 import { formatDay, groupByDay, plural } from '@/lib/format';
 import { sentText } from '@/lib/search';
-import { type HistoryEntry, historyStore, settingsStore } from '@/lib/settings';
+import {
+  type ContentKind,
+  type HistoryEntry,
+  historyStore,
+  settingsStore,
+} from '@/lib/settings';
 
 function removeEntry(entry: HistoryEntry) {
   void historyStore.update((history) =>
@@ -90,6 +95,14 @@ function RowAction({
   );
 }
 
+/** What opening a sent item's own address opens; anything else is its page. */
+const openLabels: Partial<Record<ContentKind, string>> = {
+  link: 'Open link',
+  image: 'Open image',
+  video: 'Open video',
+  audio: 'Open audio',
+};
+
 function EntryActions({ entry }: { entry: HistoryEntry }) {
   const draft = draftFromEntry(entry);
   const content = entry.content;
@@ -101,11 +114,9 @@ function EntryActions({ entry }: { entry: HistoryEntry }) {
       {openUrl ? (
         <RowAction
           label={
-            entry.kind === 'link'
-              ? 'Open link'
-              : entry.kind === 'image'
-                ? 'Open image'
-                : 'Open page'
+            openUrl === content?.url
+              ? (openLabels[entry.kind] ?? 'Open page')
+              : 'Open page'
           }
           icon={ArrowUpRight01Icon}
           href={openUrl}

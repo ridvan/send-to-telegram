@@ -14,6 +14,7 @@ import {
   markAnnouncementSeen,
 } from '@/lib/announcements';
 import { saveAttachment } from '@/lib/attachments';
+import { isHttpUrl } from '@/lib/compose';
 import { migrateStoredLegacyData } from '@/lib/legacy';
 import { parseMenuId, rebuildMenus } from '@/lib/menus';
 import {
@@ -27,7 +28,11 @@ import {
   showWaitingBadge,
 } from '@/lib/send';
 import { attachmentInfo, captureFailure, captureTab } from '@/lib/screenshot';
-import { defaultSettings, settingsStore } from '@/lib/settings';
+import {
+  type ContentKind,
+  defaultSettings,
+  settingsStore,
+} from '@/lib/settings';
 import { activeTab, pageUrlOf, readSelection } from '@/lib/tabs';
 import {
   LockedError,
@@ -35,6 +40,23 @@ import {
   type LockState,
   watchLockKeys,
 } from '@/lib/vault';
+
+/**
+ * The source of a right-clicked image, video or song. A streamed `blob:`
+ * video means nothing outside the tab, so it's left out and the page goes.
+ */
+function mediaUrl(
+  { kind }: { kind: ContentKind },
+  { srcUrl }: { srcUrl?: string | undefined }
+) {
+  if (kind === 'image') return srcUrl;
+
+  if (kind === 'video' || kind === 'audio') {
+    return isHttpUrl(srcUrl) ? srcUrl : undefined;
+  }
+
+  return undefined;
+}
 
 /**
  * Sends from the menu or a shortcut while locked, kept in session storage
@@ -339,11 +361,7 @@ export default defineBackground({
           : undefined;
 
       const url =
-        target.kind === 'link'
-          ? info.linkUrl
-          : target.kind === 'image'
-            ? info.srcUrl
-            : undefined;
+        target.kind === 'link' ? info.linkUrl : mediaUrl(target, info);
 
       await sendFromBrowser({
         type: 'send',

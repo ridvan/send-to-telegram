@@ -21,8 +21,17 @@ describe('parseMenuId', () => {
     });
   });
 
+  it('reads a video or song sent from its menu item', () => {
+    expect(parseMenuId('send:video:chat-1:')).toEqual({
+      draft: { kind: 'video', destinationId: 'chat-1' },
+    });
+    expect(parseMenuId('send:audio::music')).toEqual({
+      draft: { kind: 'audio', tag: 'music' },
+    });
+  });
+
   it('ignores ids it did not make', () => {
     expect(parseMenuId('snap:page::')).toBeUndefined();
-    expect(parseMenuId('send:video::')).toBeUndefined();
+    expect(parseMenuId('send:movie::')).toBeUndefined();
   });
 });

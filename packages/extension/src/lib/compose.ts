@@ -22,7 +22,7 @@ export const draftSchema = z.object({
   pageTitle: z.string().optional(),
   /** Selected text. */
   text: z.string().optional(),
-  /** The link target, or the image source. */
+  /** The link target, or the image, video or audio source. */
   url: z.string().optional(),
   note: z.string().optional(),
   tag: tagSchema.optional(),
@@ -60,6 +60,22 @@ function clip(text: string, limit: number): string {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
+/**
+ * A video or song Telegram can't fetch, because the page streams it (a
+ * `blob:` source) or keeps it out of reach, goes as its page instead: on
+ * streaming sites the page's preview plays it.
+ */
+export function sendsPageInstead(draft: Pick<Draft, 'kind' | 'url'>): boolean {
+  return (
+    (draft.kind === 'video' || draft.kind === 'audio') && !isHttpUrl(draft.url)
+  );
+}
+
+/** The draft as it goes out, so video and audio sent as their page read as one. */
+function asSent(draft: Draft): Draft {
+  return sendsPageInstead(draft) ? { ...draft, kind: 'page' } : draft;
+}
+
 /** Types Telegram shows as photos; others, GIFs and WebP included, go as files. */
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
 
@@ -95,29 +111,39 @@ function bodyOf(draft: Draft, delivery: Settings['delivery']) {
         ? draft.pageUrl
         : `${draft.pageTitle.trim()}\n${draft.pageUrl}`;
     case 'image':
+    case 'video':
+    case 'audio':
       return undefined;
   }
 }
 
 /**
  * The message's text as it reads in Telegram, unclipped: the note, then the
- * content, then the hashtag. An image sent as a picture reads as its address.
+ * content, then the hashtag. Media sent from its address reads as that address.
  */
 export function messageText(
-  draft: Draft,
+  sourceDraft: Draft,
   delivery: Settings['delivery']
 ): string {
+  const draft = asSent(sourceDraft);
   const tag = draft.tag ? `#${draft.tag}` : undefined;
-  const body = draft.kind === 'image' ? draft.url : bodyOf(draft, delivery);
+  const body = bodyOf(draft, delivery) ?? draft.url;
 
   return paragraphs(draft.note, body, tag);
 }
 
 /** Turns a draft into one outgoing message, following the delivery settings. */
 export function compose(
-  draft: Draft,
+  sourceDraft: Draft,
   delivery: Settings['delivery']
 ): OutgoingMessage | ComposedUpload {
+  if (sendsPageInstead(sourceDraft) && !isHttpUrl(sourceDraft.pageUrl)) {
+    throw new ComposeError(
+      `Telegram can’t fetch this ${sourceDraft.kind}, and the page has no web address to send instead. Save the ${sourceDraft.kind} to this device, then attach it with the popup’s paperclip.`
+    );
+  }
+
+  const draft = asSent(sourceDraft);
   const tag = draft.tag ? `#${draft.tag}` : undefined;
   const note = draft.note?.trim() || undefined;
 
@@ -174,6 +200,18 @@ export function compose(
     return {
       kind: asDocument ? 'document' : 'photo',
       url,
+      ...(caption && { caption: clip(caption, CAPTION_LIMIT) }),
+      ...common,
+    };
+  }
+
+  if ((draft.kind === 'video' || draft.kind === 'audio') && draft.url) {
+    const caption = paragraphs(note, tag);
+
+    // Telegram falls back to a file, then the link, when it can't play it.
+    return {
+      kind: draft.kind,
+      url: draft.url,
       ...(caption && { caption: clip(caption, CAPTION_LIMIT) }),
       ...common,
     };

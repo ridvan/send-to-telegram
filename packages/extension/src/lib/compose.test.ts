@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { draftFromEntry } from './client.ts';
 import { compose, ComposeError, messageText } from './compose.ts';
-import { defaultSettings } from './settings.ts';
+import {
+  defaultSettings,
+  type HistoryEntry,
+  historyEntrySchema,
+} from './settings.ts';
 
 const delivery = defaultSettings().delivery;
 const page = { pageUrl: 'https://example.com/post', pageTitle: 'A post' };
@@ -72,6 +77,60 @@ describe('compose', () => {
         delivery
       )
     ).toThrow(ComposeError);
+  });
+
+  it('sends a video or song from its address, with the note and hashtag as its caption', () => {
+    expect(
+      compose(
+        {
+          kind: 'video',
+          url: 'https://cdn.example.com/clip.mp4',
+          note: 'Watch this',
+          tag: 'film',
+          ...page,
+        },
+        delivery
+      )
+    ).toEqual({
+      kind: 'video',
+      url: 'https://cdn.example.com/clip.mp4',
+      caption: 'Watch this\n\n#film',
+      silent: true,
+      sourceUrl: 'https://example.com/post',
+    });
+    expect(
+      compose(
+        { kind: 'audio', url: 'https://cdn.example.com/song.mp3', ...page },
+        { ...delivery, imageMode: 'link' }
+      )
+    ).toEqual({
+      kind: 'audio',
+      url: 'https://cdn.example.com/song.mp3',
+      silent: true,
+      sourceUrl: 'https://example.com/post',
+    });
+  });
+
+  it('sends the page of a video it streams, without a button to the same page', () => {
+    for (const url of ['blob:https://example.com/0f2c', undefined]) {
+      const message = compose(
+        { kind: 'video', note: 'Later', ...(url && { url }), ...page },
+        { ...delivery, linkPreview: false }
+      );
+
+      expect(message).toEqual({
+        kind: 'text',
+        text: 'Later\n\nA post\nhttps://example.com/post',
+        linkPreview: false,
+        silent: true,
+      });
+    }
+  });
+
+  it('says what to do when a streamed video has no page to send', () => {
+    expect(() =>
+      compose({ kind: 'audio', pageUrl: 'file:///Users/me/a.html' }, delivery)
+    ).toThrow(/Save the audio to this device/);
   });
 
   it('sends an attached file with the message as its caption', () => {
@@ -178,5 +237,55 @@ describe('messageText', () => {
     expect(
       messageText({ kind: 'image', url: 'https://a.dev/x.png', note }, delivery)
     ).toBe(`${note}\n\nhttps://a.dev/x.png`);
+  });
+
+  it('reads a video as its address, or as its page when streamed', () => {
+    expect(
+      messageText(
+        { kind: 'video', url: 'https://a.dev/x.mp4', tag: 'film' },
+        delivery
+      )
+    ).toBe('https://a.dev/x.mp4\n\n#film');
+    expect(
+      messageText(
+        { kind: 'video', url: 'blob:https://a.dev/1', ...page },
+        delivery
+      )
+    ).toBe('https://example.com/post');
+  });
+});
+
+describe('sending again from history', () => {
+  const entry = (content: HistoryEntry['content']) =>
+    historyEntrySchema.parse({
+      id: 'h1',
+      sentAt: 1,
+      kind: 'video',
+      status: 'failed',
+      tag: 'film',
+      content,
+    });
+
+  it('sends a video again from its address', () => {
+    const draft = draftFromEntry(
+      entry({ url: 'https://cdn.example.com/clip.mp4', ...page })
+    );
+
+    expect(draft && compose(draft, delivery)).toMatchObject({
+      kind: 'video',
+      url: 'https://cdn.example.com/clip.mp4',
+      caption: '#film',
+    });
+  });
+
+  it('sends a streamed video again as its page', () => {
+    const draft = draftFromEntry(entry(page));
+
+    expect(draft && compose(draft, delivery)).toEqual({
+      kind: 'text',
+      text: 'https://example.com/post\n\n#film',
+      linkPreview: true,
+      silent: true,
+    });
   });
 });

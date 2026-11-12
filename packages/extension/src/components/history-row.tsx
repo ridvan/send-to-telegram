@@ -3,7 +3,9 @@ import {
   Globe02Icon,
   Image02Icon,
   Link04Icon,
+  MusicNote01Icon,
   TextIcon,
+  Video01Icon,
 } from '@hugeicons/core-free-icons';
 import type { ComponentProps, ReactNode } from 'react';
 
@@ -34,6 +36,8 @@ const kindTiles = {
   selection: { icon: TextIcon, tone: 'orange' },
   link: { icon: Link04Icon, tone: 'violet' },
   image: { icon: Image02Icon, tone: 'green' },
+  video: { icon: Video01Icon, tone: 'cyan' },
+  audio: { icon: MusicNote01Icon, tone: 'pink' },
   page: { icon: Globe02Icon, tone: 'blue' },
 } satisfies Record<ContentKind, { icon: typeof TextIcon; tone: TileTone }>;
 
