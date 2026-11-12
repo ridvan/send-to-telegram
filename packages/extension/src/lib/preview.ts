@@ -15,6 +15,7 @@ import type { Chat, Update } from '@send-to-telegram/core';
 import { z } from 'zod';
 
 import type { SelectAreaRequest } from './area.ts';
+import type { SelectionMarkup } from './selection.ts';
 import type { SendRequest } from './send.ts';
 
 type Changes = Record<string, { oldValue?: string; newValue?: string }>;
@@ -218,6 +219,7 @@ function demoData(now: number) {
         telegram: { botId: 1, chatId: 1001, messageIds: [98] },
         content: {
           text: 'The best interfaces are the ones you never notice. Every detail that works the way you expect is a detail you never have to think about.',
+          entities: [{ type: 'italic', offset: 37, length: 12 }],
           pageUrl: 'https://emilkowal.ski/ui/invisible-details',
           pageTitle: 'Invisible details of interaction design',
         },
@@ -795,6 +797,33 @@ function fakeTelegram(
   };
 }
 
+/** What `?selection` reads from the page: text with a few formats in it. */
+const sampleSelection: SelectionMarkup = {
+  text: 'Grid is a two-dimensional layout system. Flexbox lays things out in one dimension at a time, and display: flex turns it on. See the guide.\n\nUse Flexbox for rows, Grid for whole layouts.',
+  runs: [
+    { text: 'Grid', marks: [0] },
+    { text: ' is a two-dimensional layout system. ', marks: [] },
+    { text: 'Flexbox', marks: [1] },
+    { text: ' lays things out in one dimension at a time, and ', marks: [] },
+    { text: 'display: flex', marks: [2] },
+    { text: ' turns it on. See ', marks: [] },
+    { text: 'the guide', marks: [3] },
+    { text: '.', marks: [] },
+    { text: '\n', marks: [] },
+    { text: 'Use Flexbox for rows, Grid for whole layouts.', marks: [4] },
+  ],
+  marks: [
+    { type: 'bold' },
+    { type: 'italic' },
+    { type: 'code' },
+    {
+      type: 'text_link',
+      url: 'https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout',
+    },
+    { type: 'blockquote' },
+  ],
+};
+
 function install() {
   const listeners = new Set<ChangeListener>();
   const url = new URL(location.href);
@@ -926,11 +955,12 @@ function install() {
       },
     },
     scripting: {
+      // A selection as the page reads it, with its formatting.
       executeScript: async () => [
         {
           result: url.searchParams.has('selection')
-            ? 'Grid is a two-dimensional layout system. Flexbox lays things out in one dimension at a time.'
-            : '',
+            ? sampleSelection
+            : { text: '', runs: [], marks: [] },
         },
       ],
     },

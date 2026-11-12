@@ -11,6 +11,11 @@ import {
   Video01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  normalizeEntities,
+  sliceEntities,
+  type TextEntity,
+} from '@send-to-telegram/core';
 import { useState, type ReactNode } from 'react';
 
 import { IconTile } from '@/components/icon-tile';
@@ -21,6 +26,7 @@ import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import {
   albumGroups,
   isHttpUrl,
+  quoteUrl,
   sendsAsPhoto,
   sendsPageInstead,
 } from '@/lib/compose';
@@ -116,14 +122,19 @@ function Meta({
 function UrlText({
   url,
   linked,
+  wrap = false,
   children,
 }: {
   url: string;
   linked: boolean;
+  /** Breaks between words, for text that links rather than an address. */
+  wrap?: boolean;
   children: ReactNode;
 }) {
+  const breaks = wrap ? 'break-words' : 'break-all';
+
   if (!linked) {
-    return <span className="break-all text-bubble-accent">{children}</span>;
+    return <span className={cn(breaks, 'text-bubble-accent')}>{children}</span>;
   }
 
   return (
@@ -131,7 +142,10 @@ function UrlText({
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="break-all text-bubble-accent underline-offset-2 hover:underline"
+      className={cn(
+        breaks,
+        'text-bubble-accent underline-offset-2 hover:underline'
+      )}
     >
       {children}
     </a>
@@ -181,6 +195,150 @@ function Hashtag({ tag }: { tag: string }) {
   return <span className="text-bubble-accent">{`#${tag}`}</span>;
 }
 
+/** How Telegram's apps draw each format, in the bubble's colors. */
+function formatted(
+  entity: TextEntity,
+  children: ReactNode,
+  linked: boolean
+): ReactNode {
+  const key = `${entity.type}-${entity.offset}`;
+
+  switch (entity.type) {
+    case 'bold':
+      return (
+        <strong key={key} className="font-semibold">
+          {children}
+        </strong>
+      );
+    case 'italic':
+      return (
+        <em key={key} className="synthesized-italic">
+          {children}
+        </em>
+      );
+    case 'underline':
+      return <u key={key}>{children}</u>;
+    case 'strikethrough':
+      return <s key={key}>{children}</s>;
+    case 'code':
+      return (
+        <code
+          key={key}
+          className="rounded-sm bg-bubble-muted/15 px-1 font-mono box-decoration-clone"
+        >
+          {children}
+        </code>
+      );
+    case 'pre':
+      return (
+        <code
+          key={key}
+          className="my-1 block rounded-sm bg-bubble-muted/15 px-2 py-1 font-mono whitespace-pre-wrap"
+        >
+          {children}
+        </code>
+      );
+    case 'blockquote':
+      return (
+        <span
+          key={key}
+          className="my-1 block rounded-r-sm border-l-2 border-bubble-accent bg-bubble-accent/10 px-2 py-0.5"
+        >
+          {children}
+        </span>
+      );
+    case 'text_link':
+      return entity.url ? (
+        <UrlText key={key} url={entity.url} linked={linked} wrap>
+          {children}
+        </UrlText>
+      ) : (
+        children
+      );
+  }
+}
+
+/** Draws the entities wholly within `start` to `end`; they nest, outermost first. */
+function formattedRange(
+  text: string,
+  entities: TextEntity[],
+  start: number,
+  end: number,
+  linked: boolean
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let cursor = start;
+  let index = 0;
+
+  // Blocks keep their own lines, so the line breaks around them would add more.
+  let afterBlock = false;
+
+  const between = (from: number, to: number, beforeBlock: boolean) => {
+    let part = text.slice(from, to);
+
+    if (afterBlock) part = part.replace(/^\n+/, '');
+
+    if (beforeBlock) part = part.replace(/\n+$/, '');
+
+    return part;
+  };
+
+  while (index < entities.length) {
+    const entity = entities[index];
+
+    if (!entity) break;
+
+    const stop = entity.offset + entity.length;
+    const block = entity.type === 'pre' || entity.type === 'blockquote';
+    let inner = index + 1;
+
+    while ((entities[inner]?.offset ?? stop) < stop) inner++;
+
+    nodes.push(
+      between(cursor, entity.offset, block),
+      formatted(
+        entity,
+        formattedRange(
+          text,
+          entities.slice(index + 1, inner),
+          entity.offset,
+          stop,
+          linked
+        ),
+        linked
+      )
+    );
+    cursor = stop;
+    index = inner;
+    afterBlock = block;
+  }
+
+  nodes.push(between(cursor, end, false));
+
+  return nodes;
+}
+
+/** A selection with the formatting it had on the page, as Telegram shows it. */
+function FormattedText({
+  text: raw,
+  entities,
+  linked,
+}: {
+  text: string;
+  entities: TextEntity[];
+  linked: boolean;
+}) {
+  const text = raw.trim();
+  const lead = raw.length - raw.trimStart().length;
+
+  const nested = normalizeEntities(
+    text,
+    sliceEntities(entities, lead, lead + text.length)
+  );
+
+  return formattedRange(text, nested, 0, text.length, linked);
+}
+
 /** A note with the hashtags in it colored, as Telegram links them. */
 function NoteText({ text }: { text: string }) {
   return splitHashtags(text).map((part, index) =>
@@ -193,6 +351,8 @@ type MessageContent = {
   note?: string | undefined;
   /** Selected text. */
   text?: string | undefined;
+  /** The selection's formatting, over `text`. */
+  entities?: TextEntity[] | undefined;
   /** The link target, or the image, video or audio source. */
   url?: string | undefined;
   pageUrl?: string | undefined;
@@ -252,7 +412,15 @@ function messageParts(
   if (kind === 'selection' && message.text) {
     blocks.push({
       key: 'text',
-      content: <span className="line-clamp-8">{message.text.trim()}</span>,
+      content: (
+        <span className="line-clamp-8">
+          <FormattedText
+            text={message.text}
+            entities={message.entities ?? []}
+            linked={linked}
+          />
+        </span>
+      ),
     });
   }
 
@@ -326,12 +494,15 @@ function messageParts(
       ? pageUrl
       : undefined;
 
+  // A selection's link opens the quote on the page, as `compose` sends it.
+  const quote = sourceUrl && quoteUrl({ ...message, kind });
+
   // An album takes no button, so `compose` ends its caption with the link.
   if (sourceUrl && isAlbum(message)) {
     blocks.push({
       key: 'source',
       content: (
-        <UrlText url={sourceUrl} linked={linked}>
+        <UrlText url={quote || sourceUrl} linked={linked}>
           {displayUrl(sourceUrl)}
         </UrlText>
       ),
@@ -340,7 +511,7 @@ function messageParts(
     return { blocks, card, sourceUrl: undefined };
   }
 
-  return { blocks, card, sourceUrl };
+  return { blocks, card, sourceUrl: quote || sourceUrl };
 }
 
 /** The button Telegram shows under a message, linking to the page it came from. */
@@ -874,6 +1045,7 @@ export function MessagePreview({
   pageTitle,
   favIconUrl,
   text,
+  entities,
   note,
   delivery,
   status,
@@ -890,6 +1062,8 @@ export function MessagePreview({
   pageTitle: string | undefined;
   favIconUrl: string | undefined;
   text: string | undefined;
+  /** The selection's formatting on the page. */
+  entities: TextEntity[] | undefined;
   note: string;
   delivery: Settings['delivery'];
   status: MessageStatus;
@@ -918,6 +1092,7 @@ export function MessagePreview({
                 pageUrl,
                 pageTitle,
                 text,
+                entities,
                 note,
                 ...(attachments.length > 1
                   ? { attachments }

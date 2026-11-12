@@ -1,9 +1,14 @@
 import {
   ALBUM_LIMIT,
   CAPTION_LIMIT,
+  entitiesSchema,
   MAX_TEXT_LENGTH,
   type OutgoingMessage,
   PHOTO_UPLOAD_LIMIT,
+  shiftEntities,
+  sliceEntities,
+  type TextEntity,
+  textFragmentUrl,
   type UploadMessage,
 } from '@send-to-telegram/core';
 import { z } from 'zod';
@@ -23,6 +28,11 @@ export const draftSchema = z.object({
   pageTitle: z.string().optional(),
   /** Selected text. */
   text: z.string().optional(),
+  /**
+   * The selection's formatting on the page, over `text`. Added later, so
+   * drafts without it read as before; one this version can't read is dropped.
+   */
+  entities: entitiesSchema.optional().catch(undefined),
   /** The link target, or the image, video or audio source. */
   url: z.string().optional(),
   note: z.string().optional(),
@@ -96,6 +106,56 @@ function clip(text: string, limit: number): string {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
+/** Text and its formatting, as entities over it. */
+export type Formatted = { text: string; entities: TextEntity[] };
+
+/**
+ * Joins paragraphs as `paragraphs` does, moving each one's entities to
+ * where it lands: past the note, for a selection after one.
+ */
+function formattedParagraphs(...parts: (Formatted | undefined)[]): Formatted {
+  let text = '';
+  const entities: TextEntity[] = [];
+
+  for (const part of parts) {
+    const trimmed = part?.text.trim();
+
+    if (!part || !trimmed) continue;
+
+    const lead = part.text.length - part.text.trimStart().length;
+
+    if (text) text += '\n\n';
+
+    entities.push(
+      ...shiftEntities(
+        sliceEntities(part.entities, lead, lead + trimmed.length),
+        text.length
+      )
+    );
+    text += trimmed;
+  }
+
+  return { text, entities };
+}
+
+/** Text with no formatting, such as a note or a hashtag. */
+function plain(text: string | undefined): Formatted | undefined {
+  return text === undefined ? undefined : { text, entities: [] };
+}
+
+/** Clips like `clip`; entities past the cut are cut there or dropped. */
+function clipFormatted(
+  { text, entities }: Formatted,
+  limit: number
+): Formatted {
+  if (text.length <= limit) return { text, entities };
+
+  return {
+    text: clip(text, limit),
+    entities: sliceEntities(entities, 0, limit - 1),
+  };
+}
+
 /**
  * A video or song Telegram can't fetch, because the page streams it (a
  * `blob:` source) or keeps it out of reach, goes as its page instead: on
@@ -136,6 +196,7 @@ export type AlbumGroup = {
   kind: 'photo' | 'document';
   attachments: Attachment[];
   caption?: string;
+  captionEntities?: TextEntity[];
 };
 
 /**
@@ -194,6 +255,32 @@ function bodyOf(draft: Draft, delivery: Settings['delivery']) {
   }
 }
 
+/** A selection's text with its formatting; other content is plain. */
+function formattedBody(
+  draft: Draft,
+  delivery: Settings['delivery']
+): Formatted | undefined {
+  if (draft.kind === 'selection' && draft.text) {
+    return { text: draft.text, entities: draft.entities ?? [] };
+  }
+
+  return plain(bodyOf(draft, delivery));
+}
+
+/**
+ * The page's URL with a text fragment for a selection, so opening it scrolls
+ * to the quote and marks it. History keeps the plain URL.
+ */
+export function quoteUrl(
+  draft: Pick<Draft, 'kind' | 'text' | 'pageUrl'>
+): string | undefined {
+  if (draft.kind !== 'selection' || !draft.text || !draft.pageUrl) {
+    return undefined;
+  }
+
+  return textFragmentUrl(draft.pageUrl, draft.text);
+}
+
 /**
  * The message's text as it reads in Telegram, unclipped: the note, then the
  * content, then the hashtag. Media sent from its address reads as that address.
@@ -214,12 +301,36 @@ export function messageText(
  * from goes as a link on the caption's last line, kept whole when the rest is
  * cut to fit.
  */
-function albumCaption(text: string, sourceUrl: string | undefined) {
+function albumCaption(
+  content: Formatted,
+  sourceUrl: string | undefined,
+  /** Where the link goes for a selection: to the quote on the page. */
+  quote: string | undefined
+): Formatted {
   const link = sourceUrl && sourceUrl.length + 2 < CAPTION_LIMIT && sourceUrl;
 
-  if (!link) return text && clip(text, CAPTION_LIMIT);
+  if (!link) return clipFormatted(content, CAPTION_LIMIT);
 
-  return paragraphs(clip(text, CAPTION_LIMIT - link.length - 2), link);
+  const caption = formattedParagraphs(
+    clipFormatted(content, CAPTION_LIMIT - link.length - 2),
+    plain(link)
+  );
+
+  // It reads as the page's address; the fragment would only fill the caption.
+  if (!quote) return caption;
+
+  return {
+    text: caption.text,
+    entities: [
+      ...caption.entities,
+      {
+        type: 'text_link',
+        offset: caption.text.length - link.length,
+        length: link.length,
+        url: quote,
+      },
+    ],
+  };
 }
 
 /** Turns a draft into one outgoing message, following the delivery settings. */
@@ -245,7 +356,14 @@ export function compose(
       ? draft.pageUrl
       : undefined;
 
-  const common = { silent: delivery.silent, ...(sourceUrl && { sourceUrl }) };
+  const quote = sourceUrl && quoteUrl(draft);
+
+  // The button opens the quote; history keeps the page's own URL.
+  const common = {
+    silent: delivery.silent,
+    ...(sourceUrl && { sourceUrl: quote || sourceUrl }),
+  };
+
   const files = draftFiles(draft);
   const [file] = files;
 
@@ -257,8 +375,13 @@ export function compose(
 
   if (files.length > 1) {
     const caption = albumCaption(
-      paragraphs(note, bodyOf(draft, delivery), tag),
-      sourceUrl
+      formattedParagraphs(
+        plain(note),
+        formattedBody(draft, delivery),
+        plain(tag)
+      ),
+      sourceUrl,
+      quote || undefined
     );
 
     const split = albumGroups(files, delivery.imageMode);
@@ -266,19 +389,37 @@ export function compose(
     // Under the last album, so the text reads after every file, as drawn.
     const groups = split.map((group, index) => ({
       ...group,
-      ...(index === split.length - 1 && caption && { caption }),
+      ...(index === split.length - 1 &&
+        caption.text && {
+          caption: caption.text,
+          ...(caption.entities.length > 0 && {
+            captionEntities: caption.entities,
+          }),
+        }),
     }));
 
     return { kind: 'album', groups, silent: delivery.silent };
   }
 
   if (file) {
-    const caption = paragraphs(note, bodyOf(draft, delivery), tag);
+    const caption = clipFormatted(
+      formattedParagraphs(
+        plain(note),
+        formattedBody(draft, delivery),
+        plain(tag)
+      ),
+      CAPTION_LIMIT
+    );
 
     return {
       kind: sendsAsPhoto(file, delivery.imageMode) ? 'photo' : 'document',
       attachment: file,
-      ...(caption && { caption: clip(caption, CAPTION_LIMIT) }),
+      ...(caption.text && {
+        caption: caption.text,
+        ...(caption.entities.length > 0 && {
+          captionEntities: caption.entities,
+        }),
+      }),
       ...common,
     };
   }
@@ -336,9 +477,19 @@ export function compose(
     throw new ComposeError('There is nothing to send.');
   }
 
+  const message = clipFormatted(
+    formattedParagraphs(
+      plain(note),
+      formattedBody(draft, delivery),
+      plain(tag)
+    ),
+    MAX_TEXT_LENGTH
+  );
+
   return {
     kind: 'text',
-    text: clip(paragraphs(note, body, tag), MAX_TEXT_LENGTH),
+    text: message.text,
+    ...(message.entities.length > 0 && { entities: message.entities }),
     linkPreview: delivery.linkPreview,
     ...common,
   };

@@ -168,6 +168,8 @@ async function sendGroup(
         upload,
         silent,
         ...(group.caption && { caption: group.caption }),
+        ...(group.caption &&
+          group.captionEntities && { captionEntities: group.captionEntities }),
       },
       destination.topic?.id
     );
@@ -182,6 +184,8 @@ async function sendGroup(
         uploads,
         silent,
         ...(group.caption && { caption: group.caption }),
+        ...(group.caption &&
+          group.captionEntities && { captionEntities: group.captionEntities }),
       },
       destination.topic?.id
     );
@@ -336,6 +340,7 @@ function historyEntry(
     ...(keepContent && {
       content: {
         ...(draft.text && { text: draft.text }),
+        ...(draft.text && draft.entities && { entities: draft.entities }),
         ...(draft.url && { url: draft.url }),
         ...(draft.note && { note: draft.note }),
         ...(draft.pageUrl && { pageUrl: draft.pageUrl }),

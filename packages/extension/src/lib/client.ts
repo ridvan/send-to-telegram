@@ -44,6 +44,7 @@ export function draftFromEntry(entry: HistoryEntry): Draft | undefined {
   return {
     kind: entry.kind,
     ...(content.text && { text: content.text }),
+    ...(content.text && content.entities && { entities: content.entities }),
     ...(content.url && { url: content.url }),
     ...(content.note && { note: content.note }),
     ...(content.pageUrl && { pageUrl: content.pageUrl }),

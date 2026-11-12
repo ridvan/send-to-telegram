@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { TextEntity } from './entities.ts';
+
 export const TELEGRAM_API_ORIGIN = 'https://api.telegram.org';
 
 /** Telegram's hard limits for message text and media captions. */
@@ -226,6 +228,9 @@ export type DeliveryOptions = {
   reply_markup?: InlineKeyboard;
 };
 
+/** A caption, and its formatting given as entities rather than markup. */
+export type Captioned = { caption?: string; caption_entities?: TextEntity[] };
+
 /** A URL Telegram fetches, or a file uploaded with the request. */
 export type InputFile = string | Upload;
 
@@ -245,6 +250,7 @@ export type AlbumItem = {
   type: 'photo' | 'document';
   media: InputFile;
   caption?: string;
+  caption_entities?: TextEntity[];
 };
 
 /** An album item whose file goes with the request. */
@@ -325,12 +331,13 @@ type MethodParams = {
   getWebhookInfo: undefined;
   sendMessage: DeliveryOptions & {
     text: string;
+    entities?: TextEntity[];
     link_preview_options?: { is_disabled: boolean };
   };
-  sendPhoto: DeliveryOptions & { photo: InputFile; caption?: string };
-  sendDocument: DeliveryOptions & { document: InputFile; caption?: string };
-  sendVideo: DeliveryOptions & { video: InputFile; caption?: string };
-  sendAudio: DeliveryOptions & { audio: InputFile; caption?: string };
+  sendPhoto: DeliveryOptions & Captioned & { photo: InputFile };
+  sendDocument: DeliveryOptions & Captioned & { document: InputFile };
+  sendVideo: DeliveryOptions & Captioned & { video: InputFile };
+  sendAudio: DeliveryOptions & Captioned & { audio: InputFile };
   /** Takes no `reply_markup`, so an album can't carry a button. */
   sendMediaGroup: Omit<DeliveryOptions, 'reply_markup'> & {
     media: AlbumItem[];

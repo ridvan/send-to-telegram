@@ -2,6 +2,7 @@ import {
   chatIdSchema,
   chatTypeSchema,
   deliveredViaSchema,
+  entitiesSchema,
 } from '@send-to-telegram/core';
 import { z } from 'zod';
 
@@ -287,6 +288,11 @@ export const historyEntrySchema = z.object({
   content: z
     .object({
       text: z.string().optional(),
+      /**
+       * The selection's formatting, so Send again and the chat keep it.
+       * Added later; entries without it read as plain text.
+       */
+      entities: entitiesSchema.optional().catch(undefined),
       url: z.string().optional(),
       note: z.string().optional(),
       pageUrl: z.string().optional(),

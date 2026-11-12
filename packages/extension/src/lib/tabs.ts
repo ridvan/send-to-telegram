@@ -1,33 +1,45 @@
+import { MAX_TEXT_LENGTH } from '@send-to-telegram/core';
 import { browser, type Browser } from 'wxt/browser';
 import { z } from 'zod';
 
+import {
+  readSelectionMarkup,
+  type Selected,
+  selectedOf,
+  selectionMarkupSchema,
+} from './selection.ts';
+
 const selectionResultSchema = z.array(
-  z.object({ result: z.string().nullish() })
+  z.object({ result: selectionMarkupSchema.nullish().catch(undefined) })
 );
 
 /**
- * Reads the selection from the page so line breaks survive; the menu's own
- * `selectionText` flattens them. Pages that refuse scripts, like the PDF
- * viewer or the browser's own pages, fall back to `fallback`.
+ * Reads the selection from the page so line breaks and formatting survive;
+ * the menu's own `selectionText` flattens them. Pages that refuse scripts,
+ * like the PDF viewer or the browser's own pages, fall back to `fallback`,
+ * as plain text.
  */
 export async function readSelection(
   tabId: number | undefined,
   frameId: number | undefined,
   fallback: string | undefined
-): Promise<string | undefined> {
-  if (tabId === undefined || tabId < 0) return fallback;
+): Promise<Selected | undefined> {
+  const plain = fallback?.trim() ? { text: fallback.trim() } : undefined;
+
+  if (tabId === undefined || tabId < 0) return plain;
 
   try {
     const results = await browser.scripting.executeScript({
       target: { tabId, ...(frameId !== undefined && { frameIds: [frameId] }) },
-      func: () => globalThis.getSelection()?.toString() ?? '',
+      func: readSelectionMarkup,
+      args: [MAX_TEXT_LENGTH],
     });
 
-    const text = selectionResultSchema.parse(results)[0]?.result?.trim();
+    const markup = selectionResultSchema.parse(results)[0]?.result;
 
-    return text || fallback;
+    return (markup && selectedOf(markup, MAX_TEXT_LENGTH)) ?? plain;
   } catch {
-    return fallback;
+    return plain;
   }
 }
 

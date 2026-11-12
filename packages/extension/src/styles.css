@@ -264,6 +264,13 @@
   }
 }
 
+/* Geist has no italic, and synthesis is off for crisp text; slanting is
+   what an italic in a sent selection needs to read as one. */
+@utility synthesized-italic {
+  font-style: italic;
+  font-synthesis-style: auto;
+}
+
 /* Enter for content that appears once, such as a finished setup step. */
 @utility animate-rise {
   animation: rise 300ms var(--ease-out-strong) both;
