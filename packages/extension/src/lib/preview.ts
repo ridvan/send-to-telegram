@@ -4,7 +4,8 @@
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
  * `?fail` to make sends, albums, deletes, downloads and chat lookups fail, `?nocapture` to make screenshots
  * fail, `?offline` to have the browser offline, so sends wait in the queue,
- * and `?lock` to lock it again after
+ * `?star` to set the sent count to 100 with every feature seen, so the
+ * star card shows again, and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
  * download their media. Connecting a chat works with the token in
@@ -870,6 +871,15 @@ function install() {
     }
   }
 
+  // Every feature seen but the star card, after the 100th send.
+  if (url.searchParams.has('star')) {
+    localStorage.setItem(`${PREFIX}stats`, JSON.stringify({ sent: 100 }));
+    localStorage.setItem(
+      `${PREFIX}announcements`,
+      JSON.stringify({ seen: ['screenshots'] })
+    );
+  }
+
   if (url.searchParams.has('reset')) {
     for (const backing of [localStorage, sessionStorage]) {
       for (const key of Object.keys(backing)) {
@@ -1008,8 +1018,8 @@ function install() {
         return fakeScreenshot();
       },
       create: async ({ url: target }: { url: string }) => {
-        // Telegram links would leave the preview; log them instead.
-        if (target.startsWith('https://t.me/'))
+        // Telegram and GitHub links would leave the preview; log them instead.
+        if (/^https:\/\/(t\.me|github\.com)\//.test(target))
           console.info('Would open', target);
         else open(target);
       },

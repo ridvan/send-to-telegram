@@ -1,11 +1,14 @@
-import { BotIcon } from '@hugeicons/core-free-icons';
+import { BotIcon, StarIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 
+import { Button } from '@/components/ui/button';
+import { openRepository } from '@/lib/client';
 import type { Destination } from '@/lib/settings';
 
 /**
  * Which bot a chat sends with, at the top of the chat, as Telegram opens a
- * bot's chat with what it does.
+ * bot's chat with what it does. Its last line links the code: there from the
+ * first open, and never in the way.
  */
 export function ChatIntro({ destination }: { destination: Destination }) {
   const bot = destination.botUsername;
@@ -23,6 +26,23 @@ export function ChatIntro({ destination }: { destination: Destination }) {
       </p>
       <p className="text-pretty">
         {`Messages go straight from this browser to Telegram, and what people send ${bot ? `@${bot}` : 'it'} shows up here.`}
+      </p>
+      <p className="mt-1 flex items-center justify-center gap-1">
+        <span>Open source ·</span>
+        <Button
+          variant="link"
+          size="text"
+          tone="muted"
+          onClick={() => void openRepository()}
+        >
+          <HugeiconsIcon
+            icon={StarIcon}
+            strokeWidth={2}
+            aria-hidden
+            className="size-3"
+          />
+          Star on GitHub
+        </Button>
       </p>
     </aside>
   );

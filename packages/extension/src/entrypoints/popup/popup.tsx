@@ -486,14 +486,6 @@ function SettingsPanel() {
         <GeneralSection onReset={() => undefined} />
         <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-2 pb-4 text-xs text-muted-foreground">
           <span className="tabular-nums">{`Version ${version}`}</span>
-          <a
-            href="https://github.com/ridvan/send-to-telegram"
-            target="_blank"
-            rel="noreferrer"
-            className="underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Source code
-          </a>
         </footer>
       </SettingsDensity>
     </div>
@@ -1101,6 +1093,7 @@ function Composer({
                   ...(screenshot &&
                     !busy && { screenshots: () => setAttachMenuOpen(true) }),
                 }}
+                incognito={page.incognito}
                 onDismiss={() => noteRef.current?.focus()}
               />
 
