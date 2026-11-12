@@ -1,7 +1,7 @@
 {
   "name": "extension",
   "description": "Send selected text, links, images and pages to Telegram.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "scripts": {

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-12
+
 ### Added
 
 - Screenshots. Send what the page shows, or drag out an area of it, from the popup's paperclip, the page's right-click menu, or Alt+Shift+P and Alt+Shift+A.
@@ -87,6 +89,7 @@ A rewrite from the ground up. Existing settings, chats, hashtags and history mov
 
 Initial release of the Send to Telegram extension.
 
+[2.1.0]: https://github.com/ridvan/send-to-telegram/releases/tag/v2.1.0
 [1.2.0]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.1.0
 [1.0.2]: https://github.com/ridvan/send-to-telegram/releases/tag/v1.0.2

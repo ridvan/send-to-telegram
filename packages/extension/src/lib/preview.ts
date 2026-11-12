@@ -925,7 +925,7 @@ function install() {
       id: 'preview',
       lastError: undefined,
       getURL: (path: string) => path,
-      getManifest: () => ({ version: '2.0.0', name: 'Send to Telegram' }),
+      getManifest: () => ({ version: '2.1.0', name: 'Send to Telegram' }),
       getPlatformInfo: async () => ({ os: 'mac' }),
       connect: () => ({ name: 'popup', disconnect: noop, onDisconnect: event }),
       sendMessage: async (message: SelectAreaRequest | SendRequest) => {
