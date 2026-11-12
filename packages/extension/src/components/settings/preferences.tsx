@@ -3,6 +3,7 @@ import {
   BubbleChatIcon,
   Clock01Icon,
   Delete02Icon,
+  GithubIcon,
   Globe02Icon,
   HashtagIcon,
   Image02Icon,
@@ -12,8 +13,10 @@ import {
   Moon02Icon,
   NotificationOff01Icon,
   RotateLeft01Icon,
+  StarIcon,
   ViewOffSlashIcon,
 } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { useId, useState } from 'react';
 
 import {
@@ -43,6 +46,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStore } from '@/hooks/use-store';
+import { openRepository } from '@/lib/client';
 import { plural } from '@/lib/format';
 import { resetExtension } from '@/lib/lock';
 import { forgetFiles } from '@/lib/telegram-files';
@@ -465,6 +469,22 @@ export function GeneralSection({ onReset }: { onReset: () => void }) {
           </dl>
         ) : null}
       </SettingRow>
+      <SettingRow
+        icon={{ icon: GithubIcon, tone: 'orange' }}
+        label="Open source"
+        description="The code is on GitHub."
+        control={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void openRepository()}
+          >
+            {/* Not marked as a leading icon, which would pull it to the edge. */}
+            <HugeiconsIcon icon={StarIcon} strokeWidth={2} />
+            Star
+          </Button>
+        }
+      />
       <ResetRow onReset={onReset} />
     </SettingsSection>
   );

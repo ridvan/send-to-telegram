@@ -1,17 +1,28 @@
-import { Camera01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import {
+  Camera01Icon,
+  Cancel01Icon,
+  GithubIcon,
+  StarIcon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { useShortcuts } from '@/components/shortcuts';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
+import { useLock } from '@/hooks/use-lock';
 import { useStore } from '@/hooks/use-store';
 import {
   type AnnouncementId,
+  type CardId,
   markAnnouncementSeen,
   nextAnnouncement,
+  showsStarCard,
+  STAR_CARD,
 } from '@/lib/announcements';
-import { announcementsStore } from '@/lib/settings';
+import { openRepository } from '@/lib/client';
+import { plural } from '@/lib/format';
+import { announcementsStore, statsStore } from '@/lib/settings';
 
 /** What each card offers to do; absent where the popup can't do it here. */
 export type AnnouncementActions = Partial<Record<AnnouncementId, () => void>>;
@@ -112,25 +123,87 @@ function Screenshots({
   );
 }
 
+function Star({
+  sent,
+  onStar,
+  onDismiss,
+}: {
+  sent: number;
+  onStar: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <Card
+      icon={GithubIcon}
+      title={plural(sent, { one: '# message sent', other: '# messages sent' })}
+      onDismiss={onDismiss}
+      action={
+        <Button variant="outline" size="xs" onClick={onStar}>
+          {/* Not marked as a leading icon, which would pull it to the edge. */}
+          <HugeiconsIcon icon={StarIcon} strokeWidth={2} />
+          Star on GitHub
+        </Button>
+      }
+    >
+      <p className="text-pretty">
+        Send to Telegram is open source.
+        <br />A star helps others find it.
+      </p>
+    </Card>
+  );
+}
+
 /**
- * The newest feature this person hasn't seen yet, if any. `onDismiss` runs
- * once the card is gone, to put focus somewhere useful.
+ * The newest feature this person hasn't seen yet, if any, else the star
+ * card once. `onDismiss` runs once the card is gone, to put focus somewhere
+ * useful.
  */
 export function Announcement({
   actions,
+  incognito,
   onDismiss,
 }: {
   actions: AnnouncementActions;
+  incognito: boolean;
   onDismiss: () => void;
 }) {
   const { seen } = useStore(announcementsStore);
+  const { sent } = useStore(statsStore);
+  const locked = useLock().state === 'locked';
   const id = nextAnnouncement(seen);
 
-  if (!id) return null;
+  // Decided as the popup opens, so the card doesn't rise under the 100th
+  // send or take a dismissed feature's place at once.
+  const [star] = useState(() =>
+    showsStarCard({ seen, sent, incognito, locked }) ? { sent } : undefined
+  );
 
-  function dismiss(seenId: AnnouncementId) {
+  function dismiss(seenId: CardId) {
     void markAnnouncementSeen(seenId);
     onDismiss();
+  }
+
+  if (!id) {
+    if (!star || seen.includes(STAR_CARD)) return null;
+
+    return (
+      <Star
+        sent={star.sent}
+        onDismiss={() => dismiss(STAR_CARD)}
+        onStar={() =>
+          // Saved first: the popup may close as the tab opens.
+          void markAnnouncementSeen(STAR_CARD)
+            .catch((cause: unknown) => {
+              console.error('Could not save the star card as seen', cause);
+            })
+            .then(async () => {
+              await openRepository();
+              // In case the popup stays open.
+              onDismiss();
+            })
+        }
+      />
+    );
   }
 
   switch (id) {

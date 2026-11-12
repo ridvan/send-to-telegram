@@ -56,6 +56,13 @@ export function draftFromEntry(entry: HistoryEntry): Draft | undefined {
   };
 }
 
+export const REPOSITORY_URL = 'https://github.com/ridvan/send-to-telegram';
+
+/** The code on GitHub, in a new tab. */
+export function openRepository() {
+  return browser.tabs.create({ url: REPOSITORY_URL });
+}
+
 export function openExtensionPage(
   path: '/options.html' | '/welcome.html',
   hash = ''
