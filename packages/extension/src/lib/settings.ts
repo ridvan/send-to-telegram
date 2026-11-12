@@ -339,12 +339,11 @@ function listOf<S extends z.ZodType>(entrySchema: S) {
   );
 }
 
-export const historyStore = defineStore(
-  'history',
-  listOf(historyEntrySchema),
-  () => [],
-  { sealed: true }
-);
+export const historySchema = listOf(historyEntrySchema);
+
+export const historyStore = defineStore('history', historySchema, () => [], {
+  sealed: true,
+});
 
 /**
  * A failed send that is tried again later. The message itself stays in its
@@ -437,13 +436,15 @@ export const inboxRemovedStore = defineStore(
  * The photo behind the chat, as a WebP data URL. Apart from settings, which
  * are read far more often than it changes.
  */
+export const chatPhotoSchema = z
+  .string()
+  .regex(/^data:image\/[\w.+-]+;base64,/)
+  .nullable()
+  .catch(null);
+
 export const chatPhotoStore = defineStore(
   'chatPhoto',
-  z
-    .string()
-    .regex(/^data:image\/[\w.+-]+;base64,/)
-    .nullable()
-    .catch(null),
+  chatPhotoSchema,
   () => null,
   { sealed: true }
 );

@@ -5,6 +5,7 @@ import { AppMark } from '@/components/app-mark';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { HistoryView } from '@/components/history-view';
+import { BackupSection } from '@/components/settings/backup-section';
 import { ChatsSection } from '@/components/settings/chats-section';
 import { LockSection } from '@/components/settings/lock-section';
 import {
@@ -79,6 +80,7 @@ export function Options() {
             <HistorySection />
             <PrivacySection />
             <LockSection />
+            <BackupSection />
             <GeneralSection onReset={restart} />
           </>
         )}
