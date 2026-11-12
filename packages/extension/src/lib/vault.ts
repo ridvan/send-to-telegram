@@ -110,7 +110,8 @@ export function fromBase64(text: string): Uint8Array<ArrayBuffer> {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-async function wrappingKey(
+/** An AES-GCM key from a password, with PBKDF2-SHA256. */
+export async function wrappingKey(
   secret: string,
   salt: Uint8Array<ArrayBuffer>,
   iterations: number

@@ -17,6 +17,7 @@ import { ChatAvatar } from '@/components/chat-avatar';
 import { ChatName } from '@/components/chat-name';
 import { ConnectBot } from '@/components/connect/connect-bot';
 import { IconTile, type TileTone } from '@/components/icon-tile';
+import { RestoreDialog } from '@/components/settings/backup-section';
 import { useShortcuts } from '@/components/shortcuts';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ export function Welcome() {
   const settings = useStore(settingsStore);
   const onboarding = useStore(onboardingStore);
   const [connected, setConnected] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const destination = defaultDestination(settings);
 
   if (destination && onboarding.migratedFrom && !connected) {
@@ -105,6 +107,16 @@ export function Welcome() {
           setConnected(true);
         }}
       />
+      <p className="text-sm text-muted-foreground">
+        Used Send to Telegram before?{' '}
+        <Button variant="inline" size="text" onClick={() => setRestoring(true)}>
+          Restore from a backup
+        </Button>
+      </p>
+      {restoring ? (
+        // A restored chat marks setup done, so the page moves on by itself.
+        <RestoreDialog onClose={() => setRestoring(false)} />
+      ) : null}
     </Page>
   );
 }
