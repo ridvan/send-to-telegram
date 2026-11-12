@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 import {
+  ALBUM_LIMIT,
+  ALBUM_MIN,
+  type AlbumItem,
   CAPTION_LIMIT,
   TelegramError,
   type BotClient,
@@ -69,6 +72,19 @@ export type Delivery = {
   via: DeliveredVia;
   /** An upload as Telegram keeps it, with the IDs to download it again. */
   sent?: IncomingMessage;
+  /** An album's messages as Telegram keeps them, in order. */
+  album?: IncomingMessage[];
+};
+
+/**
+ * Files uploaded from this device as one album. Telegram groups documents
+ * only with documents, so an album is all photos or all files.
+ */
+export type AlbumMessage = {
+  kind: 'photo' | 'document';
+  uploads: Upload[];
+  caption?: string;
+  silent: boolean;
 };
 
 export const SOURCE_BUTTON_LABEL = 'Open page';
@@ -263,4 +279,50 @@ export async function deliver(
   });
 
   return textDelivery(ids, 'link');
+}
+
+/**
+ * Delivers 2 to 10 uploads as one album with `sendMediaGroup`. It takes no
+ * keyboard, so a source link belongs in the caption. Telegram's apps show a
+ * photo album's caption, carried by one item, under the whole album; in a
+ * file album each file shows its own, so it goes on the last file to read
+ * under them all. A rejection stands: no other form keeps them one message.
+ */
+export async function deliverAlbum(
+  bot: BotClient,
+  chatId: ChatId,
+  album: AlbumMessage,
+  /** A forum topic's `message_thread_id`; absent posts to General. */
+  topic?: number
+): Promise<Delivery> {
+  const count = album.uploads.length;
+
+  if (count < ALBUM_MIN || count > ALBUM_LIMIT) {
+    throw new RangeError(
+      `An album takes ${ALBUM_MIN} to ${ALBUM_LIMIT} files, not ${count}`
+    );
+  }
+
+  const captioned = album.kind === 'photo' ? 0 : count - 1;
+
+  const media = album.uploads.map((upload, index): AlbumItem => ({
+    type: album.kind,
+    media: upload,
+    ...(index === captioned && album.caption && { caption: album.caption }),
+  }));
+
+  const sent = await bot.call('sendMediaGroup', {
+    ...targetOf(chatId, topic),
+    disable_notification: album.silent,
+    media,
+  });
+
+  const ids = sent.map((message) => message.message_id);
+
+  return {
+    messageId: ids.at(-1) ?? 0,
+    messageIds: ids,
+    via: album.kind,
+    album: sent,
+  };
 }

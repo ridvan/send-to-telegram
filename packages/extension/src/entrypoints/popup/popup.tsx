@@ -94,7 +94,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { CANT_ATTACH, useAttachment } from '@/hooks/use-attachment';
+import { CANT_ATTACH, useAttachments } from '@/hooks/use-attachment';
 import { chatKey, useChatItems } from '@/hooks/use-chat-items';
 import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
@@ -116,7 +116,7 @@ import {
 } from '@/lib/client';
 import { plural } from '@/lib/format';
 import { lockNow } from '@/lib/lock';
-import type { Draft } from '@/lib/compose';
+import { type Draft, filesFields, MAX_ATTACHMENTS } from '@/lib/compose';
 import { revealMessage } from '@/lib/reveal';
 import { captureFailure, captureTab } from '@/lib/screenshot';
 import { matchChatItems } from '@/lib/search';
@@ -131,9 +131,11 @@ import {
 } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
-import { type PageContext, resumedFile } from './page';
+import { type PageContext, resumedFiles } from './page';
 
 const CANT_SCREENSHOT = 'Can’t take a screenshot';
+
+const NO_ROOM_FOR_SCREENSHOT = `A message takes up to ${MAX_ATTACHMENTS} files. Remove one to add a screenshot.`;
 
 /** How long a send can be undone from the popup. */
 const UNDO_FOR = 6000;
@@ -603,25 +605,29 @@ function Composer({
     (item) => item.id === destinationId
   );
 
-  // Back from picking an area, the draft gets its file again. It's read
-  // here, where the popup is unlocked, because it may be sealed.
+  // Back from picking an area, the draft gets its files again. They're read
+  // here, where the popup is unlocked, because they may be sealed.
   const resume = page.resume;
 
-  const resumed = resume?.attachment
-    ? use(resumedFile(resume.attachment))
+  const resumed = resume?.attachments
+    ? use(resumedFiles(resume.attachments))
     : undefined;
 
-  const { attached, problem, attach, remove, refuse } = useAttachment({
-    file: resumed,
-    problem: resume?.problem
-      ? { title: CANT_SCREENSHOT, message: resume.problem }
-      : resume?.attachment && !resumed
-        ? {
-            title: CANT_ATTACH,
-            message: 'Couldn’t get the file back. Attach it again.',
-          }
-        : undefined,
-  });
+  const { attached, full, problem, attach, remove, clear, forget, refuse } =
+    useAttachments({
+      files: resumed?.files,
+      problem: resume?.problem
+        ? { title: CANT_SCREENSHOT, message: resume.problem }
+        : resumed && resumed.missing > 0
+          ? {
+              title: CANT_ATTACH,
+              message: plural(resumed.missing, {
+                one: 'Couldn’t get a file back. Attach it again.',
+                other: 'Couldn’t get # files back. Attach them again.',
+              }),
+            }
+          : undefined,
+    });
 
   // Read by Undo, which runs after this render's values have moved on.
   const draftNow = useRef({ note, attached });
@@ -633,8 +639,8 @@ function Composer({
   const [dropping, setDropping] = useState(false);
   const canAttach = destination !== undefined;
 
-  function attachOrRefuse(file: File) {
-    if (canAttach) attach(file);
+  function attachOrRefuse(files: File[]) {
+    if (canAttach) attach(files);
     else {
       refuse('Connect a chat first, then attach the file.');
     }
@@ -646,11 +652,18 @@ function Composer({
 
   /** Attaches what the tab under the popup shows; the popup isn't in it. */
   async function takeScreenshot(from: number) {
-    setCapturing(true);
     void markAnnouncementSeen('screenshots');
 
+    if (full) {
+      refuse(NO_ROOM_FOR_SCREENSHOT, CANT_SCREENSHOT);
+
+      return;
+    }
+
+    setCapturing(true);
+
     try {
-      attachOrRefuse(await captureTab(from));
+      attachOrRefuse([await captureTab(from)]);
     } catch (cause) {
       console.error('Could not take the screenshot', cause);
       refuse(captureFailure(cause), CANT_SCREENSHOT);
@@ -663,15 +676,23 @@ function Composer({
 
   /**
    * Clicking the page closes the popup, so the background picks the area and
-   * opens the popup again with it attached and the note kept. The file
-   * attached now is saved, so cancelling gives it back.
+   * opens the popup again with it added to the files and the note kept.
+   * The files attached now are saved, so cancelling gives them back.
    */
   async function screenshotArea(tabId: number, from: number) {
-    setCapturing(true);
     void markAnnouncementSeen('screenshots');
 
+    // Asked before the popup closes, which it does once the page is clicked.
+    if (full) {
+      refuse(NO_ROOM_FOR_SCREENSHOT, CANT_SCREENSHOT);
+
+      return;
+    }
+
+    setCapturing(true);
+
     try {
-      if (attached) await saveAttachment(attached.info.id, attached.file);
+      await saveFiles();
 
       await requestAreaScreenshot({
         type: 'select-area',
@@ -679,7 +700,9 @@ function Composer({
         windowId: from,
         ...(note.trim() && { note }),
         ...(destinationId && { destinationId }),
-        ...(attached && { attachment: attached.info }),
+        ...(attached.length > 0 && {
+          attachments: attached.map((item) => item.info),
+        }),
       });
     } catch (cause) {
       console.error('Could not start selecting an area', cause);
@@ -726,6 +749,13 @@ function Composer({
     });
   }
 
+  /** Keeps the files where the background reads them. */
+  async function saveFiles() {
+    await Promise.all(
+      attached.map((item) => saveAttachment(item.info.id, item.file))
+    );
+  }
+
   async function send() {
     if (busy) return;
 
@@ -735,7 +765,7 @@ function Composer({
       ...(attachPage && page.title && { pageTitle: page.title }),
       ...(mode === 'selection' && page.selection && { text: page.selection }),
       ...(note.trim() && { note }),
-      ...(attached && { attachment: attached.info }),
+      ...filesFields(attached.map((item) => item.info)),
       ...(destinationId && { destinationId }),
     };
 
@@ -744,14 +774,17 @@ function Composer({
     refuse(undefined);
     scrollToDraft();
 
-    if (attached) {
+    if (attached.length > 0) {
       try {
-        await saveAttachment(attached.info.id, attached.file);
+        await saveFiles();
       } catch (cause) {
-        console.error('Could not keep the file for sending', cause);
+        console.error('Could not keep the files for sending', cause);
         setPhase({
           name: 'failed',
-          message: 'Couldn’t get the file ready to send. Try again.',
+          message:
+            attached.length === 1
+              ? 'Couldn’t get the file ready to send. Try again.'
+              : 'Couldn’t get the files ready to send. Try again.',
           canSetUp: false,
         });
 
@@ -762,7 +795,7 @@ function Composer({
     const outcome = await requestSend(draft, { incognito: page.incognito });
 
     if (outcome.ok) {
-      const before = { note, file: attached?.file, mode };
+      const before = { note, files: attached.map((item) => item.file), mode };
       const { sent } = outcome;
 
       setPhase({ name: 'sent', destination: outcome.destination });
@@ -770,7 +803,7 @@ function Composer({
       // field clears for the next message, as in Telegram.
       setTimeout(() => {
         setNote('');
-        remove();
+        clear();
         setTime(Date.now());
         setFirstSendAt(undefined);
         setPhase({ name: 'idle' });
@@ -791,6 +824,9 @@ function Composer({
       return;
     }
 
+    // What went is in the chat now; the draft keeps what didn't.
+    if (outcome.sentFiles) forget(outcome.sentFiles);
+
     setPhase({
       name: 'failed',
       message: outcome.message,
@@ -806,7 +842,7 @@ function Composer({
    */
   async function undo(
     sent: SentMessages,
-    before: { note: string; file: File | undefined; mode: typeof mode }
+    before: { note: string; files: File[]; mode: typeof mode }
   ) {
     const problem = await undoSend(sent);
 
@@ -820,13 +856,13 @@ function Composer({
     }
 
     const current = draftNow.current;
-    const restore = !current.note.trim() && !current.attached;
+    const restore = !current.note.trim() && current.attached.length === 0;
 
     if (restore) {
       setNote(before.note);
       setMode(before.mode);
 
-      if (before.file) attach(before.file);
+      if (before.files.length > 0) attach(before.files);
     }
 
     toast(
@@ -861,8 +897,13 @@ function Composer({
     noteRef.current?.focus();
   }
 
-  function removeAttachment() {
-    remove();
+  function removeAttachment(id: string) {
+    remove(id);
+    noteRef.current?.focus();
+  }
+
+  function removeAll() {
+    clear();
     noteRef.current?.focus();
   }
 
@@ -877,25 +918,25 @@ function Composer({
           {attachPage ? 'Remove page link' : 'Attach page link'}
         </MenuItem>
       )}
-      {attached ? (
-        <MenuItem icon={Cancel01Icon} onClick={removeAttachment}>
-          Remove file
+      {attached.length > 0 ? (
+        <MenuItem icon={Cancel01Icon} onClick={removeAll}>
+          {attached.length === 1 ? 'Remove file' : 'Remove all files'}
         </MenuItem>
       ) : null}
     </ContextMenuContent>
   );
 
   const draftMenuDisabled =
-    busy || browsing || (page.url === undefined && !attached);
+    busy || browsing || (page.url === undefined && attached.length === 0);
 
-  /** A pasted screenshot or copied file goes with the message. */
+  /** Pasted screenshots or copied files go with the message. */
   function onNotePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
-    const file = event.clipboardData.files[0];
+    const files = [...event.clipboardData.files];
 
-    if (!file || busy) return;
+    if (files.length === 0 || busy) return;
 
     event.preventDefault();
-    attachOrRefuse(file);
+    attachOrRefuse(files);
   }
 
   /** Files dropped anywhere on the chat; the popup never opens them itself. */
@@ -924,9 +965,9 @@ function Composer({
     event.preventDefault();
     setDropping(false);
 
-    const file = event.dataTransfer.files[0];
+    const files = [...event.dataTransfer.files];
 
-    if (file && !busy && !browsing) attachOrRefuse(file);
+    if (files.length > 0 && !busy && !browsing) attachOrRefuse(files);
   }
 
   const suggestions = useHashtagSuggestions({
@@ -1076,7 +1117,10 @@ function Composer({
                 status={statusOf[phase.name]}
                 time={time}
                 standOut={earlier.length > 0}
-                attachment={attached && { ...attached.info, url: attached.url }}
+                attachments={attached.map((item) => ({
+                  ...item.info,
+                  url: item.url,
+                }))}
                 onRemoveAttachment={busy ? undefined : removeAttachment}
                 onRemovePageLink={busy ? undefined : () => setAttachPage(false)}
                 menu={draftMenu}
@@ -1183,7 +1227,7 @@ function AttachButton({
   onMenuOpenChange,
 }: {
   disabled: boolean;
-  onPick: (file: File) => void;
+  onPick: (files: File[]) => void;
   /** Absent where the browser gives no tab to capture. */
   screenshot: { onVisible: () => void; onArea: () => void } | undefined;
   /** Also opened from the screenshots announcement. */
@@ -1191,7 +1235,7 @@ function AttachButton({
   onMenuOpenChange: (open: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const label = screenshot ? 'Attach' : 'Attach a file';
+  const label = screenshot ? 'Attach' : 'Attach files';
 
   const button = (
     <Button
@@ -1232,7 +1276,7 @@ function AttachButton({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => input.current?.click()}>
                 <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.8} />
-                Choose file
+                Choose files
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -1241,15 +1285,16 @@ function AttachButton({
       <input
         ref={input}
         type="file"
+        multiple
         hidden
         tabIndex={-1}
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const files = [...(event.target.files ?? [])];
 
-          // Cleared, so picking the same file again still counts.
+          // Cleared, so picking the same files again still counts.
           event.target.value = '';
 
-          if (file) onPick(file);
+          if (files.length > 0) onPick(files);
         }}
       />
     </div>

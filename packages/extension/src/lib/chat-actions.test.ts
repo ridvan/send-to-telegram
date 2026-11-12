@@ -80,6 +80,25 @@ describe('deletionOf', () => {
     expect([...inbox]).toEqual(['7:1']);
     expect(files).toEqual(['P', 'S', 'V']);
   });
+
+  it('names the cached file of every album message', () => {
+    const album: HistoryEntry = {
+      ...sent,
+      id: 'h3',
+      content: {
+        sentAlbum: [
+          { media: 'photo', file: photo },
+          {
+            media: 'file',
+            file: { id: 'd', uniqueId: 'D' },
+            fileName: 'a.pdf',
+          },
+        ],
+      },
+    };
+
+    expect(deletionOf([out(album)]).files).toEqual(['P', 'S', 'D']);
+  });
 });
 
 describe('withRemoved', () => {

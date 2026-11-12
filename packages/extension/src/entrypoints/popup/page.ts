@@ -10,7 +10,7 @@ import { activeTab, readSelection } from '@/lib/tabs';
 export type Resume = {
   note?: string;
   destinationId?: string;
-  attachment?: Attachment;
+  attachments?: Attachment[];
   problem?: string;
 };
 
@@ -38,7 +38,7 @@ async function resumeIn(tabId: number): Promise<Resume | undefined> {
   return {
     ...(handoff.note && { note: handoff.note }),
     ...(handoff.destinationId && { destinationId: handoff.destinationId }),
-    ...(handoff.attachment && { attachment: handoff.attachment }),
+    ...(handoff.attachments && { attachments: handoff.attachments }),
     ...(handoff.problem && { problem: handoff.problem }),
   };
 }
@@ -63,14 +63,26 @@ async function takeResumedFile(
   }
 }
 
-let resumed: Promise<File | undefined> | undefined;
+/** The files read back, and how many of them were gone. */
+export type ResumedFiles = { files: File[]; missing: number };
+
+async function takeResumedFiles(
+  attachments: Attachment[]
+): Promise<ResumedFiles> {
+  const read = await Promise.all(attachments.map(takeResumedFile));
+  const files = read.filter((file) => file !== undefined);
+
+  return { files, missing: attachments.length - files.length };
+}
+
+let resumed: Promise<ResumedFiles> | undefined;
 
 /**
- * The draft's file, read once the popup is unlocked. The same promise every
+ * The draft's files, read once the popup is unlocked. The same promise every
  * time, as React's `use` needs.
  */
-export function resumedFile(attachment: Attachment) {
-  resumed ??= takeResumedFile(attachment);
+export function resumedFiles(attachments: Attachment[]) {
+  resumed ??= takeResumedFiles(attachments);
 
   return resumed;
 }

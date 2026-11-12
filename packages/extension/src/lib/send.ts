@@ -2,8 +2,11 @@ import {
   botIdOf,
   createBotClient,
   deliver,
+  deliverAlbum,
   type Delivery,
+  type IncomingMessage,
   type OutgoingMessage,
+  TelegramError,
   Upload,
 } from '@send-to-telegram/core';
 import { browser } from 'wxt/browser';
@@ -16,10 +19,14 @@ import {
   pruneAttachments,
 } from './attachments.ts';
 import {
+  type AlbumGroup,
   compose,
+  type ComposedAlbum,
   type ComposedUpload,
   type Draft,
+  draftFiles,
   draftSchema,
+  withFiles,
 } from './compose.ts';
 import {
   failureCopy,
@@ -27,14 +34,17 @@ import {
   SendFailure,
   toSendFailure,
 } from './failure.ts';
+import { plural } from './format.ts';
 import { attachmentOf } from './inbox.ts';
 import {
+  type Attachment,
   type Destination,
   defaultDestination,
   destinationName,
   type HistoryEntry,
   historyStore,
   MAX_HISTORY,
+  type SentAlbumItem,
   type Settings,
   settingsStore,
   statsStore,
@@ -69,28 +79,164 @@ export const sendOutcomeSchema = z.discriminatedUnion('ok', [
     ok: z.literal(false),
     reason: failureReasonSchema,
     message: z.string(),
+    /**
+     * Files that went before the rest failed, by attachment ID, so the draft
+     * keeps only what didn't.
+     */
+    sentFiles: z.array(z.string()).optional(),
   }),
 ]);
 
 export type SendOutcome = z.infer<typeof sendOutcomeSchema>;
 
-export async function transmit(
-  destination: Destination,
-  message: OutgoingMessage | ComposedUpload
-): Promise<Delivery> {
-  if ('attachment' in message) {
-    const blob = await loadAttachment(message.attachment.id);
+/**
+ * Some of an album's files went and the rest didn't, when photos and files
+ * went as two albums. Carries what went, to record and delete it.
+ */
+export class PartialSend extends Error {
+  override name = 'PartialSend';
+  readonly delivery: Delivery;
+  readonly sent: Attachment[];
+  readonly failure: SendFailure;
 
-    if (!blob) {
-      throw new SendFailure('unsendable', failureCopy.attachment_missing);
+  constructor(delivery: Delivery, sent: Attachment[], failure: SendFailure) {
+    super(failure.message, { cause: failure });
+    this.delivery = delivery;
+    this.sent = sent;
+    this.failure = failure;
+  }
+}
+
+async function uploadOf(attachment: Attachment): Promise<Upload> {
+  const blob = await loadAttachment(attachment.id);
+
+  if (!blob) {
+    throw new SendFailure('unsendable', failureCopy.attachment_missing);
+  }
+
+  return new Upload(blob, attachment.name);
+}
+
+/** What several deliveries add up to, as one message's. */
+function combined(deliveries: Delivery[]): Delivery {
+  const messageIds = deliveries.flatMap((delivery) => delivery.messageIds);
+
+  const album = deliveries.flatMap(
+    (delivery) => delivery.album ?? (delivery.sent ? [delivery.sent] : [])
+  );
+
+  return {
+    messageId: messageIds.at(-1) ?? 0,
+    messageIds,
+    via: deliveries[0]?.via ?? 'document',
+    album,
+  };
+}
+
+/**
+ * Says which rule Telegram applied to an album, and what to do about it.
+ * Undefined for failures that aren't about the files, which read as usual.
+ */
+function albumFailure(cause: unknown): SendFailure | undefined {
+  if (!(cause instanceof TelegramError) || cause.code !== 400) return undefined;
+
+  if (toSendFailure(cause).reason !== 'rejected') return undefined;
+
+  return new SendFailure(
+    'rejected',
+    `Telegram didn’t accept the files as an album: ${cause.message.replace(/^Bad Request: /, '')}. Send them in separate messages, or remove the one it can’t take.`,
+    { cause }
+  );
+}
+
+async function sendGroup(
+  destination: Destination,
+  group: AlbumGroup,
+  uploads: Upload[],
+  silent: boolean
+): Promise<Delivery> {
+  const bot = createBotClient(destination.token);
+  const [upload] = uploads;
+
+  // Telegram takes 2 to 10 files as an album; one goes as it would alone.
+  if (uploads.length === 1 && upload) {
+    return deliver(
+      bot,
+      destination.chatId,
+      {
+        kind: group.kind,
+        upload,
+        silent,
+        ...(group.caption && { caption: group.caption }),
+      },
+      destination.topic?.id
+    );
+  }
+
+  try {
+    return await deliverAlbum(
+      bot,
+      destination.chatId,
+      {
+        kind: group.kind,
+        uploads,
+        silent,
+        ...(group.caption && { caption: group.caption }),
+      },
+      destination.topic?.id
+    );
+  } catch (cause) {
+    throw albumFailure(cause) ?? cause;
+  }
+}
+
+/**
+ * Sends each group in turn. Every file is read first, so a missing one
+ * stops the send before anything goes. When a later group fails, what went
+ * is reported with it, not hidden behind the failure.
+ */
+async function transmitAlbum(
+  destination: Destination,
+  album: ComposedAlbum
+): Promise<Delivery> {
+  const uploads = await Promise.all(
+    album.groups.map((group) => Promise.all(group.attachments.map(uploadOf)))
+  );
+
+  const deliveries: Delivery[] = [];
+  const sent: Attachment[] = [];
+
+  for (const [index, group] of album.groups.entries()) {
+    try {
+      deliveries.push(
+        await sendGroup(destination, group, uploads[index] ?? [], album.silent)
+      );
+    } catch (cause) {
+      if (deliveries.length === 0) throw cause;
+
+      throw new PartialSend(combined(deliveries), sent, toSendFailure(cause));
     }
 
-    const { attachment, ...rest } = message;
+    sent.push(...group.attachments);
+  }
+
+  return combined(deliveries);
+}
+
+export async function transmit(
+  destination: Destination,
+  message: OutgoingMessage | ComposedUpload | ComposedAlbum
+): Promise<Delivery> {
+  if (message.kind === 'album') return transmitAlbum(destination, message);
+
+  if ('attachment' in message) {
+    const upload = await uploadOf(message.attachment);
+    const { attachment: _attachment, ...rest } = message;
 
     return deliver(
       createBotClient(destination.token),
       destination.chatId,
-      { ...rest, upload: new Upload(blob, attachment.name) },
+      { ...rest, upload },
       destination.topic?.id
     );
   }
@@ -127,6 +273,21 @@ export function telegramRef(
   return { botId, chatId: destination.chatId, messageIds: delivery.messageIds };
 }
 
+/** One album message as the chat shows it again; none for one it can't. */
+function albumItemOf(message: IncomingMessage): SentAlbumItem[] {
+  const media = attachmentOf(message);
+
+  if (!media?.media || !media.file) return [];
+
+  return [
+    {
+      media: media.media,
+      file: media.file,
+      ...(media.fileName && { fileName: media.fileName }),
+    },
+  ];
+}
+
 function historyEntry(
   draft: Draft,
   settings: Settings,
@@ -137,7 +298,14 @@ function historyEntry(
   }
 ): HistoryEntry {
   const keepContent = settings.history.mode === 'full';
-  const sent = result.delivery?.sent && attachmentOf(result.delivery.sent);
+  const files = draftFiles(draft);
+
+  // One file left of an album that half went is in `album` alone.
+  const message =
+    result.delivery?.sent ??
+    (files.length === 1 ? result.delivery?.album?.[0] : undefined);
+
+  const sent = message && attachmentOf(message);
 
   const telegram =
     result.destination &&
@@ -148,6 +316,9 @@ function historyEntry(
     sent?.media && sent.file
       ? { media: sent.media, file: sent.file }
       : undefined;
+
+  const sentAlbum =
+    files.length > 1 ? result.delivery?.album?.flatMap(albumItemOf) : undefined;
 
   return {
     id: crypto.randomUUID(),
@@ -170,7 +341,9 @@ function historyEntry(
         ...(draft.pageUrl && { pageUrl: draft.pageUrl }),
         ...(draft.pageTitle && { pageTitle: draft.pageTitle }),
         ...(draft.attachment && { attachment: draft.attachment }),
+        ...(files.length > 1 && { attachments: files }),
         ...(sentMedia && { sentMedia }),
+        ...(sentAlbum && sentAlbum.length > 0 && { sentAlbum }),
       },
     }),
   };
@@ -197,8 +370,8 @@ export async function pruneUnsentFiles() {
   if (!history) return;
 
   const retryable = history.flatMap((entry) =>
-    entry.status === 'failed' && entry.content?.attachment
-      ? [entry.content.attachment.id]
+    entry.status === 'failed' && entry.content
+      ? draftFiles(entry.content).map((file) => file.id)
       : []
   );
 
@@ -271,6 +444,72 @@ export async function recordUnsent(
   );
 }
 
+function deleteFiles(files: Attachment[]) {
+  return Promise.all(files.map((file) => deleteAttachment(file.id)));
+}
+
+/**
+ * Photos went as one album and files didn't, or the other way round. What
+ * went is recorded as sent, with its IDs so it can be deleted, and what
+ * didn't as failed, so Send again sends only that.
+ */
+async function partlySent(
+  request: SendRequest,
+  settings: Settings,
+  destination: Destination,
+  partial: PartialSend
+): Promise<SendOutcome> {
+  const { draft, incognito } = request;
+  const remember = !incognito && settings.history.mode !== 'off';
+  const files = draftFiles(draft);
+  const went = new Set(partial.sent.map((file) => file.id));
+  const rest = files.filter((file) => !went.has(file.id));
+
+  const sentPart: Draft = {
+    kind: draft.kind,
+    ...(draft.destinationId && { destinationId: draft.destinationId }),
+  };
+
+  console.error('Send partly failed', partial.failure.cause);
+  await showBadge(false);
+
+  if (!incognito) {
+    await statsStore.update((stats) => ({ sent: stats.sent + 1 }));
+  }
+
+  if (remember) {
+    await record(
+      // The text went as the last album's caption, so not with these.
+      historyEntry(withFiles(sentPart, partial.sent), settings, {
+        destination,
+        delivery: partial.delivery,
+      }),
+      request.retryOf
+    );
+    await record(
+      historyEntry(withFiles(draft, rest), settings, {
+        destination,
+        failure: partial.failure,
+      }),
+      undefined
+    );
+  }
+
+  await deleteFiles(remember ? partial.sent : files);
+
+  const sentNote = plural(partial.sent.length, {
+    one: `Only # of the ${files.length} files went.`,
+    other: `Only # of the ${files.length} files went.`,
+  });
+
+  return {
+    ok: false,
+    reason: partial.failure.reason,
+    message: `${sentNote} ${partial.failure.message}`,
+    sentFiles: [...went],
+  };
+}
+
 /**
  * Sends a draft and records the outcome. Private windows leave no history and
  * do not count towards the total, as in 1.x.
@@ -314,7 +553,7 @@ export async function send(request: SendRequest): Promise<SendOutcome> {
 
     const ref = telegramRef(destination, delivery);
 
-    if (draft.attachment) await deleteAttachment(draft.attachment.id);
+    await deleteFiles(draftFiles(draft));
 
     void pruneUnsentFiles().catch((cause: unknown) => {
       console.error('Could not clear unsent files', cause);
@@ -326,15 +565,17 @@ export async function send(request: SendRequest): Promise<SendOutcome> {
       ...(ref && { sent: { ...ref, ...(entryId && { entryId }) } }),
     };
   } catch (cause) {
+    if (cause instanceof PartialSend && destination) {
+      return partlySent(request, settings, destination, cause);
+    }
+
     const failure = toSendFailure(cause);
 
     console.error('Send failed', cause);
     await showBadge(false);
 
     // Nothing in history can send it again, and private windows leave no trace.
-    if (draft.attachment && !remember) {
-      await deleteAttachment(draft.attachment.id);
-    }
+    if (!remember) await deleteFiles(draftFiles(draft));
 
     if (remember) {
       const entry = historyEntry(draft, settings, {

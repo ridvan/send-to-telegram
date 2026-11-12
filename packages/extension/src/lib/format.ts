@@ -182,7 +182,7 @@ export function entryTitle(entry: HistoryEntry): string {
       return (
         content.text ??
         content.note ??
-        content.attachment?.name ??
+        (content.attachment ?? content.attachments?.[0])?.name ??
         kindLabel.selection
       );
     case 'page':
@@ -190,7 +190,7 @@ export function entryTitle(entry: HistoryEntry): string {
         content.pageTitle ??
         (content.pageUrl ? displayUrl(content.pageUrl) : undefined) ??
         content.note ??
-        content.attachment?.name ??
+        (content.attachment ?? content.attachments?.[0])?.name ??
         kindLabel.page
       );
     case 'link':

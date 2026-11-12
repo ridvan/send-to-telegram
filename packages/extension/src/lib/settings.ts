@@ -239,6 +239,19 @@ export const attachmentSchema = z.object({
 
 export type Attachment = z.infer<typeof attachmentSchema>;
 
+/** A file as Telegram keeps it once sent, so the chat can show it again. */
+const sentMediaSchema = z.object({
+  media: mediaKindSchema,
+  file: inboxFileSchema,
+});
+
+/** One message of a sent album; its name is the one Telegram kept. */
+const sentAlbumItemSchema = sentMediaSchema.extend({
+  fileName: z.string().optional(),
+});
+
+export type SentAlbumItem = z.infer<typeof sentAlbumItemSchema>;
+
 /**
  * Where Telegram keeps a sent message, so it can be deleted there too. The
  * bot is named by its ID rather than its token, so no secret is copied into
@@ -280,9 +293,15 @@ export const historyEntrySchema = z.object({
       pageTitle: z.string().optional(),
       attachment: attachmentSchema.optional(),
       /** The attachment as Telegram keeps it, so the chat can show it again. */
-      sentMedia: z
-        .object({ media: mediaKindSchema, file: inboxFileSchema })
-        .optional(),
+      sentMedia: sentMediaSchema.optional(),
+      /**
+       * Two or more files sent as an album, in place of `attachment`. Added
+       * after it, so entries without them read as before; ones this version
+       * can't read are dropped, not the entry.
+       */
+      attachments: z.array(attachmentSchema).optional().catch(undefined),
+      /** The album's messages as Telegram keeps them, like `sentMedia`. */
+      sentAlbum: z.array(sentAlbumItemSchema).optional().catch(undefined),
     })
     .optional(),
 });

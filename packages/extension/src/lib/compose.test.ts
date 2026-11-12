@@ -289,3 +289,167 @@ describe('sending again from history', () => {
     });
   });
 });
+
+describe('composing an album', () => {
+  const photo = (id: string, size = 3) => ({
+    id,
+    name: `${id}.png`,
+    type: 'image/png',
+    size,
+  });
+
+  const file = (id: string, type = 'application/pdf') => ({
+    id,
+    name: `${id}.pdf`,
+    type,
+    size: 3,
+  });
+
+  it('sends one file exactly as before, whichever field holds it', () => {
+    const one = compose({ kind: 'page', attachment: photo('a') }, delivery);
+
+    expect(
+      compose({ kind: 'page', attachments: [photo('a')] }, delivery)
+    ).toEqual(one);
+    expect(one).toMatchObject({ kind: 'photo', attachment: photo('a') });
+  });
+
+  it('groups photos with photos and files with files, in the order attached', () => {
+    const message = compose(
+      {
+        kind: 'page',
+        note: 'Both',
+        attachments: [file('a'), photo('b'), file('c'), photo('d')],
+      },
+      delivery
+    );
+
+    expect(message).toEqual({
+      kind: 'album',
+      silent: true,
+      groups: [
+        { kind: 'document', attachments: [file('a'), file('c')] },
+        {
+          kind: 'photo',
+          attachments: [photo('b'), photo('d')],
+          caption: 'Both',
+        },
+      ],
+    });
+  });
+
+  it('sends GIFs, WebP and photos over 10 MB with the files', () => {
+    const message = compose(
+      {
+        kind: 'page',
+        attachments: [
+          photo('a'),
+          file('b', 'image/gif'),
+          file('c', 'image/webp'),
+          photo('d', 11 * 1024 * 1024),
+        ],
+      },
+      delivery
+    );
+
+    expect(message).toMatchObject({
+      groups: [
+        { kind: 'photo', attachments: [photo('a')] },
+        {
+          kind: 'document',
+          attachments: [
+            file('b', 'image/gif'),
+            file('c', 'image/webp'),
+            photo('d', 11 * 1024 * 1024),
+          ],
+        },
+      ],
+    });
+  });
+
+  it('sends every image as a file when images go as files', () => {
+    const message = compose(
+      { kind: 'page', attachments: [photo('a'), photo('b')] },
+      { ...delivery, imageMode: 'document' }
+    );
+
+    expect(message).toMatchObject({
+      groups: [{ kind: 'document', attachments: [photo('a'), photo('b')] }],
+    });
+  });
+
+  it('puts the page link in the caption, since an album has no button', () => {
+    const message = compose(
+      {
+        kind: 'selection',
+        text: 'x'.repeat(2000),
+        attachments: [photo('a'), photo('b')],
+        ...page,
+      },
+      delivery
+    );
+
+    const caption =
+      message.kind === 'album' ? message.groups.at(-1)?.caption : undefined;
+
+    expect(caption).toHaveLength(1024);
+    expect(caption?.endsWith('…\n\nhttps://example.com/post')).toBe(true);
+    expect(message).not.toHaveProperty('sourceUrl');
+  });
+
+  it('refuses more than ten files, saying how many to remove', () => {
+    const attachments = Array.from({ length: 12 }, (_, index) =>
+      photo(`p${index}`)
+    );
+
+    expect(() => compose({ kind: 'page', attachments }, delivery)).toThrow(
+      new ComposeError(
+        'A message takes up to 10 files. Remove 2, then send again.'
+      )
+    );
+  });
+});
+
+describe('album history', () => {
+  it('reads entries kept before albums, and albums as sent', () => {
+    const before = historyEntrySchema.parse({
+      id: 'h1',
+      sentAt: 1,
+      kind: 'page',
+      status: 'sent',
+      content: {
+        attachment: { id: 'a', name: 'a.png', type: 'image/png', size: 1 },
+      },
+    });
+
+    expect(before.content?.attachments).toBeUndefined();
+
+    const album = historyEntrySchema.parse({
+      id: 'h2',
+      sentAt: 1,
+      kind: 'page',
+      status: 'failed',
+      content: {
+        attachments: [
+          { id: 'a', name: 'a.png', type: 'image/png', size: 1 },
+          { id: 'b', name: 'b.png', type: 'image/png', size: 1 },
+        ],
+        sentAlbum: [{ media: 'photo', file: { id: 'p', uniqueId: 'P' } }],
+      },
+    });
+
+    expect(draftFromEntry(album)?.attachments).toHaveLength(2);
+  });
+
+  it('drops album fields it can’t read, keeping the entry', () => {
+    const entry = historyEntrySchema.parse({
+      id: 'h3',
+      sentAt: 1,
+      kind: 'page',
+      status: 'sent',
+      content: { note: 'Kept', attachments: 'nonsense', sentAlbum: [1] },
+    });
+
+    expect(entry.content).toEqual({ note: 'Kept' });
+  });
+});

@@ -18,7 +18,12 @@ import { ReceivedMedia } from '@/components/received-media';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { isHttpUrl, sendsAsPhoto, sendsPageInstead } from '@/lib/compose';
+import {
+  albumGroups,
+  isHttpUrl,
+  sendsAsPhoto,
+  sendsPageInstead,
+} from '@/lib/compose';
 import { splitHashtags } from '@/lib/hashtags';
 import {
   displayUrl,
@@ -32,6 +37,7 @@ import type {
   ContentKind,
   HistoryEntry,
   InboxEntry,
+  SentAlbumItem,
   Settings,
 } from '@/lib/settings';
 import { cn } from '@/lib/utils';
@@ -193,12 +199,22 @@ type MessageContent = {
   pageTitle?: string | undefined;
   tag?: string | undefined;
   attachment?: AttachmentView | undefined;
+  /** Two or more files, sent as an album. */
+  attachments?: AttachmentView[] | undefined;
 };
 
 /** An attached file; `url` shows its contents while it's still on this device. */
-export type AttachmentView = Pick<Attachment, 'name' | 'type' | 'size'> & {
+export type AttachmentView = Pick<
+  Attachment,
+  'id' | 'name' | 'type' | 'size'
+> & {
   url?: string | undefined;
 };
+
+/** Whether the message's files go as an album, which takes no button. */
+function isAlbum(message: Pick<MessageContent, 'attachments'>): boolean {
+  return (message.attachments?.length ?? 0) > 1;
+}
 
 type Block = { key: string; content: ReactNode };
 
@@ -222,8 +238,13 @@ function messageParts(
   // A video or song Telegram can't fetch went as its page.
   const kind = sendsPageInstead(message) ? 'page' : message.kind;
   const note = message.note?.trim();
+
   // A caption under a file has no link preview, so the title goes in the text.
-  const withTitle = !delivery.linkPreview || message.attachment !== undefined;
+  const withTitle =
+    !delivery.linkPreview ||
+    message.attachment !== undefined ||
+    isAlbum(message);
+
   const blocks: Block[] = [];
 
   if (note) blocks.push({ key: 'note', content: <NoteText text={note} /> });
@@ -305,6 +326,20 @@ function messageParts(
       ? pageUrl
       : undefined;
 
+  // An album takes no button, so `compose` ends its caption with the link.
+  if (sourceUrl && isAlbum(message)) {
+    blocks.push({
+      key: 'source',
+      content: (
+        <UrlText url={sourceUrl} linked={linked}>
+          {displayUrl(sourceUrl)}
+        </UrlText>
+      ),
+    });
+
+    return { blocks, card, sourceUrl: undefined };
+  }
+
   return { blocks, card, sourceUrl };
 }
 
@@ -364,14 +399,18 @@ function RemoveButton({
 function MediaFrame({
   children,
   meta,
+  top = true,
 }: {
   children: ReactNode;
   meta: ReactNode;
+  /** At the bubble's top edge; an album's files can come before it. */
+  top?: boolean;
 }) {
   return (
     <span
       className={cn(
-        'relative -mx-3 -mt-1.5 block min-w-64 bg-bubble-muted/10',
+        'relative -mx-3 block min-w-64 bg-bubble-muted/10',
+        top ? '-mt-1.5' : 'mt-1.5',
         meta ? '-mb-1.5' : 'mb-1.5'
       )}
     >
@@ -409,6 +448,185 @@ function AttachedPhoto({
 /** Media kinds that fill the bubble rather than sit inside it. */
 const visualMedia = new Set(['photo', 'video', 'animation']);
 
+/**
+ * An album's pictures in a tidy grid, two across, as Telegram tiles them at
+ * this width; with an odd count the first spans the row.
+ */
+function AlbumGrid<Item extends { key: string }>({
+  items,
+  tile,
+}: {
+  items: Item[];
+  tile: (item: Item, aspect: string) => ReactNode;
+}) {
+  return (
+    <span className="grid grid-cols-2 gap-0.5">
+      {items.map((item, index) => {
+        const wide = items.length % 2 === 1 && index === 0;
+
+        return (
+          <span
+            key={item.key}
+            className={cn('relative block', wide && 'col-span-2')}
+          >
+            {tile(item, wide ? '2 / 1' : '1 / 1')}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** A photo of an album still on this device, in its tile. */
+function AlbumPhoto({
+  url,
+  name,
+  aspect,
+  onRemove,
+}: {
+  url: string;
+  name: string;
+  aspect: string;
+  onRemove: (() => void) | undefined;
+}) {
+  return (
+    <>
+      <img
+        src={url}
+        alt={name}
+        className="block aspect-(--aspect) w-full object-cover"
+        style={{ '--aspect': aspect }}
+      />
+      {onRemove ? (
+        <span className="absolute top-1 right-1">
+          <RemoveButton label={`Remove ${name}`} onRemove={onRemove} />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** Part of an album: pictures that tile, or files listed one under another. */
+type AlbumSection =
+  | {
+      key: string;
+      tiles: { key: string; node: (aspect: string) => ReactNode }[];
+    }
+  | { key: string; rows: { key: string; node: ReactNode }[] };
+
+/**
+ * The files of an album being written, in the groups `compose` sends them
+ * in: photos tile, and files, GIFs and big photos among them, are listed.
+ */
+function draftSections(
+  files: AttachmentView[],
+  imageMode: Settings['delivery']['imageMode'],
+  onRemove: ((id: string) => void) | undefined
+): AlbumSection[] {
+  return albumGroups(files, imageMode).map((group) => {
+    const key = `${group.kind}-${group.attachments[0]?.id ?? ''}`;
+    const remove = (id: string) => (onRemove ? () => onRemove(id) : undefined);
+
+    const tiles = group.attachments.flatMap((file) => {
+      const { url } = file;
+
+      return group.kind === 'photo' && url
+        ? [
+            {
+              key: file.id,
+              node: (aspect: string) => (
+                <AlbumPhoto
+                  url={url}
+                  name={file.name}
+                  aspect={aspect}
+                  onRemove={remove(file.id)}
+                />
+              ),
+            },
+          ]
+        : [];
+    });
+
+    // Photos kept in history have no picture here, so they're listed too.
+    if (tiles.length === group.attachments.length) return { key, tiles };
+
+    return {
+      key,
+      rows: group.attachments.map((file) => ({
+        key: file.id,
+        node: (
+          <AttachedFile
+            attachment={file}
+            removeLabel={`Remove ${file.name}`}
+            onRemove={remove(file.id)}
+          />
+        ),
+      })),
+    };
+  });
+}
+
+/** A sent album drawn from Telegram's copies, pictures tiled and files listed. */
+function sentSections(
+  entry: HistoryEntry,
+  items: SentAlbumItem[],
+  token: string
+): AlbumSection[] {
+  const sections: AlbumSection[] = [];
+
+  for (const [index, item] of items.entries()) {
+    // Telegram gives the same file sent twice one ID, so the place tells them apart.
+    const key = `${item.file.uniqueId}-${index}`;
+    const message = sentAlbumMessage(entry, item, index);
+    const last = sections.at(-1);
+
+    if (visualMedia.has(item.media)) {
+      const tile = {
+        key,
+        node: (aspect: string) => (
+          <ReceivedMedia
+            token={token}
+            message={message}
+            file={item.file}
+            aspect={aspect}
+          />
+        ),
+      };
+
+      if (last && 'tiles' in last) last.tiles.push(tile);
+      else sections.push({ key, tiles: [tile] });
+    } else {
+      const row = {
+        key,
+        node: (
+          <ReceivedMedia token={token} message={message} file={item.file} />
+        ),
+      };
+
+      if (last && 'rows' in last) last.rows.push(row);
+      else sections.push({ key, rows: [row] });
+    }
+  }
+
+  return sections;
+}
+
+/** One message of a sent album, shaped as received media is. */
+function sentAlbumMessage(
+  entry: HistoryEntry,
+  item: SentAlbumItem,
+  index: number
+): InboxEntry {
+  return {
+    id: `${entry.id}:${index}`,
+    destinationId: entry.destinationId ?? '',
+    receivedAt: entry.sentAt,
+    media: item.media,
+    file: item.file,
+    ...(item.fileName && { fileName: item.fileName }),
+  };
+}
+
 /** A file sent earlier, downloaded from Telegram as received media is. */
 function SentMedia({
   entry,
@@ -436,9 +654,12 @@ function SentMedia({
 /** Any other file: a thumbnail or icon, its name and size. */
 function AttachedFile({
   attachment,
+  removeLabel,
   onRemove,
 }: {
   attachment: AttachmentView;
+  /** Names the file among several. */
+  removeLabel?: string;
   onRemove: (() => void) | undefined;
 }) {
   const image = attachment.type.startsWith('image/');
@@ -460,7 +681,12 @@ function AttachedFile({
           {formatBytes(attachment.size)}
         </span>
       </span>
-      {onRemove ? <RemoveButton onRemove={onRemove} /> : null}
+      {onRemove ? (
+        <RemoveButton
+          {...(removeLabel && { label: removeLabel })}
+          onRemove={onRemove}
+        />
+      ) : null}
     </span>
   );
 }
@@ -479,6 +705,7 @@ function Bubble({
   onRemoveAttachment,
   onRemovePageLink,
   sentMedia,
+  sentAlbum,
 }: {
   message: MessageContent;
   delivery: Settings['delivery'];
@@ -491,26 +718,55 @@ function Bubble({
   empty: ReactNode;
   /** Outlined, to tell the message being written from those sent. */
   unsent?: boolean;
-  onRemoveAttachment?: (() => void) | undefined;
+  /** Removes a file from a draft, by its attachment ID. */
+  onRemoveAttachment?: ((id: string) => void) | undefined;
   /** Takes the page's link card off a draft. */
   onRemovePageLink?: (() => void) | undefined;
   /** A file sent earlier, drawn from Telegram's copy in place of its name. */
   sentMedia?: { node: ReactNode; visual: boolean } | undefined;
+  /** An album sent earlier, drawn from Telegram's copies. */
+  sentAlbum?: AlbumSection[] | undefined;
 }) {
   const { blocks, card, sourceUrl } = messageParts(message, delivery, linked);
   const { attachment } = message;
+
+  const album =
+    sentAlbum ??
+    (isAlbum(message) && message.attachments
+      ? draftSections(
+          message.attachments,
+          delivery.imageMode,
+          onRemoveAttachment
+        )
+      : undefined);
+
+  const removeAttachment =
+    onRemoveAttachment && attachment
+      ? () => onRemoveAttachment(attachment.id)
+      : undefined;
 
   const photoUrl =
     attachment?.url && sendsAsPhoto(attachment, delivery.imageMode)
       ? attachment.url
       : undefined;
 
-  const framed = photoUrl !== undefined || sentMedia?.visual === true;
+  const lastSection = album?.at(-1);
 
-  const photoMeta =
-    framed && blocks.length === 0 ? (
-      <Meta status={status} time={time} inline={false} live={live} onPhoto />
-    ) : null;
+  const framed =
+    photoUrl !== undefined ||
+    sentMedia?.visual === true ||
+    (album?.some((section) => 'tiles' in section) ?? false);
+
+  // On the picture only when nothing follows it.
+  const endsOnPicture =
+    blocks.length === 0 &&
+    (album ? lastSection !== undefined && 'tiles' in lastSection : framed);
+
+  const photoMeta = endsOnPicture ? (
+    <Meta status={status} time={time} inline={false} live={live} onPhoto />
+  ) : null;
+
+  const hasFiles = attachment !== undefined || album !== undefined;
 
   // Telegram draws the time after the last line of text, or under the card.
   const meta = <Meta status={status} time={time} inline={!card} live={live} />;
@@ -536,17 +792,39 @@ function Bubble({
             <AttachedPhoto
               url={photoUrl}
               name={attachment.name}
-              onRemove={onRemoveAttachment}
+              onRemove={removeAttachment}
             />
           </MediaFrame>
         ) : null}
         {attachment && !photoUrl && !sentMedia ? (
-          <AttachedFile attachment={attachment} onRemove={onRemoveAttachment} />
+          <AttachedFile attachment={attachment} onRemove={removeAttachment} />
         ) : null}
-        {blocks.length === 0 && attachment && !framed ? (
+        {album?.map((section, index) =>
+          'tiles' in section ? (
+            <MediaFrame
+              key={section.key}
+              top={index === 0}
+              meta={section === lastSection ? photoMeta : null}
+            >
+              <AlbumGrid
+                items={section.tiles}
+                tile={(tile, aspect) => tile.node(aspect)}
+              />
+            </MediaFrame>
+          ) : (
+            <span key={section.key} className="flex flex-col py-0.5">
+              {section.rows.map((row) => (
+                <span key={row.key} className="block py-0.5">
+                  {row.node}
+                </span>
+              ))}
+            </span>
+          )
+        )}
+        {blocks.length === 0 && hasFiles && !endsOnPicture ? (
           <Meta status={status} time={time} inline={false} live={live} />
         ) : null}
-        {blocks.length === 0 && !attachment ? (
+        {blocks.length === 0 && !hasFiles ? (
           <p className="text-bubble-muted">
             {empty}
             {meta}
@@ -601,7 +879,7 @@ export function MessagePreview({
   status,
   time,
   standOut,
-  attachment,
+  attachments,
   onRemoveAttachment,
   onRemovePageLink,
   menu,
@@ -618,9 +896,10 @@ export function MessagePreview({
   time: number;
   /** Earlier messages show above, so mark this one as not sent yet. */
   standOut: boolean;
-  attachment: AttachmentView | undefined;
-  /** Left out while sending, when the file can no longer change. */
-  onRemoveAttachment: (() => void) | undefined;
+  /** One file, or an album's. */
+  attachments: AttachmentView[];
+  /** Left out while sending, when the files can no longer change. */
+  onRemoveAttachment: ((id: string) => void) | undefined;
   /** Left out while sending, like `onRemoveAttachment`. */
   onRemovePageLink: (() => void) | undefined;
   /** Its right-click menu, kept mounted so a closing one can finish. */
@@ -634,7 +913,16 @@ export function MessagePreview({
         <ContextMenuTrigger>
           <div className={column}>
             <Bubble
-              message={{ kind, pageUrl, pageTitle, text, note, attachment }}
+              message={{
+                kind,
+                pageUrl,
+                pageTitle,
+                text,
+                note,
+                ...(attachments.length > 1
+                  ? { attachments }
+                  : { attachment: attachments[0] }),
+              }}
               onRemoveAttachment={onRemoveAttachment}
               onRemovePageLink={onRemovePageLink}
               delivery={delivery}
@@ -762,6 +1050,7 @@ export function SentMessage({
   menu?: ReactNode;
 }) {
   const sent = entry.content?.sentMedia;
+  const sentAlbum = entry.content?.sentAlbum;
   // Picked or checked instead of used: links, media and the menu rest.
   const passive = pick !== undefined || select !== undefined;
 
@@ -776,6 +1065,9 @@ export function SentMessage({
                 visual: visualMedia.has(sent.media),
               }
             : undefined
+        }
+        sentAlbum={
+          sentAlbum && token ? sentSections(entry, sentAlbum, token) : undefined
         }
         delivery={delivery}
         status={entry.status}
