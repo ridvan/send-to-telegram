@@ -3,7 +3,8 @@
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
  * `?fail` to make sends, albums, deletes, downloads and chat lookups fail, `?nocapture` to make screenshots
- * fail, and `?lock` to lock it again after
+ * fail, `?offline` to have the browser offline, so sends wait in the queue,
+ * and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
  * download their media. Connecting a chat works with the token in
@@ -121,6 +122,16 @@ function demoData(now: number) {
     // Sample messages deleted in an earlier look come back with the rest.
     inboxRemoved: [],
     onboarding: { completedAt: now - 30 * 24 * 60 * minute },
+    // Waiting since it failed offline; `?offline` shows it waiting for the
+    // connection, otherwise for its next try.
+    sendQueue: [
+      {
+        entryId: 'h3d',
+        attempts: 4,
+        since: now - 7 * 60 * minute,
+        nextAt: now + 4 * minute,
+      },
+    ],
     history: [
       {
         id: 'h1',
@@ -134,6 +145,25 @@ function demoData(now: number) {
         content: {
           pageUrl: 'https://www.joshwcomeau.com/css/interactive-guide-to-grid/',
           pageTitle: 'An Interactive Guide to CSS Grid',
+        },
+      },
+      {
+        // A long text whose first part went before the rest failed.
+        id: 'h1p',
+        sentAt: now - 9 * minute,
+        kind: 'selection',
+        status: 'failed',
+        destinationId: 'me',
+        destinationName: 'Rıdvan Aktogan',
+        error:
+          'Telegram is having trouble. Check your connection and try again.',
+        telegram: { botId: 1, chatId: 1001, messageIds: [99] },
+        partsSent: 1,
+        content: {
+          text: 'Subgrid lets a nested grid line its tracks up with its parent’s, so cards in a row keep their titles, bodies and footers aligned however long each one runs.',
+          pageUrl:
+            'https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout/Subgrid',
+          pageTitle: 'Subgrid - CSS | MDN',
         },
       },
       {
@@ -673,7 +703,8 @@ const DEMO_TOKEN = '12345:demo-demo-demo-demo-demo-demo-demo';
  */
 function fakeTelegram(
   realFetch: typeof fetch,
-  failDownloads: boolean
+  failDownloads: boolean,
+  offline: boolean
 ): typeof fetch {
   const updates = demoUpdates(Date.now());
 
@@ -689,6 +720,11 @@ function fakeTelegram(
         '/bot1:x/'
       )
     );
+
+    // Offline, a send can't connect, as fetch rejects it in the browser.
+    if (offline && /\/bot1:x\/send/.test(url.pathname)) {
+      throw new TypeError('Failed to fetch');
+    }
 
     if (url.href === 'https://api.telegram.org/bot1:x/getMe') {
       return json({
@@ -846,6 +882,10 @@ function install() {
   if (url.searchParams.has('lock'))
     sessionStorage.removeItem(`${PREFIX}vaultKey`);
 
+  const offline = url.searchParams.has('offline');
+
+  if (offline) Object.defineProperty(navigator, 'onLine', { get: () => false });
+
   const emit = (changes: Changes, area = 'local') => {
     for (const listener of listeners) listener(changes, area);
   };
@@ -886,8 +926,9 @@ function install() {
         }
 
         // An album goes through the real send, to the fake Bot API, so its
-        // files land in the chat; `?fail` makes Telegram refuse it.
-        if ((message.draft.attachments?.length ?? 0) > 1) {
+        // files land in the chat; `?fail` makes Telegram refuse it. Offline,
+        // every send does, so it waits in the queue as it would.
+        if ((message.draft.attachments?.length ?? 0) > 1 || offline) {
           const { send } = await import('./send.ts');
 
           return send(message);
@@ -903,6 +944,25 @@ function install() {
             message:
               'The bot can’t post to this chat. Open the chat in Telegram and press Start.',
           };
+        }
+
+        // Sent again, a failed or waiting message becomes a sent one.
+        if (message.retryOf) {
+          const { historyStore, sendQueueStore } =
+            await import('./settings.ts');
+
+          const id = message.retryOf;
+
+          await sendQueueStore.update((queue) =>
+            queue.filter((item) => item.entryId !== id)
+          );
+          await historyStore.update((history) =>
+            history.map((entry) =>
+              entry.id === id
+                ? { ...entry, status: 'sent', sentAt: Date.now() }
+                : entry
+            )
+          );
         }
 
         // Undo deletes it from the demo bot's private chat.
@@ -995,6 +1055,8 @@ function install() {
       setBadgeTextColor: async () => {},
     },
     contextMenus: { create: noop, removeAll: async () => {}, onClicked: event },
+    // Nothing wakes a page; the queue's next try shows as waiting.
+    alarms: { create: async () => {}, clear: async () => true, onAlarm: event },
     permissions: {
       contains: async () => downloadsAllowed,
       request: async () => {
@@ -1015,7 +1077,7 @@ function install() {
 
   Object.assign(globalThis, {
     chrome,
-    fetch: fakeTelegram(fetch, url.searchParams.has('fail')),
+    fetch: fakeTelegram(fetch, url.searchParams.has('fail'), offline),
     // The popup closes itself, as before picking an area; a tab the preview
     // opened would close for real.
     close: () => console.info('Would close the popup'),

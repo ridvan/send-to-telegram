@@ -99,6 +99,7 @@ import { chatKey, useChatItems } from '@/hooks/use-chat-items';
 import { useHashtagSuggestions } from '@/hooks/use-hashtag-suggestions';
 import { useInbox } from '@/hooks/use-inbox';
 import { useLock } from '@/hooks/use-lock';
+import { useQueued, useWaiting } from '@/hooks/use-queue';
 import { useStore } from '@/hooks/use-store';
 import { markAnnouncementSeen } from '@/lib/announcements';
 import { saveAttachment } from '@/lib/attachments';
@@ -363,6 +364,12 @@ function Shell({ page, settings }: { page: PageContext; settings: Settings }) {
                 settings.destinations,
                 selectedAt
               )}
+              partly={
+                chosen.length === 1 &&
+                chosen[0]?.direction === 'out' &&
+                chosen[0].entry.status === 'failed' &&
+                chosen[0].entry.telegram !== undefined
+              }
               onCancel={stopSelecting}
               onDelete={deleteSelected}
             />
@@ -824,6 +831,21 @@ function Composer({
           });
         }
       }, 1000);
+
+      return;
+    }
+
+    // It waits in the chat now and goes by itself, so the field clears for
+    // the next message, as after a send.
+    if (outcome.queued) {
+      setNote('');
+      clear();
+      setTime(() => Date.now());
+      setFirstSendAt(undefined);
+      setPhase({ name: 'idle' });
+      noteRef.current?.focus();
+      requestAnimationFrame(scrollToDraft);
+      toast(outcome.message, UNDO_TOAST);
 
       return;
     }
@@ -1308,14 +1330,17 @@ function AttachButton({
 
 /**
  * The newest send failed, likely from the right-click menu: this is what the
- * red toolbar badge pointed at, so say why. Left out when the failed message
- * already shows in this chat, with its own way to send it again.
+ * red toolbar badge pointed at, so say why. One waiting to be tried again
+ * says when instead. Left out when the failed message already shows in this
+ * chat, with its own way to send it again.
  */
 function LastFailure({ inChat }: { inChat: (entryId: string) => boolean }) {
   const settings = useStore(settingsStore);
   const history = useStore(historyStore);
   const [retrying, setRetrying] = useState(false);
   const entry = history[0];
+  const queued = useQueued()(entry?.id ?? '');
+  const waiting = useWaiting(queued);
 
   if (
     settings.history.mode === 'off' ||
@@ -1328,12 +1353,16 @@ function LastFailure({ inChat }: { inChat: (entryId: string) => boolean }) {
   const draft = draftFromEntry(entry);
 
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Last message not sent</AlertTitle>
+    <Alert variant={queued ? 'default' : 'destructive'}>
+      <AlertTitle>
+        {queued ? 'Last message not sent yet' : 'Last message not sent'}
+      </AlertTitle>
       <AlertDescription>
-        {entry.error ?? 'Telegram didn’t accept it. Try sending it again.'}
+        {queued
+          ? `${waiting.copy}.`
+          : (entry.error ?? 'Telegram didn’t accept it. Try sending it again.')}
       </AlertDescription>
-      {draft ? (
+      {draft && !waiting.trying ? (
         <AlertAction>
           <Button
             variant="outline"
@@ -1348,7 +1377,7 @@ function LastFailure({ inChat }: { inChat: (entryId: string) => boolean }) {
               setRetrying(false);
             }}
           >
-            Send again
+            {queued ? 'Send now' : 'Send again'}
           </Button>
         </AlertAction>
       ) : null}

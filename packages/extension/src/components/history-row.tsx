@@ -1,5 +1,6 @@
 import {
   Alert02Icon,
+  Clock01Icon,
   Globe02Icon,
   Image02Icon,
   Link04Icon,
@@ -30,7 +31,8 @@ import {
   hostname,
   kindLabel,
 } from '@/lib/format';
-import type { ContentKind, HistoryEntry } from '@/lib/settings';
+import { useWaiting } from '@/hooks/use-queue';
+import type { ContentKind, HistoryEntry, QueuedSend } from '@/lib/settings';
 
 const kindTiles = {
   selection: { icon: TextIcon, tone: 'orange' },
@@ -61,18 +63,22 @@ function Timestamp({
 /** One sent item: what it was, where it went and when. */
 export function HistoryRow({
   entry,
+  queued,
   now,
   actions,
 }: {
   entry: HistoryEntry;
+  /** Failed, and waiting in the queue to be tried again. */
+  queued?: QueuedSend | undefined;
   now: number;
   actions?: ReactNode;
 }) {
   const failed = entry.status === 'failed';
+  const waiting = useWaiting(queued).copy;
   const source = hostname(entry.content?.pageUrl);
 
   const details = [
-    failed ? 'Not sent' : kindLabel[entry.kind],
+    queued ? waiting : failed ? 'Not sent' : kindLabel[entry.kind],
     entry.destinationName,
     entry.tag && `#${entry.tag}`,
     entry.kind !== 'page' && source,
@@ -81,7 +87,9 @@ export function HistoryRow({
   return (
     <Item size="xs">
       <ItemMedia>
-        {failed ? (
+        {queued ? (
+          <IconTile icon={Clock01Icon} tone="blue" />
+        ) : failed ? (
           <IconTile icon={Alert02Icon} tone="red" />
         ) : (
           <IconTile {...kindTiles[entry.kind]} />
@@ -104,7 +112,9 @@ export function HistoryRow({
             render={<Timestamp time={entry.sentAt} now={now} />}
           />
           <TooltipContent>
-            {failed && entry.error ? entry.error : formatFullDate(entry.sentAt)}
+            {failed && !queued && entry.error
+              ? entry.error
+              : formatFullDate(entry.sentAt)}
           </TooltipContent>
         </Tooltip>
       </ItemActions>

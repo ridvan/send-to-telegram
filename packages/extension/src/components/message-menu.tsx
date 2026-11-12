@@ -17,6 +17,7 @@ import {
   ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import type { ChatItem } from '@/hooks/use-chat-items';
+import { useQueued } from '@/hooks/use-queue';
 import {
   deleteCopy,
   deleteMessages,
@@ -45,8 +46,11 @@ function open(url: string) {
 
 /** Deletes from this browser only, saying why Telegram keeps a sent one. */
 function remove(item: ChatItem, why: TelegramDeletion | undefined) {
-  // A failed send never reached Telegram, so nothing stays there.
-  const unsent = item.direction === 'out' && item.entry.status === 'failed';
+  // A failed send that never reached Telegram leaves nothing there.
+  const unsent =
+    item.direction === 'out' &&
+    item.entry.status === 'failed' &&
+    !item.entry.telegram;
 
   void deleteMessages([item]).then(() =>
     toast(
@@ -91,6 +95,7 @@ function SentItems({
   delivery: Settings['delivery'];
 }) {
   const draft = draftFromEntry(entry);
+  const waiting = useQueued()(entry.id) !== undefined;
   const text = draft ? messageText(draft, delivery) : '';
   const link = entry.content?.url ?? entry.content?.pageUrl;
   const pageUrl = entry.content?.pageUrl;
@@ -123,10 +128,11 @@ function SentItems({
             });
 
             if (outcome.ok) toast.success(`Sent to ${outcome.destination}`);
+            else if (outcome.queued) toast(outcome.message);
             else toast.error(outcome.message);
           }}
         >
-          Send again
+          {waiting ? 'Send now' : 'Send again'}
         </MenuItem>
       ) : null}
     </>

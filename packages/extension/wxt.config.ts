@@ -34,11 +34,18 @@ export default defineConfig({
     name: 'Send to Telegram',
     description:
       'Send text, links, images and pages to a Telegram chat from the right-click menu.',
-    // 1.x shipped contextMenus and storage. activeTab and scripting add no
-    // install warning, so updating users are not asked to re-approve.
-    // activeTab also allows screenshots of the tab the popup, menu or
-    // shortcut was used on, and scripting the overlay that picks an area.
-    permissions: ['contextMenus', 'storage', 'activeTab', 'scripting'],
+    // 1.x shipped contextMenus and storage. activeTab, scripting and alarms
+    // add no install warning in Chrome or Firefox, so updating users are not
+    // asked to re-approve. activeTab also allows screenshots of the tab the
+    // popup, menu or shortcut was used on, scripting the overlay that picks
+    // an area, and alarms waking the worker to send a message again later.
+    permissions: [
+      'contextMenus',
+      'storage',
+      'activeTab',
+      'scripting',
+      'alarms',
+    ],
     // Telegram's file host leaves out Access-Control-Allow-Origin on
     // successful downloads (only its errors carry it), so showing media sent
     // to your bot needs this. Optional: asked for when media first shows, with

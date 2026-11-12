@@ -7,11 +7,17 @@ import { ReceivedMessage, SentMessage } from '@/components/message-preview';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { type ChatItem, chatKey } from '@/hooks/use-chat-items';
+import { useQueued, useWaiting } from '@/hooks/use-queue';
 import { draftFromEntry, requestSend } from '@/lib/client';
 import { dayKey, entryTitle, formatDay, groupByDay } from '@/lib/format';
 import { deleteMessages } from '@/lib/chat-actions';
 import { chatRowId } from '@/lib/reveal';
-import type { Destination, HistoryEntry, Settings } from '@/lib/settings';
+import type {
+  Destination,
+  HistoryEntry,
+  QueuedSend,
+  Settings,
+} from '@/lib/settings';
 
 /** A day or two of messages at a time, so the popup opens fast. */
 const PAGE = 40;
@@ -44,15 +50,31 @@ function DayPill({ day, now, id }: { day: number; now: number; id?: string }) {
   );
 }
 
-/** Why a message didn't go out, and a way to send it again in place. */
-function SendAgain({ entry }: { entry: HistoryEntry }) {
+/**
+ * Why a message didn't go out, and a way to send it again in place. One
+ * waiting in the queue says when it's tried next, and can go now instead.
+ */
+function SendAgain({
+  entry,
+  queued,
+}: {
+  entry: HistoryEntry;
+  queued: QueuedSend | undefined;
+}) {
   const [sending, setSending] = useState(false);
+  const waiting = useWaiting(queued);
   const draft = draftFromEntry(entry);
 
   return (
-    <p className="text-right text-xs text-destructive">
-      {entry.error ?? 'Not sent.'}{' '}
-      {draft ? (
+    <p
+      className={
+        queued
+          ? 'text-right text-xs text-bubble-muted'
+          : 'text-right text-xs text-destructive'
+      }
+    >
+      {queued ? `${waiting.copy}.` : (entry.error ?? 'Not sent.')}{' '}
+      {draft && !waiting.trying ? (
         <Button
           variant="link"
           size="text"
@@ -67,7 +89,7 @@ function SendAgain({ entry }: { entry: HistoryEntry }) {
           }}
         >
           {sending ? <Spinner /> : null}
-          Send again
+          {queued ? 'Send now' : 'Send again'}
         </Button>
       ) : null}
     </p>
@@ -119,6 +141,7 @@ export function ChatHistory({
   const [pages, setPages] = useState(1);
   // A sent message whose menu asked to delete it, held outside the menu.
   const [deleting, setDeleting] = useState<ChatItem>();
+  const queuedFor = useQueued();
   // The chat and search results can both be on the page.
   const dayIds = useId();
 
@@ -201,9 +224,13 @@ export function ChatHistory({
                   entry={item.entry}
                   delivery={delivery}
                   token={botToken}
+                  waiting={queuedFor(item.entry.id) !== undefined}
                   footer={
                     item.entry.status === 'failed' ? (
-                      <SendAgain entry={item.entry} />
+                      <SendAgain
+                        entry={item.entry}
+                        queued={queuedFor(item.entry.id)}
+                      />
                     ) : undefined
                   }
                   {...row}
@@ -227,6 +254,9 @@ export function ChatHistory({
         }}
         count={1}
         deletable={1}
+        partly={
+          deleting?.direction === 'out' && deleting.entry.status === 'failed'
+        }
         onConfirm={async (inTelegram) => {
           if (!deleting) return;
 

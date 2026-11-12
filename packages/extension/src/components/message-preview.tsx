@@ -48,16 +48,19 @@ import type {
 } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
-export type MessageStatus = 'draft' | 'sending' | 'sent' | 'failed';
+/** `waiting` failed and will be tried again, as Telegram's clock shows. */
+export type MessageStatus = 'draft' | 'sending' | 'waiting' | 'sent' | 'failed';
 
 const statusIcons = {
   sending: Clock01Icon,
+  waiting: Clock01Icon,
   sent: TickDouble02Icon,
   failed: AlertCircleIcon,
 } satisfies Record<Exclude<MessageStatus, 'draft'>, typeof Clock01Icon>;
 
 const statusLabels = {
   sending: 'Sending',
+  waiting: 'Waiting to send',
   sent: 'Sent',
   failed: 'Not sent',
 } satisfies Record<Exclude<MessageStatus, 'draft'>, string>;
@@ -108,7 +111,10 @@ function Meta({
               'size-3.5',
               status === 'failed' && 'text-destructive',
               status === 'sent' && !onPhoto && 'text-bubble-accent',
-              live && status !== 'sending' && 'animate-pop'
+              live &&
+                status !== 'sending' &&
+                status !== 'waiting' &&
+                'animate-pop'
             )}
           />
           <span className="sr-only">{statusLabels[status]}</span>
@@ -1206,6 +1212,7 @@ export function SentMessage({
   delivery,
   token,
   footer,
+  waiting = false,
   id,
   pick,
   select,
@@ -1217,6 +1224,8 @@ export function SentMessage({
   token?: string | undefined;
   /** Under the bubble, such as a way to send a failed message again. */
   footer?: ReactNode;
+  /** Failed, and waiting in the queue to be tried again. */
+  waiting?: boolean;
   /** Lets a search result scroll the chat to this message. */
   id?: string | undefined;
   pick?: MessagePick | undefined;
@@ -1245,7 +1254,7 @@ export function SentMessage({
           sentAlbum && token ? sentSections(entry, sentAlbum, token) : undefined
         }
         delivery={delivery}
-        status={entry.status}
+        status={waiting ? 'waiting' : entry.status}
         time={entry.sentAt}
         linked
         live={false}

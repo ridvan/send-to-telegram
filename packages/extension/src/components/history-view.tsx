@@ -30,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useQueued } from '@/hooks/use-queue';
 import { useStore } from '@/hooks/use-store';
 import { deleteMessages, telegramDeletion } from '@/lib/chat-actions';
 import { draftFromEntry, requestSend } from '@/lib/client';
@@ -122,10 +123,13 @@ async function deleteEntry(entry: HistoryEntry, inTelegram: boolean) {
 
 function EntryActions({
   entry,
+  waiting,
   destinations,
   now,
 }: {
   entry: HistoryEntry;
+  /** Failed, and waiting in the queue to be tried again. */
+  waiting: boolean;
   destinations: Destination[];
   now: number;
 }) {
@@ -162,7 +166,7 @@ function EntryActions({
       ) : null}
       {draft ? (
         <RowAction
-          label="Send again"
+          label={waiting ? 'Send now' : 'Send again'}
           icon={RepeatIcon}
           onClick={async () => {
             const outcome = await requestSend(draft, {
@@ -171,6 +175,7 @@ function EntryActions({
             });
 
             if (outcome.ok) toast.success(`Sent to ${outcome.destination}`);
+            else if (outcome.queued) toast(outcome.message);
             else toast.error(outcome.message);
           }}
         />
@@ -187,6 +192,7 @@ function EntryActions({
           onOpenChange={setAsking}
           count={1}
           deletable={1}
+          partly={entry.status === 'failed'}
           onConfirm={(inTelegram) => deleteEntry(entry, inTelegram)}
         />
       ) : null}
@@ -205,6 +211,7 @@ export function HistoryView({
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const [now] = useState(() => Date.now());
+  const queuedFor = useQueued();
 
   const results = useMemo(
     () =>
@@ -304,10 +311,12 @@ export function HistoryView({
               <HistoryRow
                 key={entry.id}
                 entry={entry}
+                queued={queuedFor(entry.id)}
                 now={now}
                 actions={
                   <EntryActions
                     entry={entry}
+                    waiting={queuedFor(entry.id) !== undefined}
                     destinations={settings.destinations}
                     now={now}
                   />
