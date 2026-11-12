@@ -2,7 +2,6 @@ import { ArrowUpRight01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   botTokenSchema,
-  type Chat,
   chatIdSchema,
   chatTitle,
 } from '@send-to-telegram/core';
@@ -35,13 +34,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { usePoll } from '@/hooks/use-poll';
 import {
   findChats,
+  type FoundChat,
+  foundChatKey,
   lookUpChat,
   sendTestMessage,
   verifyToken,
 } from '@/lib/bot-setup';
 import { toSendFailure } from '@/lib/failure';
 import { chatTypeLabel } from '@/lib/format';
-import type { BotDestination } from '@/lib/settings';
+import { type BotDestination, topicName } from '@/lib/settings';
 
 import { BotFatherChat } from './illustrations';
 import { Steps, Step } from './steps';
@@ -55,6 +56,21 @@ type TokenState =
 
 const FORMAT_HINT =
   'A token looks like 123456789:AAH4… Copy the whole line BotFather sent.';
+
+/** "Group › Topic" for a topic, as destinations are named. */
+function foundTitle({ chat, topic }: FoundChat) {
+  return topic ? `${chatTitle(chat)} › ${topicName(topic)}` : chatTitle(chat);
+}
+
+function foundDescription({ chat, topic }: FoundChat) {
+  const type = chatTypeLabel[chat.type];
+
+  if (topic) return `Topic · ${type}`;
+
+  if (chat.is_forum) return `${type} · General`;
+
+  return chat.username ? `${type} · @${chat.username}` : type;
+}
 
 function messageOf(cause: unknown) {
   return cause instanceof Error ? cause.message : toSendFailure(cause).message;
@@ -74,7 +90,7 @@ export function ConnectBot({
   const latestCheck = useRef(0);
   const [token, setToken] = useState('');
   const [tokenState, setTokenState] = useState<TokenState>({ name: 'empty' });
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<FoundChat[]>([]);
   const [webhook, setWebhook] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const [manualOpen, setManualOpen] = useState(false);
@@ -85,7 +101,7 @@ export function ConnectBot({
   const [connectError, setConnectError] = useState<string>();
 
   const valid = tokenState.name === 'valid' ? tokenState : undefined;
-  const selected = chats.find((chat) => String(chat.id) === selectedId);
+  const selected = chats.find((found) => foundChatKey(found) === selectedId);
 
   async function check(value: string, strict: boolean) {
     const parsed = botTokenSchema.safeParse(value);
@@ -129,12 +145,29 @@ export function ConnectBot({
       }
 
       setChats((known) => {
-        const ids = new Set(known.map((chat) => chat.id));
+        const fresh = new Map(
+          lookup.chats.map((found) => [foundChatKey(found), found])
+        );
 
-        return [...known, ...lookup.chats.filter((chat) => !ids.has(chat.id))];
+        // A topic first seen without its name takes one learned later.
+        const updated = known.map((item) => {
+          const later = fresh.get(foundChatKey(item));
+
+          return item.topic && !item.topic.name && later?.topic?.name
+            ? later
+            : item;
+        });
+
+        const keys = new Set(known.map(foundChatKey));
+
+        return [
+          ...updated,
+          ...lookup.chats.filter((found) => !keys.has(foundChatKey(found))),
+        ];
       });
       setSelectedId(
-        (current) => current ?? (lookup.chats[0] && String(lookup.chats[0].id))
+        (current) =>
+          current ?? (lookup.chats[0] && foundChatKey(lookup.chats[0]))
       );
     },
     2500,
@@ -164,11 +197,13 @@ export function ConnectBot({
 
       const chat = await lookUpChat(valid.token, chatId);
 
+      const found = { chat };
+
       setChats((known) => [
-        chat,
-        ...known.filter((item) => item.id !== chat.id),
+        found,
+        ...known.filter((item) => foundChatKey(item) !== foundChatKey(found)),
       ]);
-      setSelectedId(String(chat.id));
+      setSelectedId(foundChatKey(found));
       setManualId('');
     } catch (cause) {
       setManualError(messageOf(cause));
@@ -184,14 +219,17 @@ export function ConnectBot({
     setConnectError(undefined);
 
     try {
-      await sendTestMessage(valid.token, selected.id);
+      const { chat, topic } = selected;
+
+      await sendTestMessage(valid.token, chat.id, topic?.id);
       onConnected({
         id: crypto.randomUUID(),
         kind: 'bot',
         token: valid.token,
-        chatId: selected.id,
-        chatTitle: chatTitle(selected),
-        chatType: selected.type,
+        chatId: chat.id,
+        chatTitle: chatTitle(chat),
+        chatType: chat.type,
+        ...(topic && { topic }),
         botUsername: valid.username,
       });
     } catch (cause) {
@@ -269,7 +307,8 @@ export function ConnectBot({
             valid ? (
               <>
                 Open <TextLink href={botLink}>{`@${valid.username}`}</TextLink>{' '}
-                and press Start, or add it to a group or channel.
+                and press Start, or add it to a group or channel. For a topic,
+                write in it.
               </>
             ) : undefined
           }
@@ -312,22 +351,22 @@ export function ConnectBot({
                     value={selectedId ?? ''}
                     onValueChange={(value) => setSelectedId(String(value))}
                   >
-                    {chats.map((chat) => {
-                      const id = `${tokenId}-chat-${chat.id}`;
-                      const title = chatTitle(chat);
+                    {chats.map((found) => {
+                      const key = foundChatKey(found);
+                      const id = `${tokenId}-chat-${key}`;
+                      const title = foundTitle(found);
 
                       return (
-                        <FieldLabel key={chat.id} htmlFor={id}>
+                        <FieldLabel key={key} htmlFor={id}>
                           <Field orientation="horizontal">
                             <ChatAvatar name={title} size="sm" />
                             <FieldContent>
                               <FieldTitle>{title}</FieldTitle>
                               <FieldDescription>
-                                {chatTypeLabel[chat.type]}
-                                {chat.username ? ` · @${chat.username}` : ''}
+                                {foundDescription(found)}
                               </FieldDescription>
                             </FieldContent>
-                            <RadioGroupItem value={String(chat.id)} id={id} />
+                            <RadioGroupItem value={key} id={id} />
                           </Field>
                         </FieldLabel>
                       );

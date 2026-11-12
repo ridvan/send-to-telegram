@@ -2,15 +2,16 @@
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
- * `?fail` to make sends and downloads fail, `?nocapture` to make screenshots
+ * `?fail` to make sends, downloads and chat lookups fail, `?nocapture` to make screenshots
  * fail, and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
- * download their media.
+ * download their media. Connecting a chat works with the token in
+ * `DEMO_TOKEN`, which finds the demo group and its topics.
  * Production builds drop this module because `import.meta.env.DEV` is false.
  */
 
-import type { Update } from '@send-to-telegram/core';
+import type { Chat, Update } from '@send-to-telegram/core';
 import { z } from 'zod';
 
 import type { SelectAreaRequest } from './area.ts';
@@ -100,6 +101,16 @@ function demoData(now: number) {
           chatType: 'supergroup',
           botUsername: 'crit_bot',
           avatar: { kind: 'pattern', style: 'marble' },
+        },
+        {
+          id: 'reviews',
+          kind: 'bot',
+          token: '1:x',
+          chatId: -100123,
+          chatTitle: 'Design crit',
+          chatType: 'supergroup',
+          topic: { id: 50, name: 'Reviews' },
+          botUsername: 'crit_bot',
         },
       ],
       defaultDestinationId: 'me',
@@ -268,7 +279,16 @@ function demoUpdates(now: number): Update[] {
     id: -100123,
     type: 'supergroup',
     title: 'Design crit',
+    is_forum: true,
   } as const;
+
+  // Messages in a topic carry its first message as their reply.
+  const inTopic = (id: number, name: string) =>
+    ({
+      message_thread_id: id,
+      is_topic_message: true,
+      reply_to_message: { message_id: id, forum_topic_created: { name } },
+    }) as const;
 
   const ana = { id: 2, is_bot: false, first_name: 'Ana' };
   const mert = { id: 3, is_bot: false, first_name: 'Mert' };
@@ -395,6 +415,40 @@ function demoUpdates(now: number): Update[] {
       },
     },
     {
+      update_id: 10,
+      message: {
+        message_id: 50,
+        chat: group,
+        from: ana,
+        date: seconds(18),
+        message_thread_id: 50,
+        is_topic_message: true,
+        forum_topic_created: { name: 'Reviews' },
+      },
+    },
+    {
+      update_id: 11,
+      message: {
+        message_id: 51,
+        chat: group,
+        from: ana,
+        date: seconds(12),
+        text: 'Pricing page is ready for review',
+        ...inTopic(50, 'Reviews'),
+      },
+    },
+    {
+      update_id: 12,
+      message: {
+        message_id: 61,
+        chat: group,
+        from: mert,
+        date: seconds(9),
+        text: 'Specs are in the handoff file',
+        ...inTopic(60, 'Handoff'),
+      },
+    },
+    {
       update_id: 5,
       message: {
         message_id: 13,
@@ -481,13 +535,29 @@ const demoFiles = new Map<string, () => BodyInit | Promise<BodyInit>>([
 
 /** What the fake Bot API answers. */
 type FakeAnswer =
-  | { ok: true; result: Update[] | { file_id: string; file_path: string } }
+  | {
+      ok: true;
+      result:
+        | Update[]
+        | Chat
+        | { id: number; is_bot: boolean; first_name: string; username: string }
+        | { message_id: number; chat: Chat }
+        | { file_id: string; file_path: string };
+    }
   | { ok: false; error_code: number; description: string };
 
 /**
- * Answers for the demo bot (token `1:x`): `getUpdates`, `getFile` and its
- * file downloads. `failDownloads` makes every download fail, as a file
- * Telegram no longer has would. Other requests pass through.
+ * Looks like a real token, so connecting a chat can be tried with it: it
+ * answers as the demo bot does.
+ */
+const DEMO_TOKEN = '12345:demo-demo-demo-demo-demo-demo-demo';
+
+/**
+ * Answers for the demo bot (token `1:x`, or `DEMO_TOKEN` when connecting):
+ * `getMe`, `getUpdates`, `getChat`, test messages, `getFile` and its file
+ * downloads. `failDownloads` makes every download, test message and chat
+ * lookup fail.
+ * Other requests pass through.
  */
 function fakeTelegram(
   realFetch: typeof fetch,
@@ -501,10 +571,71 @@ function fakeTelegram(
     });
 
   return async (input, init) => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
+    const url = new URL(
+      (input instanceof Request ? input.url : String(input)).replace(
+        `/bot${DEMO_TOKEN}/`,
+        '/bot1:x/'
+      )
+    );
+
+    if (url.href === 'https://api.telegram.org/bot1:x/getMe') {
+      return json({
+        ok: true,
+        result: {
+          id: 1,
+          is_bot: true,
+          first_name: 'Crit',
+          username: 'crit_bot',
+        },
+      });
+    }
 
     if (url.href === 'https://api.telegram.org/bot1:x/getUpdates') {
       return json({ ok: true, result: updates });
+    }
+
+    // `?fail` answers as for a group the bot was removed from.
+    if (url.href === 'https://api.telegram.org/bot1:x/getChat') {
+      const chat = updates[0]?.message?.chat;
+
+      if (failDownloads) {
+        return json({
+          ok: false,
+          error_code: 403,
+          description: 'Forbidden: bot was kicked from the supergroup chat',
+        });
+      }
+
+      return chat
+        ? json({ ok: true, result: chat })
+        : json({ ok: false, error_code: 400, description: 'chat not found' });
+    }
+
+    // Test messages; `?fail` answers as for a deleted topic, or a chat the
+    // bot was removed from.
+    if (url.href === 'https://api.telegram.org/bot1:x/sendMessage') {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const toTopic = String(init?.body).includes('message_thread_id');
+
+      return failDownloads
+        ? json(
+            toTopic
+              ? {
+                  ok: false,
+                  error_code: 400,
+                  description: 'Bad Request: message thread not found',
+                }
+              : {
+                  ok: false,
+                  error_code: 403,
+                  description: 'Forbidden: bot was kicked from the group chat',
+                }
+          )
+        : json({
+            ok: true,
+            result: { message_id: 1, chat: { id: 1, type: 'private' } },
+          });
     }
 
     if (url.href === 'https://api.telegram.org/bot1:x/getFile') {

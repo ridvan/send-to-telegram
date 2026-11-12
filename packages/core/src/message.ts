@@ -105,14 +105,42 @@ function sourceKeyboard(sourceUrl: string | undefined) {
   };
 }
 
-/** Telegram rejected the media itself (not the bot or chat), so another form may work. */
+/**
+ * The topic a message was sent to is gone or closed. Telegram answers
+ * "message thread not found" for a deleted topic; the closed wording comes
+ * from Telegram's servers, so it's matched loosely.
+ */
+export function isTopicUnavailable(cause: unknown): boolean {
+  return (
+    cause instanceof TelegramError &&
+    cause.code === 400 &&
+    /message thread not found|TOPIC_(CLOSED|DELETED|ID_INVALID)/i.test(
+      cause.message
+    )
+  );
+}
+
+/** Telegram rejected the media itself (not the bot, chat or topic), so another form may work. */
 function isMediaRejection(cause: unknown): boolean {
-  return cause instanceof TelegramError && cause.code === 400;
+  return (
+    cause instanceof TelegramError &&
+    cause.code === 400 &&
+    !isTopicUnavailable(cause)
+  );
+}
+
+/** Where a message goes: a chat, and the forum topic in it if any. */
+type Target = Pick<DeliveryOptions, 'chat_id' | 'message_thread_id'>;
+
+function targetOf(chatId: ChatId, topic: number | undefined): Target {
+  return topic === undefined
+    ? { chat_id: chatId }
+    : { chat_id: chatId, message_thread_id: topic };
 }
 
 async function sendText(
   bot: BotClient,
-  chatId: ChatId,
+  target: Target,
   message: Extract<OutgoingMessage, { kind: 'text' }>
 ): Promise<number> {
   const parts = splitText(message.text);
@@ -123,7 +151,7 @@ async function sendText(
     const keyboard = isLast ? sourceKeyboard(message.sourceUrl) : undefined;
 
     const sent = await bot.call('sendMessage', {
-      chat_id: chatId,
+      ...target,
       text,
       disable_notification: message.silent,
       link_preview_options: { is_disabled: !message.linkPreview },
@@ -159,21 +187,26 @@ function sendMedia(
  * silently disappears. By URL Telegram fetches at most 20 MB, needs the right
  * MIME type, and only promises documents for PDF and ZIP, so the link is what
  * most rejected videos and songs end up as. An upload has no link to fall
- * back to, so its last rejection stands.
+ * back to, so its last rejection stands. A missing topic is no media
+ * problem, so it ends the send at once.
  */
 export async function deliver(
   bot: BotClient,
   chatId: ChatId,
-  message: OutgoingMessage | UploadMessage
+  message: OutgoingMessage | UploadMessage,
+  /** A forum topic's `message_thread_id`; absent posts to General. */
+  topic?: number
 ): Promise<Delivery> {
+  const target = targetOf(chatId, topic);
+
   if (message.kind === 'text') {
-    return { messageId: await sendText(bot, chatId, message), via: 'text' };
+    return { messageId: await sendText(bot, target, message), via: 'text' };
   }
 
   const keyboard = sourceKeyboard(message.sourceUrl);
 
   const common = {
-    chat_id: chatId,
+    ...target,
     disable_notification: message.silent,
     ...(message.caption && { caption: message.caption }),
     ...(keyboard && { reply_markup: keyboard }),
@@ -211,7 +244,7 @@ export async function deliver(
     ? `${message.url}\n\n${message.caption}`
     : message.url;
 
-  const messageId = await sendText(bot, chatId, {
+  const messageId = await sendText(bot, target, {
     kind: 'text',
     text,
     linkPreview: true,

@@ -50,10 +50,28 @@ const destinationBase = z.object({
   avatar: chatAvatarSchema.optional().catch(undefined),
 });
 
+/**
+ * One topic of a forum group. Bots can't list a forum's topics, so the name
+ * is the one Telegram last reported to the bot, if any.
+ */
+export const topicSchema = z.object({
+  /** The topic's `message_thread_id`. General has none: it's the chat itself. */
+  id: z.number().int().positive(),
+  name: z.string().optional(),
+});
+
+export type Topic = z.infer<typeof topicSchema>;
+
 export const botDestinationSchema = destinationBase.extend({
   kind: z.literal('bot'),
   token: z.string(),
   chatId: chatIdSchema,
+  /**
+   * Absent sends to the chat itself, General in a forum. Not caught: sending
+   * to General instead of a topic someone chose would be worse than leaving
+   * the chat out.
+   */
+  topic: topicSchema.optional(),
   botUsername: z.string().optional(),
 });
 
@@ -379,17 +397,35 @@ export const announcementsStore = defineStore(
   () => ({ seen: [] })
 );
 
+export function topicName(topic: Topic): string {
+  return topic.name ?? `Topic ${topic.id}`;
+}
+
 export function destinationName(destination: Destination): string {
   if (destination.label) return destination.label;
 
-  if (destination.chatTitle) return destination.chatTitle;
+  const chat = destination.chatTitle ?? `Chat ${destination.chatId}`;
 
-  return `Chat ${destination.chatId}`;
+  return destination.topic ? `${chat} › ${topicName(destination.topic)}` : chat;
 }
 
-/** Picks a chat's avatar color from its name in Telegram, so a rename keeps it. */
+/**
+ * Picks a chat's avatar color from its name in Telegram, so a rename keeps it.
+ * Each topic gets its own, as in Telegram.
+ */
 export function avatarSeed(destination: Destination): string {
-  return destination.chatTitle ?? destination.id;
+  const seed = destination.chatTitle ?? destination.id;
+
+  return destination.topic ? `${seed}:${destination.topic.id}` : seed;
+}
+
+/** Whether two destinations post to the same place: bot, chat and topic. */
+export function isSamePlace(a: Destination, b: Destination): boolean {
+  return (
+    a.token === b.token &&
+    String(a.chatId) === String(b.chatId) &&
+    a.topic?.id === b.topic?.id
+  );
 }
 
 export function defaultDestination(

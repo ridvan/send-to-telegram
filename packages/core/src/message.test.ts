@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deliver, splitText } from './message.ts';
+import { deliver, isTopicUnavailable, splitText } from './message.ts';
 import {
   TelegramError,
   Upload,
@@ -213,5 +213,108 @@ describe('deliver', () => {
       deliver(refused.bot, 42, { kind: 'photo', upload, silent: false })
     ).rejects.toBe(rejected);
     expect(refused.calls).toHaveLength(2);
+  });
+
+  describe('to a forum topic', () => {
+    const topic = 77;
+
+    it('passes the topic to every text part', async () => {
+      const { bot, calls } = fakeBot();
+
+      await deliver(
+        bot,
+        -100123,
+        {
+          kind: 'text',
+          text: `${'a'.repeat(4000)}\n\n${'b'.repeat(200)}`,
+          linkPreview: true,
+          silent: true,
+        },
+        topic
+      );
+
+      expect(calls).toHaveLength(2);
+
+      for (const call of calls) {
+        expect(call.params).toMatchObject({ message_thread_id: topic });
+      }
+    });
+
+    it('passes it on media, upload and every fallback', async () => {
+      const byUrl = fakeBot({ sendVideo: rejected, sendDocument: rejected });
+
+      await deliver(
+        byUrl.bot,
+        -100123,
+        { kind: 'video', url: 'https://example.com/a.webm', silent: false },
+        topic
+      );
+
+      const upload = fakeBot({ sendPhoto: rejected });
+
+      await deliver(
+        upload.bot,
+        -100123,
+        {
+          kind: 'photo',
+          upload: new Upload(new Blob(['x']), 'a.png'),
+          silent: false,
+        },
+        topic
+      );
+
+      const calls = [...byUrl.calls, ...upload.calls];
+
+      expect(calls.map((call) => call.method)).toEqual([
+        'sendVideo',
+        'sendDocument',
+        'sendMessage',
+        'sendPhoto',
+        'sendDocument',
+      ]);
+
+      for (const call of calls) {
+        expect(call.params).toMatchObject({
+          chat_id: -100123,
+          message_thread_id: topic,
+        });
+      }
+    });
+
+    it('leaves the topic out when there is none', async () => {
+      const { bot, calls } = fakeBot();
+
+      await deliver(bot, 42, {
+        kind: 'photo',
+        url: 'https://example.com/a.png',
+        silent: false,
+      });
+
+      expect(calls[0]?.params).not.toHaveProperty('message_thread_id');
+    });
+
+    it('stops at once when the topic is gone, instead of falling back', async () => {
+      const gone = new TelegramError(
+        400,
+        'Bad Request: message thread not found'
+      );
+
+      const { bot, calls } = fakeBot({ sendPhoto: gone });
+
+      await expect(
+        deliver(
+          bot,
+          -100123,
+          { kind: 'photo', url: 'https://example.com/a.png', silent: false },
+          topic
+        )
+      ).rejects.toBe(gone);
+      expect(calls).toHaveLength(1);
+      expect(isTopicUnavailable(gone)).toBe(true);
+      expect(
+        isTopicUnavailable(new TelegramError(400, 'Bad Request: TOPIC_CLOSED'))
+      ).toBe(true);
+      expect(isTopicUnavailable(rejected)).toBe(false);
+    });
   });
 });

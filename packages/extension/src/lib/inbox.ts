@@ -9,7 +9,7 @@ import {
   type Update,
 } from '@send-to-telegram/core';
 
-import { BOT_UPDATES } from './bot-setup.ts';
+import { BOT_UPDATES, topicIdOf } from './bot-setup.ts';
 import { isHttpUrl } from './compose.ts';
 import {
   type BotDestination,
@@ -20,6 +20,7 @@ import {
   type InboxPicture,
   inboxStore,
   MAX_INBOX,
+  settingsStore,
 } from './settings.ts';
 
 /** Whether a chat is the one a destination sends to, by ID or @username. */
@@ -121,6 +122,11 @@ export function attachmentOf(
   return undefined;
 }
 
+/** The same message's ID however often it's read. */
+function entryIdOf(message: IncomingMessage) {
+  return `${message.chat.id}:${message.message_id}`;
+}
+
 /**
  * What the chat draws for a message, or undefined for one it leaves out:
  * commands, and kinds it can't show, such as a member joining or a poll.
@@ -154,7 +160,7 @@ export function toInboxEntry(
     message.chat.type === 'group' || message.chat.type === 'supergroup';
 
   return {
-    id: `${message.chat.id}:${message.message_id}`,
+    id: entryIdOf(message),
     destinationId,
     receivedAt: message.date ? message.date * 1000 : now,
     ...(group && message.from && { from: message.from.first_name }),
@@ -165,18 +171,47 @@ export function toInboxEntry(
 }
 
 /**
- * Messages in a destination's chat, from a batch of updates. Channel posts are
- * left out: a channel isn't written to the bot, and its admin bot can get its
- * own posts back, which would show what you sent twice.
+ * Whether a message belongs to a destination. One with a topic shows what
+ * was written in that topic. One without shows the rest of the chat: General,
+ * and topics no other destination of the same bot covers, so each message
+ * lands in exactly one place and nothing that showed before goes missing.
+ */
+export function belongsTo(
+  message: IncomingMessage,
+  destination: BotDestination,
+  destinations: readonly BotDestination[]
+): boolean {
+  if (!isSameChat(message.chat, destination.chatId)) return false;
+
+  const topic = topicIdOf(message);
+
+  if (destination.topic) return destination.topic.id === topic;
+
+  if (topic === undefined) return true;
+
+  return !destinations.some(
+    (other) =>
+      other.topic?.id === topic &&
+      other.token === destination.token &&
+      isSameChat(message.chat, other.chatId)
+  );
+}
+
+/**
+ * Messages for a destination, from a batch of updates; `destinations` are all
+ * of them, so topics with their own go there. Channel posts are left out: a
+ * channel isn't written to the bot, and its admin bot can get its own posts
+ * back, which would show what you sent twice.
  */
 export function inboxEntriesIn(
   updates: Update[],
-  destination: BotDestination
+  destination: BotDestination,
+  destinations: readonly BotDestination[] = [destination]
 ): InboxEntry[] {
   return updates.flatMap((update) => {
     const message = update.message;
 
-    if (!message || !isSameChat(message.chat, destination.chatId)) return [];
+    if (!message || !belongsTo(message, destination, destinations)) return [];
 
     const entry = toInboxEntry(message, destination.id);
 
@@ -184,19 +219,34 @@ export function inboxEntriesIn(
   });
 }
 
+/** Messages a read saw, and the destinations it filed them for. */
+type Read = {
+  messageIds: ReadonlySet<string>;
+  destinationIds: ReadonlySet<string>;
+};
+
 /**
  * Adds new messages and replaces ones that read differently now, such as a
  * photo kept before media could be shown. Messages deleted from this browser
  * stay out, even when a read that started before the delete brings one back.
+ * With `read`, a message it saw that none of its destinations claims now is
+ * dropped from them, such as one kept for a topic the chat has moved from.
  * Writes nothing when all match.
  */
-export async function keep(entries: InboxEntry[]) {
+export async function keep(entries: InboxEntry[], read?: Read) {
   const [inbox, removedList] = await Promise.all([
     inboxStore.get(),
     inboxRemovedStore.get(),
   ]);
 
   const removed = new Set(removedList.map((item) => item.id));
+  const claimed = new Set(entries.map((entry) => entry.id));
+
+  const unclaimed = (entry: InboxEntry) =>
+    read !== undefined &&
+    read.destinationIds.has(entry.destinationId) &&
+    read.messageIds.has(entry.id) &&
+    !claimed.has(entry.id);
 
   const stored = new Map(
     inbox.map((entry) => [entry.id, JSON.stringify(entry)])
@@ -212,9 +262,11 @@ export async function keep(entries: InboxEntry[]) {
       : [entry];
   });
 
-  const returned = inbox.some((entry) => removed.has(entry.id));
+  const dropped = inbox.some(
+    (entry) => removed.has(entry.id) || unclaimed(entry)
+  );
 
-  if (changed.length === 0 && !returned) return;
+  if (changed.length === 0 && !dropped) return;
 
   const replaced = new Set(changed.map((entry) => entry.id));
 
@@ -222,7 +274,8 @@ export async function keep(entries: InboxEntry[]) {
     [
       ...changed,
       ...inbox.filter(
-        (entry) => !replaced.has(entry.id) && !removed.has(entry.id)
+        (entry) =>
+          !replaced.has(entry.id) && !removed.has(entry.id) && !unclaimed(entry)
       ),
     ]
       .toSorted((a, b) => b.receivedAt - a.receivedAt)
@@ -237,7 +290,8 @@ export async function keep(entries: InboxEntry[]) {
 export type InboxCheck = 'ok' | 'elsewhere';
 
 /**
- * Reads what was sent to the bot in a destination's chat and keeps it. Like
+ * Reads what was sent to the bot in a destination's chat, or its topic, and
+ * keeps it. Like
  * `findChats`, it never confirms updates, so the bot's other clients still
  * get them; Telegram holds them for 24 hours and returns the oldest 100.
  */
@@ -254,7 +308,36 @@ export async function checkInbox(
       allowed_updates: BOT_UPDATES,
     });
 
-    await keep(inboxEntriesIn(updates, destination));
+    // Chats as they are now: one moved to another topic or removed while
+    // Telegram answered has had its messages dropped, and would get them back.
+    const { destinations } = await settingsStore.get();
+    const current = destinations.find((each) => each.id === destination.id);
+
+    if (!current) return 'ok';
+
+    // One read covers every topic of this chat, so a message moves to a topic
+    // added since as soon as either is opened.
+    const sharing = [
+      current,
+      ...destinations.filter(
+        (other) =>
+          other.id !== current.id &&
+          other.token === current.token &&
+          String(other.chatId) === String(current.chatId)
+      ),
+    ];
+
+    await keep(
+      sharing.flatMap((each) => inboxEntriesIn(updates, each, sharing)),
+      {
+        messageIds: new Set(
+          updates.flatMap(({ message }) =>
+            message ? [entryIdOf(message)] : []
+          )
+        ),
+        destinationIds: new Set(sharing.map((each) => each.id)),
+      }
+    );
 
     return 'ok';
   } catch (cause) {
