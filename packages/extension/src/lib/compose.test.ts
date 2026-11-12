@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { draftFromEntry } from './client.ts';
-import { compose, ComposeError, messageText } from './compose.ts';
+import { compose, ComposeError, draftSchema, messageText } from './compose.ts';
 import {
   defaultSettings,
   type HistoryEntry,
@@ -29,7 +29,8 @@ describe('compose', () => {
       text: 'Read this\n\nLine one\nLine two\n\n#ideas',
       linkPreview: true,
       silent: true,
-      sourceUrl: 'https://example.com/post',
+      // The button opens the page at the quote.
+      sourceUrl: 'https://example.com/post#:~:text=Line%20one,Line%20two',
     });
   });
 
@@ -451,5 +452,140 @@ describe('album history', () => {
     });
 
     expect(entry.content).toEqual({ note: 'Kept' });
+  });
+});
+
+describe('formatted selections', () => {
+  const bold = (offset: number, length: number) => ({
+    type: 'bold' as const,
+    offset,
+    length,
+  });
+
+  const selection = {
+    kind: 'selection' as const,
+    text: '  Grid is bold  ',
+    entities: [bold(10, 4)],
+    ...page,
+  };
+
+  it('moves the formatting past the note, and keeps it off the hashtag', () => {
+    const message = compose(
+      { ...selection, note: ' Look ', tag: 'css' },
+      delivery
+    );
+
+    expect(message).toMatchObject({
+      kind: 'text',
+      text: 'Look\n\nGrid is bold\n\n#css',
+      entities: [bold(14, 4)],
+    });
+  });
+
+  it('leaves entities out of a message with no formatting', () => {
+    expect(
+      compose({ kind: 'selection', text: 'plain words', ...page }, delivery)
+    ).not.toHaveProperty('entities');
+  });
+
+  it('formats a file’s caption, cutting entities where the caption is cut', () => {
+    const text = `${'word '.repeat(300)}end`;
+
+    const message = compose(
+      {
+        kind: 'selection',
+        text,
+        entities: [bold(0, 4), bold(1000, 100), bold(1200, 4)],
+        attachment: { id: 'd', name: 'x.png', type: 'image/png', size: 1 },
+      },
+      delivery
+    );
+
+    expect(message).toMatchObject({
+      caption: `${text.slice(0, 1023)}…`,
+      captionEntities: [bold(0, 4), bold(1000, 23)],
+    });
+  });
+
+  it('links an album’s caption to the quote, reading as the page’s address', () => {
+    const message = compose(
+      {
+        ...selection,
+        attachments: [
+          { id: 'a', name: 'a.png', type: 'image/png', size: 1 },
+          { id: 'b', name: 'b.png', type: 'image/png', size: 1 },
+        ],
+      },
+      delivery
+    );
+
+    const group = message.kind === 'album' ? message.groups[0] : undefined;
+    const caption = 'Grid is bold\n\nhttps://example.com/post';
+
+    expect(group).toMatchObject({
+      caption,
+      captionEntities: [
+        bold(8, 4),
+        {
+          type: 'text_link',
+          offset: caption.indexOf('https'),
+          length: page.pageUrl.length,
+          url: 'https://example.com/post#:~:text=Grid%20is%20bold',
+        },
+      ],
+    });
+  });
+
+  it('points the button at the quote and keeps the page’s URL in history', () => {
+    const message = compose(selection, delivery);
+
+    expect(message).toMatchObject({
+      sourceUrl: 'https://example.com/post#:~:text=Grid%20is%20bold',
+    });
+    expect(compose({ kind: 'page', ...page }, delivery)).not.toHaveProperty(
+      'sourceUrl'
+    );
+  });
+
+  it('sends the formatting again from history', () => {
+    const entry = historyEntrySchema.parse({
+      id: 'h1',
+      sentAt: 1,
+      kind: 'selection',
+      status: 'sent',
+      content: { text: selection.text, entities: selection.entities },
+    });
+
+    expect(draftFromEntry(entry)).toMatchObject({
+      entities: selection.entities,
+    });
+  });
+
+  it('reads history and drafts kept before formatting, and drops formatting it can’t read', () => {
+    const before = historyEntrySchema.parse({
+      id: 'h1',
+      sentAt: 1,
+      kind: 'selection',
+      status: 'sent',
+      content: { text: 'Kept' },
+    });
+
+    const unreadable = historyEntrySchema.parse({
+      id: 'h2',
+      sentAt: 1,
+      kind: 'selection',
+      status: 'sent',
+      content: { text: 'Kept', entities: [{ type: 'sparkle' }] },
+    });
+
+    expect(before.content).toEqual({ text: 'Kept' });
+    expect(unreadable.content).toEqual({ text: 'Kept' });
+    expect(
+      draftSchema.parse({
+        kind: 'selection',
+        text: 'Kept',
+        entities: 'nonsense',
+      })
+    ).toEqual({ kind: 'selection', text: 'Kept' });
   });
 });

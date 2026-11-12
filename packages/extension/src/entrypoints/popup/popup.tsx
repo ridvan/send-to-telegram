@@ -763,7 +763,11 @@ function Composer({
       kind: mode,
       ...(attachPage && page.url && { pageUrl: page.url }),
       ...(attachPage && page.title && { pageTitle: page.title }),
-      ...(mode === 'selection' && page.selection && { text: page.selection }),
+      ...(mode === 'selection' &&
+        page.selection && {
+          text: page.selection,
+          ...(page.selectionEntities && { entities: page.selectionEntities }),
+        }),
       ...(note.trim() && { note }),
       ...filesFields(attached.map((item) => item.info)),
       ...(destinationId && { destinationId }),
@@ -1112,6 +1116,7 @@ function Composer({
                 pageTitle={attachPage ? page.title : undefined}
                 favIconUrl={page.favIconUrl}
                 text={page.selection}
+                entities={page.selectionEntities}
                 note={note}
                 delivery={settings.delivery}
                 status={statusOf[phase.name]}

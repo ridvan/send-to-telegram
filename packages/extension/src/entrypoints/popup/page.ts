@@ -1,3 +1,5 @@
+import type { TextEntity } from '@send-to-telegram/core';
+
 import { takeHandoff } from '@/lib/area';
 import { deleteAttachment, loadAttachment } from '@/lib/attachments';
 import type { Attachment } from '@/lib/settings';
@@ -20,6 +22,8 @@ export type PageContext = {
   favIconUrl?: string;
   incognito: boolean;
   selection?: string;
+  /** The selection's formatting on the page. */
+  selectionEntities?: TextEntity[];
   /** Where to take a screenshot from; the popup's tab is its window's active one. */
   tabId?: number;
   windowId?: number;
@@ -98,7 +102,8 @@ export async function loadPage(): Promise<PageContext> {
     ...(tab?.url && { url: tab.url }),
     ...(tab?.title && { title: tab.title }),
     ...(tab?.favIconUrl && { favIconUrl: tab.favIconUrl }),
-    ...(selection && { selection }),
+    ...(selection && { selection: selection.text }),
+    ...(selection?.entities && { selectionEntities: selection.entities }),
     ...(tab && { windowId: tab.windowId }),
     ...(tab?.id !== undefined && { tabId: tab.id }),
     ...(resume && { resume }),

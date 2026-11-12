@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
 import {
+  entitiesSchema,
+  MAX_ENTITIES_PER_MESSAGE,
+  normalizeEntities,
+  shiftEntities,
+  sliceEntities,
+  type TextEntity,
+} from './entities.ts';
+import {
   ALBUM_LIMIT,
   ALBUM_MIN,
   type AlbumItem,
@@ -8,12 +16,14 @@ import {
   TelegramError,
   type BotClient,
   type ChatId,
+  type Captioned,
   type DeliveryOptions,
   type IncomingMessage,
   type InputFile,
   TEXT_LIMIT,
   type Upload,
 } from './telegram.ts';
+import { withoutTextDirective } from './text-fragment.ts';
 
 const httpUrlSchema = z.url({ protocol: /^https?$/ });
 
@@ -30,12 +40,15 @@ export const outgoingMessageSchema = z.discriminatedUnion('kind', [
   deliverySchema.extend({
     kind: z.literal('text'),
     text: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+    /** Formatting kept from the page, in place of markup that needs escaping. */
+    entities: entitiesSchema.optional(),
     linkPreview: z.boolean(),
   }),
   deliverySchema.extend({
     kind: z.enum(['photo', 'video', 'audio', 'document']),
     url: httpUrlSchema,
     caption: z.string().max(CAPTION_LIMIT).optional(),
+    captionEntities: entitiesSchema.optional(),
   }),
 ]);
 
@@ -50,6 +63,7 @@ export type UploadMessage = z.infer<typeof deliverySchema> & {
   kind: 'photo' | 'document';
   upload: Upload;
   caption?: string;
+  captionEntities?: TextEntity[];
 };
 
 export const deliveredViaSchema = z.enum([
@@ -84,36 +98,133 @@ export type AlbumMessage = {
   kind: 'photo' | 'document';
   uploads: Upload[];
   caption?: string;
+  captionEntities?: TextEntity[];
   silent: boolean;
 };
 
 export const SOURCE_BUTTON_LABEL = 'Open page';
 
-/**
- * Splits text into Telegram-sized parts, preferring paragraph, line and word
- * boundaries so a long selection reads naturally across messages.
- */
-export function splitText(text: string, limit = TEXT_LIMIT): string[] {
-  const parts: string[] = [];
-  let rest = text.trim();
+/** Where a part of a text starts and ends in it. */
+type Range = { start: number; end: number };
 
-  while (rest.length > limit) {
-    const window = rest.slice(0, limit);
+/** The length of `text` once trimmed at its start. */
+const trimmedStart = (text: string) => text.length - text.trimStart().length;
+
+/** Where each of `splitText`'s parts lies in the text, so entities can follow. */
+function splitRanges(text: string, limit: number): Range[] {
+  const ranges: Range[] = [];
+  let at = trimmedStart(text);
+  const stop = text.trimEnd().length;
+
+  while (stop - at > limit) {
+    const window = text.slice(at, at + limit);
     const floor = Math.floor(limit * 0.5);
 
     const breakAt = ['\n\n', '\n', '. ', ' ']
       .map((separator) => window.lastIndexOf(separator))
       .find((index) => index >= floor);
 
-    const end = breakAt === undefined ? limit : breakAt + 1;
+    const end = at + (breakAt === undefined ? limit : breakAt + 1);
 
-    parts.push(rest.slice(0, end).trimEnd());
-    rest = rest.slice(end).trimStart();
+    ranges.push({ start: at, end: at + text.slice(at, end).trimEnd().length });
+    at = end + trimmedStart(text.slice(end, stop));
   }
 
-  if (rest) parts.push(rest);
+  if (at < stop) ranges.push({ start: at, end: stop });
 
-  return parts;
+  return ranges;
+}
+
+/**
+ * Splits text into Telegram-sized parts, preferring paragraph, line and word
+ * boundaries so a long selection reads naturally across messages.
+ */
+export function splitText(text: string, limit = TEXT_LIMIT): string[] {
+  return splitRanges(text, limit).map(({ start, end }) =>
+    text.slice(start, end)
+  );
+}
+
+/** A part of a long text, with the formatting that falls in it. */
+export type TextPart = { text: string; entities: TextEntity[] };
+
+/**
+ * Splits text as `splitText` does, with each part's entities counted from
+ * its own start. One a split falls inside goes on in the next part.
+ */
+export function splitFormatted(
+  text: string,
+  entities: readonly TextEntity[],
+  limit = TEXT_LIMIT
+): TextPart[] {
+  return splitRanges(text, limit).map(({ start, end }) => {
+    const part = text.slice(start, end);
+
+    return {
+      text: part,
+      entities: normalizeEntities(
+        part,
+        sliceEntities(entities, start, end),
+        MAX_ENTITIES_PER_MESSAGE
+      ),
+    };
+  });
+}
+
+/**
+ * Telegram turned down the formatting. Its wording isn't documented; the
+ * one commonly reported names them ("can't parse entities"), so anything
+ * mentioning entities is matched.
+ */
+export function isEntityRejection(cause: unknown): boolean {
+  return (
+    cause instanceof TelegramError &&
+    cause.code === 400 &&
+    /entit/i.test(cause.message)
+  );
+}
+
+/**
+ * Telegram turned down the button. Undocumented too; `BUTTON_URL_INVALID`
+ * is the commonly reported wording for a URL it won't take.
+ */
+function isButtonRejection(cause: unknown): boolean {
+  return (
+    cause instanceof TelegramError &&
+    cause.code === 400 &&
+    /button/i.test(cause.message)
+  );
+}
+
+/** What a message may go without when Telegram turns it down. */
+type Extras = { entities: TextEntity[]; sourceUrl: string | undefined };
+
+/**
+ * Sends with the formatting and the button's quote link, and when Telegram
+ * turns either down, once more without it: plain text, or the plain page
+ * link. Formatting is never worth a message that doesn't go.
+ */
+async function withFallbacks<T>(
+  extras: Extras,
+  send: (extras: Extras) => Promise<T>
+): Promise<T> {
+  let { entities, sourceUrl } = extras;
+
+  for (;;) {
+    try {
+      return await send({ entities, sourceUrl });
+    } catch (error) {
+      const plainUrl = sourceUrl && withoutTextDirective(sourceUrl);
+
+      if (entities.length > 0 && isEntityRejection(error)) {
+        entities = [];
+      } else if (plainUrl !== sourceUrl && isButtonRejection(error)) {
+        sourceUrl = plainUrl;
+      } else {
+        throw error;
+      }
+    }
+  }
 }
 
 function sourceKeyboard(sourceUrl: string | undefined) {
@@ -162,19 +273,25 @@ async function sendText(
   target: Target,
   message: Extract<OutgoingMessage, { kind: 'text' }>
 ): Promise<number[]> {
-  const parts = splitText(message.text);
+  const parts = splitFormatted(message.text, message.entities ?? []);
   const ids: number[] = [];
 
-  for (const [index, text] of parts.entries()) {
+  // Each part falls back on its own, so one already sent isn't sent again.
+  for (const [index, { text, entities }] of parts.entries()) {
     const isLast = index === parts.length - 1;
-    const keyboard = isLast ? sourceKeyboard(message.sourceUrl) : undefined;
+    const sourceUrl = isLast ? message.sourceUrl : undefined;
 
-    const sent = await bot.call('sendMessage', {
-      ...target,
-      text,
-      disable_notification: message.silent,
-      link_preview_options: { is_disabled: !message.linkPreview },
-      ...(keyboard && { reply_markup: keyboard }),
+    const sent = await withFallbacks({ entities, sourceUrl }, (extras) => {
+      const keyboard = sourceKeyboard(extras.sourceUrl);
+
+      return bot.call('sendMessage', {
+        ...target,
+        text,
+        ...(extras.entities.length > 0 && { entities: extras.entities }),
+        disable_notification: message.silent,
+        link_preview_options: { is_disabled: !message.linkPreview },
+        ...(keyboard && { reply_markup: keyboard }),
+      });
     });
 
     ids.push(sent.message_id);
@@ -192,7 +309,7 @@ function textDelivery(ids: number[], via: 'text' | 'link'): Delivery {
 function sendMedia(
   bot: BotClient,
   kind: 'photo' | 'video' | 'audio',
-  common: DeliveryOptions & { caption?: string },
+  common: DeliveryOptions & Captioned,
   file: InputFile
 ) {
   switch (kind) {
@@ -227,20 +344,40 @@ export async function deliver(
     return textDelivery(await sendText(bot, target, message), 'text');
   }
 
-  const keyboard = sourceKeyboard(message.sourceUrl);
+  const { caption } = message;
 
-  const common = {
-    ...target,
-    disable_notification: message.silent,
-    ...(message.caption && { caption: message.caption }),
-    ...(keyboard && { reply_markup: keyboard }),
+  const extras: Extras = {
+    entities: caption
+      ? normalizeEntities(
+          caption,
+          message.captionEntities ?? [],
+          MAX_ENTITIES_PER_MESSAGE
+        )
+      : [],
+    sourceUrl: message.sourceUrl,
+  };
+
+  const common = ({ entities, sourceUrl }: Extras) => {
+    const keyboard = sourceKeyboard(sourceUrl);
+
+    return {
+      ...target,
+      disable_notification: message.silent,
+      ...(caption && { caption }),
+      ...(entities.length > 0 && { caption_entities: entities }),
+      ...(keyboard && { reply_markup: keyboard }),
+    };
   };
 
   const file = 'upload' in message ? message.upload : message.url;
 
   if (message.kind !== 'document') {
+    const kind = message.kind;
+
     try {
-      const sent = await sendMedia(bot, message.kind, common, file);
+      const sent = await withFallbacks(extras, (each) =>
+        sendMedia(bot, kind, common(each), file)
+      );
 
       return {
         messageId: sent.message_id,
@@ -254,7 +391,9 @@ export async function deliver(
   }
 
   try {
-    const sent = await bot.call('sendDocument', { ...common, document: file });
+    const sent = await withFallbacks(extras, (each) =>
+      bot.call('sendDocument', { ...common(each), document: file })
+    );
 
     return {
       messageId: sent.message_id,
@@ -266,13 +405,13 @@ export async function deliver(
     if ('upload' in message || !isMediaRejection(error)) throw error;
   }
 
-  const text = message.caption
-    ? `${message.url}\n\n${message.caption}`
-    : message.url;
+  const text = caption ? `${message.url}\n\n${caption}` : message.url;
+  const entities = shiftEntities(extras.entities, message.url.length + 2);
 
   const ids = await sendText(bot, target, {
     kind: 'text',
     text,
+    ...(entities.length > 0 && { entities }),
     linkPreview: true,
     silent: message.silent,
     ...(message.sourceUrl && { sourceUrl: message.sourceUrl }),
@@ -305,17 +444,35 @@ export async function deliverAlbum(
 
   const captioned = album.kind === 'photo' ? 0 : count - 1;
 
-  const media = album.uploads.map((upload, index): AlbumItem => ({
-    type: album.kind,
-    media: upload,
-    ...(index === captioned && album.caption && { caption: album.caption }),
-  }));
+  const { caption } = album;
 
-  const sent = await bot.call('sendMediaGroup', {
-    ...targetOf(chatId, topic),
-    disable_notification: album.silent,
-    media,
-  });
+  const entities = caption
+    ? normalizeEntities(
+        caption,
+        album.captionEntities ?? [],
+        MAX_ENTITIES_PER_MESSAGE
+      )
+    : [];
+
+  const sent = await withFallbacks(
+    { entities, sourceUrl: undefined },
+    (extras) => {
+      const media = album.uploads.map((upload, index): AlbumItem => ({
+        type: album.kind,
+        media: upload,
+        ...(index === captioned && caption && { caption }),
+        ...(index === captioned &&
+          caption &&
+          extras.entities.length > 0 && { caption_entities: extras.entities }),
+      }));
+
+      return bot.call('sendMediaGroup', {
+        ...targetOf(chatId, topic),
+        disable_notification: album.silent,
+        media,
+      });
+    }
+  );
 
   const ids = sent.map((message) => message.message_id);
 

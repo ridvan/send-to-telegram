@@ -130,6 +130,45 @@ describe('send', () => {
     expect(off).toMatchObject({ sent: { messageIds: [101] } });
     expect(off.ok && off.sent).not.toHaveProperty('entryId');
   });
+
+  it('keeps a selection’s formatting with its content, for Send again', async () => {
+    const entities = [{ type: 'bold' as const, offset: 0, length: 2 }];
+    const draft = { kind: 'selection' as const, text: 'Hi there', entities };
+
+    await send({ type: 'send', incognito: false, draft });
+
+    const [full] = await historyStore.get();
+
+    expect(full?.content?.entities).toEqual(entities);
+
+    await useHistory('minimal');
+    await send({ type: 'send', incognito: false, draft });
+
+    const [minimal] = await historyStore.get();
+
+    expect(minimal?.content).toBeUndefined();
+  });
+
+  it('sends the formatting to Telegram', async () => {
+    await send({
+      type: 'send',
+      incognito: false,
+      draft: {
+        kind: 'selection',
+        text: 'Hi there',
+        note: 'Look',
+        entities: [{ type: 'bold', offset: 0, length: 2 }],
+      },
+    });
+
+    const fetch = vi.mocked(globalThis.fetch);
+    const body = z.string().parse(fetch.mock.calls[0]?.[1]?.body);
+
+    expect(JSON.parse(body)).toMatchObject({
+      text: 'Look\n\nHi there',
+      entities: [{ type: 'bold', offset: 6, length: 2 }],
+    });
+  });
 });
 
 const photo = (id: string): Attachment => ({
@@ -152,6 +191,7 @@ const mediaSchema = z.array(
     type: z.string(),
     media: z.string(),
     caption: z.string().optional(),
+    caption_entities: z.array(z.looseObject({ type: z.string() })).optional(),
   })
 );
 
@@ -255,6 +295,32 @@ describe('send an album', () => {
       'photo',
     ]);
     expect(await loadAttachment('a')).toBeUndefined();
+  });
+
+  it('keeps a selection’s formatting and quote link in the album’s caption', async () => {
+    const albums = albumTelegram();
+
+    await send({
+      type: 'send',
+      incognito: false,
+      draft: {
+        kind: 'selection',
+        text: 'Grid is bold',
+        entities: [{ type: 'bold', offset: 8, length: 4 }],
+        pageUrl: 'https://example.com/post',
+        attachments: [photo('a'), photo('b')],
+      },
+    });
+
+    expect(albums[0]?.[0]?.caption_entities).toEqual([
+      { type: 'bold', offset: 8, length: 4 },
+      {
+        type: 'text_link',
+        offset: 14,
+        length: 24,
+        url: 'https://example.com/post#:~:text=Grid%20is%20bold',
+      },
+    ]);
   });
 
   it('sends photos and files as two albums, the caption with the last', async () => {

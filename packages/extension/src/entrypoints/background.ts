@@ -355,7 +355,7 @@ export default defineBackground({
         return;
       }
 
-      const text =
+      const selected =
         target.kind === 'selection'
           ? await readSelection(tab?.id, info.frameId, info.selectionText)
           : undefined;
@@ -370,7 +370,8 @@ export default defineBackground({
           ...target,
           ...(pageUrl && { pageUrl }),
           ...(tab?.title && { pageTitle: tab.title }),
-          ...(text && { text }),
+          ...(selected && { text: selected.text }),
+          ...(selected?.entities && { entities: selected.entities }),
           ...(url && { url }),
         },
       });
