@@ -17,10 +17,20 @@ import {
   ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import type { ChatItem } from '@/hooks/use-chat-items';
-import { deleteMessages } from '@/lib/chat-actions';
+import {
+  deleteCopy,
+  deleteMessages,
+  type TelegramDeletion,
+  telegramDeletion,
+} from '@/lib/chat-actions';
 import { draftFromEntry, requestSend } from '@/lib/client';
 import { isHttpUrl, messageText } from '@/lib/compose';
-import type { HistoryEntry, InboxEntry, Settings } from '@/lib/settings';
+import type {
+  Destination,
+  HistoryEntry,
+  InboxEntry,
+  Settings,
+} from '@/lib/settings';
 
 function copy(text: string) {
   void navigator.clipboard.writeText(text).then(
@@ -33,9 +43,21 @@ function open(url: string) {
   void browser.tabs.create({ url });
 }
 
-function remove(item: ChatItem) {
+/** Deletes from this browser only, saying why Telegram keeps a sent one. */
+function remove(item: ChatItem, why: TelegramDeletion | undefined) {
+  // A failed send never reached Telegram, so nothing stays there.
+  const unsent = item.direction === 'out' && item.entry.status === 'failed';
+
   void deleteMessages([item]).then(() =>
-    toast('Deleted from this browser. The message stays in Telegram.')
+    toast(
+      'Deleted from this browser',
+      unsent
+        ? {}
+        : {
+            description:
+              why && !why.can ? deleteCopy[why.why] : deleteCopy.kept,
+          }
+    )
   );
 }
 
@@ -135,13 +157,26 @@ function ReceivedItems({ message }: { message: InboxEntry }) {
 export function MessageMenu({
   item,
   delivery,
+  destinations,
+  now,
   onSelect,
+  onAskDelete,
 }: {
   item: ChatItem;
   delivery: Settings['delivery'];
+  /** Finds the bot that can delete a sent message in Telegram. */
+  destinations: Destination[];
+  now: number;
   /** Starts selecting messages, with this one selected. */
   onSelect: () => void;
+  /** Asks whether to delete it in Telegram too; the menu can't hold the dialog. */
+  onAskDelete: () => void;
 }) {
+  const deletion =
+    item.direction === 'out'
+      ? telegramDeletion(item.entry, destinations, now)
+      : undefined;
+
   return (
     <ContextMenuContent>
       {item.direction === 'out' ? (
@@ -153,7 +188,12 @@ export function MessageMenu({
         Select
       </MenuItem>
       <ContextMenuSeparator />
-      <MenuItem icon={Delete02Icon} destructive onClick={() => remove(item)}>
+      {/* A message only this browser keeps goes at once, as before. */}
+      <MenuItem
+        icon={Delete02Icon}
+        destructive
+        onClick={() => (deletion?.can ? onAskDelete() : remove(item, deletion))}
+      >
         Delete
       </MenuItem>
     </ContextMenuContent>

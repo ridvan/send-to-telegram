@@ -65,7 +65,7 @@ describe('deliver', () => {
   it('attaches the source button only to the last text part', async () => {
     const { bot, calls } = fakeBot();
 
-    await deliver(bot, 42, {
+    const delivery = await deliver(bot, 42, {
       kind: 'text',
       text: `${'a'.repeat(4000)}\n\n${'b'.repeat(200)}`,
       linkPreview: false,
@@ -76,6 +76,8 @@ describe('deliver', () => {
     expect(calls).toHaveLength(2);
     expect(calls[0]?.params).not.toHaveProperty('reply_markup');
     expect(calls[1]?.params).toHaveProperty('reply_markup');
+    // Every part, so all of them can be deleted later.
+    expect(delivery).toMatchObject({ messageId: 2, messageIds: [1, 2] });
   });
 
   it('falls back from photo to document to link', async () => {
@@ -96,7 +98,7 @@ describe('deliver', () => {
       'sendDocument',
       'sendMessage',
     ]);
-    expect(delivery.via).toBe('link');
+    expect(delivery).toMatchObject({ via: 'link', messageIds: [1] });
     expect(calls[2]?.params).toMatchObject({
       text: 'https://example.com/a.svg\n\n#art',
     });
@@ -113,7 +115,7 @@ describe('deliver', () => {
       sourceUrl: 'https://example.com/post',
     });
 
-    expect(delivery.via).toBe('video');
+    expect(delivery).toMatchObject({ via: 'video', messageIds: [1] });
     expect(calls).toEqual([
       {
         method: 'sendVideo',
@@ -202,6 +204,7 @@ describe('deliver', () => {
       deliver(bot, 42, { kind: 'photo', upload, silent: false })
     ).resolves.toEqual({
       messageId: 1,
+      messageIds: [1],
       via: 'document',
       sent: { message_id: 1, chat: { id: 1, type: 'private' } },
     });

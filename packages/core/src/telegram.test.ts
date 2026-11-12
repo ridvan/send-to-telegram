@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBotClient, Upload } from './telegram.ts';
+import { botIdOf, createBotClient, Upload } from './telegram.ts';
 
 const sent = {
   ok: true,
@@ -62,5 +62,14 @@ describe('createBotClient', () => {
     expect(body.get('reply_markup')).toBe(
       '{"inline_keyboard":[[{"text":"Open page","url":"https://a.b"}]]}'
     );
+  });
+});
+
+describe('botIdOf', () => {
+  it('reads the bot’s ID from the start of its token', () => {
+    expect(botIdOf('123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw')).toBe(
+      123_456_789
+    );
+    expect(botIdOf('not a token')).toBeUndefined();
   });
 });

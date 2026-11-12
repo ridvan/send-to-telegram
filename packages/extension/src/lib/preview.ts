@@ -2,7 +2,7 @@
  * Development only: lets the extension pages render in a normal browser tab
  * (`pnpm dev`, then open http://localhost:3000/popup.html) by standing in for
  * the extension APIs with localStorage. Add `?demo` to seed sample data, and
- * `?fail` to make sends, downloads and chat lookups fail, `?nocapture` to make screenshots
+ * `?fail` to make sends, deletes, downloads and chat lookups fail, `?nocapture` to make screenshots
  * fail, and `?lock` to lock it again after
  * turning on the password lock. The demo group chat's bot answers
  * with messages people sent it; `?noperm` starts without permission to
@@ -129,6 +129,7 @@ function demoData(now: number) {
         destinationId: 'me',
         destinationName: 'Rıdvan Aktogan',
         tag: 'reading',
+        telegram: { botId: 1, chatId: 1001, messageIds: [101] },
         content: {
           pageUrl: 'https://www.joshwcomeau.com/css/interactive-guide-to-grid/',
           pageTitle: 'An Interactive Guide to CSS Grid',
@@ -142,6 +143,7 @@ function demoData(now: number) {
         destinationId: 'team',
         destinationName: 'Design crit',
         via: 'photo',
+        telegram: { botId: 1, chatId: -100_123, messageIds: [102] },
         content: {
           note: 'My take on the grid',
           attachment: {
@@ -184,6 +186,7 @@ function demoData(now: number) {
         status: 'sent',
         destinationId: 'me',
         destinationName: 'Rıdvan Aktogan',
+        telegram: { botId: 1, chatId: 1001, messageIds: [98] },
         content: {
           text: 'The best interfaces are the ones you never notice. Every detail that works the way you expect is a detail you never have to think about.',
           pageUrl: 'https://emilkowal.ski/ui/invisible-details',
@@ -199,6 +202,7 @@ function demoData(now: number) {
         destinationName: 'Rıdvan Aktogan',
         tag: 'reading',
         via: 'video',
+        telegram: { botId: 1, chatId: 1001, messageIds: [96] },
         content: {
           url: 'https://media.example.com/talks/springs.mp4',
           note: 'The part about interruptible springs',
@@ -242,6 +246,7 @@ function demoData(now: number) {
         destinationId: 'team',
         destinationName: 'Design crit',
         tag: 'work',
+        telegram: { botId: 1, chatId: -100_123, messageIds: [90, 91] },
         content: {
           url: 'https://linear.app/method',
           pageUrl: 'https://news.ycombinator.com/',
@@ -256,6 +261,7 @@ function demoData(now: number) {
         destinationId: 'me',
         destinationName: 'Rıdvan Aktogan',
         tag: 'ideas',
+        telegram: { botId: 1, chatId: 1001, messageIds: [80] },
         content: {
           url: 'https://linear.app/method',
           note: 'Read this before the planning meeting',
@@ -542,7 +548,8 @@ type FakeAnswer =
         | Chat
         | { id: number; is_bot: boolean; first_name: string; username: string }
         | { message_id: number; chat: Chat }
-        | { file_id: string; file_path: string };
+        | { file_id: string; file_path: string }
+        | true;
     }
   | { ok: false; error_code: number; description: string };
 
@@ -554,9 +561,9 @@ const DEMO_TOKEN = '12345:demo-demo-demo-demo-demo-demo-demo';
 
 /**
  * Answers for the demo bot (token `1:x`, or `DEMO_TOKEN` when connecting):
- * `getMe`, `getUpdates`, `getChat`, test messages, `getFile` and its file
- * downloads. `failDownloads` makes every download, test message and chat
- * lookup fail.
+ * `getMe`, `getUpdates`, `getChat`, test messages, deletes, `getFile` and
+ * its file downloads. `failDownloads` makes every download, delete, test
+ * message and chat lookup fail.
  * Other requests pass through.
  */
 function fakeTelegram(
@@ -636,6 +643,23 @@ function fakeTelegram(
             ok: true,
             result: { message_id: 1, chat: { id: 1, type: 'private' } },
           });
+    }
+
+    // Deleting sent messages; `?fail` answers as for one past Telegram's
+    // 48 hours, or in a chat where the bot lost the right.
+    if (
+      url.href === 'https://api.telegram.org/bot1:x/deleteMessage' ||
+      url.href === 'https://api.telegram.org/bot1:x/deleteMessages'
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      return failDownloads
+        ? json({
+            ok: false,
+            error_code: 400,
+            description: "Bad Request: message can't be deleted for everyone",
+          })
+        : json({ ok: true, result: true });
     }
 
     if (url.href === 'https://api.telegram.org/bot1:x/getFile') {
@@ -737,7 +761,12 @@ function install() {
           };
         }
 
-        return { ok: true, destination: 'Rıdvan Aktogan' };
+        // Undo deletes it from the demo bot's private chat.
+        return {
+          ok: true,
+          destination: 'Rıdvan Aktogan',
+          sent: { botId: 1, chatId: 1001, messageIds: [Date.now() % 1e6] },
+        };
       },
       openOptionsPage: async () => void open('/options.html'),
       onMessage: event,

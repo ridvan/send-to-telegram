@@ -239,6 +239,20 @@ export const attachmentSchema = z.object({
 
 export type Attachment = z.infer<typeof attachmentSchema>;
 
+/**
+ * Where Telegram keeps a sent message, so it can be deleted there too. The
+ * bot is named by its ID rather than its token, so no secret is copied into
+ * history, and a delete still finds the bot after its chat is removed or
+ * re-pointed. A long text went as several messages; all of them are here.
+ */
+export const telegramRefSchema = z.object({
+  botId: z.number().int().positive(),
+  chatId: chatIdSchema,
+  messageIds: z.array(z.number().int().positive()).min(1),
+});
+
+export type TelegramRef = z.infer<typeof telegramRefSchema>;
+
 export const historyEntrySchema = z.object({
   id: z.string(),
   sentAt: z.number(),
@@ -250,6 +264,12 @@ export const historyEntrySchema = z.object({
   tag: z.string().optional(),
   via: deliveredViaSchema.optional(),
   error: z.string().optional(),
+  /**
+   * Absent for failed sends and ones made before it was kept, which can only
+   * be removed here. IDs aren't content, so "Times only" keeps them too. One
+   * this version can't read is dropped, not the whole entry.
+   */
+  telegram: telegramRefSchema.optional().catch(undefined),
   /** Present only when history is set to keep content. */
   content: z
     .object({

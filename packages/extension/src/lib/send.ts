@@ -1,4 +1,5 @@
 import {
+  botIdOf,
   createBotClient,
   deliver,
   type Delivery,
@@ -37,6 +38,8 @@ import {
   type Settings,
   settingsStore,
   statsStore,
+  type TelegramRef,
+  telegramRefSchema,
 } from './settings.ts';
 import { LockedError, lockState, touchSession } from './vault.ts';
 
@@ -51,7 +54,17 @@ export const sendRequestSchema = z.object({
 export type SendRequest = z.infer<typeof sendRequestSchema>;
 
 export const sendOutcomeSchema = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), destination: z.string() }),
+  z.object({
+    ok: z.literal(true),
+    destination: z.string(),
+    /**
+     * What undoing the send deletes, and the history entry it removes. Here
+     * even when nothing was recorded, as in private windows.
+     */
+    sent: telegramRefSchema
+      .extend({ entryId: z.string().optional() })
+      .optional(),
+  }),
   z.object({
     ok: z.literal(false),
     reason: failureReasonSchema,
@@ -102,6 +115,18 @@ function findDestination(settings: Settings, id: string | undefined) {
   return destination;
 }
 
+/** Where Telegram put a delivery, to delete it there later. */
+export function telegramRef(
+  destination: Destination,
+  delivery: Delivery
+): TelegramRef | undefined {
+  const botId = botIdOf(destination.token);
+
+  if (botId === undefined || delivery.messageIds.length === 0) return undefined;
+
+  return { botId, chatId: destination.chatId, messageIds: delivery.messageIds };
+}
+
 function historyEntry(
   draft: Draft,
   settings: Settings,
@@ -113,6 +138,11 @@ function historyEntry(
 ): HistoryEntry {
   const keepContent = settings.history.mode === 'full';
   const sent = result.delivery?.sent && attachmentOf(result.delivery.sent);
+
+  const telegram =
+    result.destination &&
+    result.delivery &&
+    telegramRef(result.destination, result.delivery);
 
   const sentMedia =
     sent?.media && sent.file
@@ -130,6 +160,7 @@ function historyEntry(
     }),
     ...(draft.tag && { tag: draft.tag }),
     ...(result.delivery && { via: result.delivery.via }),
+    ...(telegram && { telegram }),
     ...(result.failure && { error: result.failure.message }),
     ...(keepContent && {
       content: {
@@ -272,11 +303,16 @@ export async function send(request: SendRequest): Promise<SendOutcome> {
       await statsStore.update((stats) => ({ sent: stats.sent + 1 }));
     }
 
+    let entryId: string | undefined;
+
     if (remember) {
       const entry = historyEntry(draft, settings, { destination, delivery });
 
       await record(entry, request.retryOf);
+      entryId = entry.id;
     }
+
+    const ref = telegramRef(destination, delivery);
 
     if (draft.attachment) await deleteAttachment(draft.attachment.id);
 
@@ -284,7 +320,11 @@ export async function send(request: SendRequest): Promise<SendOutcome> {
       console.error('Could not clear unsent files', cause);
     });
 
-    return { ok: true, destination: destinationName(destination) };
+    return {
+      ok: true,
+      destination: destinationName(destination),
+      ...(ref && { sent: { ...ref, ...(entryId && { entryId }) } }),
+    };
   } catch (cause) {
     const failure = toSendFailure(cause);
 
