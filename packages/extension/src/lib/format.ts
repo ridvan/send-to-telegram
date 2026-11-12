@@ -159,6 +159,8 @@ export const kindLabel: Record<ContentKind, string> = {
   selection: 'Text',
   link: 'Link',
   image: 'Image',
+  video: 'Video',
+  audio: 'Audio',
   page: 'Page',
 };
 
@@ -194,6 +196,14 @@ export function entryTitle(entry: HistoryEntry): string {
     case 'link':
     case 'image':
       return content.url ? displayUrl(content.url) : kindLabel[entry.kind];
+    case 'video':
+    case 'audio':
+      // Without a source of its own, its page went instead.
+      return content.url
+        ? displayUrl(content.url)
+        : (content.pageTitle ??
+            (content.pageUrl ? displayUrl(content.pageUrl) : undefined) ??
+            kindLabel[entry.kind]);
   }
 }
 

@@ -5,7 +5,9 @@ import {
   TelegramError,
   type BotClient,
   type ChatId,
+  type DeliveryOptions,
   type IncomingMessage,
+  type InputFile,
   TEXT_LIMIT,
   type Upload,
 } from './telegram.ts';
@@ -28,7 +30,7 @@ export const outgoingMessageSchema = z.discriminatedUnion('kind', [
     linkPreview: z.boolean(),
   }),
   deliverySchema.extend({
-    kind: z.enum(['photo', 'document']),
+    kind: z.enum(['photo', 'video', 'audio', 'document']),
     url: httpUrlSchema,
     caption: z.string().max(CAPTION_LIMIT).optional(),
   }),
@@ -47,7 +49,14 @@ export type UploadMessage = z.infer<typeof deliverySchema> & {
   caption?: string;
 };
 
-export const deliveredViaSchema = z.enum(['text', 'photo', 'document', 'link']);
+export const deliveredViaSchema = z.enum([
+  'text',
+  'photo',
+  'video',
+  'audio',
+  'document',
+  'link',
+]);
 
 export type DeliveredVia = z.infer<typeof deliveredViaSchema>;
 
@@ -127,10 +136,30 @@ async function sendText(
   return lastId;
 }
 
+/** Sends a file as the media Telegram plays or shows inline. */
+function sendMedia(
+  bot: BotClient,
+  kind: 'photo' | 'video' | 'audio',
+  common: DeliveryOptions & { caption?: string },
+  file: InputFile
+) {
+  switch (kind) {
+    case 'photo':
+      return bot.call('sendPhoto', { ...common, photo: file });
+    case 'video':
+      return bot.call('sendVideo', { ...common, video: file });
+    case 'audio':
+      return bot.call('sendAudio', { ...common, audio: file });
+  }
+}
+
 /**
  * Delivers one message. Media that Telegram cannot fetch or render falls back
- * from photo to document to a plain link, so a send never silently disappears.
- * An upload has no link to fall back to, so its last rejection stands.
+ * from photo, video or audio to document to a plain link, so a send never
+ * silently disappears. By URL Telegram fetches at most 20 MB, needs the right
+ * MIME type, and only promises documents for PDF and ZIP, so the link is what
+ * most rejected videos and songs end up as. An upload has no link to fall
+ * back to, so its last rejection stands.
  */
 export async function deliver(
   bot: BotClient,
@@ -152,13 +181,13 @@ export async function deliver(
 
   const file = 'upload' in message ? message.upload : message.url;
 
-  if (message.kind === 'photo') {
+  if (message.kind !== 'document') {
     try {
-      const sent = await bot.call('sendPhoto', { ...common, photo: file });
+      const sent = await sendMedia(bot, message.kind, common, file);
 
       return {
         messageId: sent.message_id,
-        via: 'photo',
+        via: message.kind,
         ...('upload' in message && { sent }),
       };
     } catch (error) {

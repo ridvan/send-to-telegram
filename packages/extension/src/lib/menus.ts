@@ -43,6 +43,18 @@ const items: {
   },
   {
     prefix: 'send',
+    kind: 'video',
+    context: 'video',
+    title: 'Send video to Telegram',
+  },
+  {
+    prefix: 'send',
+    kind: 'audio',
+    context: 'audio',
+    title: 'Send audio to Telegram',
+  },
+  {
+    prefix: 'send',
     kind: 'page',
     context: 'page',
     title: 'Send page to Telegram',

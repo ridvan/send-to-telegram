@@ -102,6 +102,80 @@ describe('deliver', () => {
     });
   });
 
+  it('sends a video to play in Telegram, with its caption and button', async () => {
+    const { bot, calls } = fakeBot();
+
+    const delivery = await deliver(bot, 42, {
+      kind: 'video',
+      url: 'https://example.com/clip.mp4',
+      caption: '#film',
+      silent: false,
+      sourceUrl: 'https://example.com/post',
+    });
+
+    expect(delivery.via).toBe('video');
+    expect(calls).toEqual([
+      {
+        method: 'sendVideo',
+        params: {
+          chat_id: 42,
+          disable_notification: false,
+          caption: '#film',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'Open page', url: 'https://example.com/post' }],
+            ],
+          },
+          video: 'https://example.com/clip.mp4',
+        },
+      },
+    ]);
+  });
+
+  it('sends a song Telegram refuses as a file', async () => {
+    const { bot, calls } = fakeBot({ sendAudio: rejected });
+
+    const delivery = await deliver(bot, 42, {
+      kind: 'audio',
+      url: 'https://example.com/song.ogg',
+      silent: false,
+    });
+
+    expect(calls.map((call) => call.method)).toEqual([
+      'sendAudio',
+      'sendDocument',
+    ]);
+    expect(calls[1]?.params).toMatchObject({
+      document: 'https://example.com/song.ogg',
+    });
+    expect(delivery.via).toBe('document');
+  });
+
+  it('falls back from video to document to link', async () => {
+    const { bot, calls } = fakeBot({
+      sendVideo: rejected,
+      sendDocument: rejected,
+    });
+
+    const delivery = await deliver(bot, 42, {
+      kind: 'video',
+      url: 'https://example.com/huge.webm',
+      caption: 'Watch later',
+      silent: true,
+    });
+
+    expect(calls.map((call) => call.method)).toEqual([
+      'sendVideo',
+      'sendDocument',
+      'sendMessage',
+    ]);
+    expect(delivery.via).toBe('link');
+    expect(calls[2]?.params).toMatchObject({
+      text: 'https://example.com/huge.webm\n\nWatch later',
+      disable_notification: true,
+    });
+  });
+
   it('does not hide errors that are not about the media', async () => {
     const { bot, calls } = fakeBot({
       sendPhoto: new TelegramError(

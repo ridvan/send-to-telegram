@@ -6,6 +6,7 @@ import {
   File01Icon,
   Image02Icon,
   Mic01Icon,
+  MusicNote01Icon,
   TickDouble02Icon,
   Video01Icon,
 } from '@hugeicons/core-free-icons';
@@ -17,7 +18,7 @@ import { ReceivedMedia } from '@/components/received-media';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { isHttpUrl, sendsAsPhoto } from '@/lib/compose';
+import { isHttpUrl, sendsAsPhoto, sendsPageInstead } from '@/lib/compose';
 import { splitHashtags } from '@/lib/hashtags';
 import {
   displayUrl,
@@ -186,7 +187,7 @@ type MessageContent = {
   note?: string | undefined;
   /** Selected text. */
   text?: string | undefined;
-  /** The link target, or the image source. */
+  /** The link target, or the image, video or audio source. */
   url?: string | undefined;
   pageUrl?: string | undefined;
   pageTitle?: string | undefined;
@@ -201,6 +202,13 @@ export type AttachmentView = Pick<Attachment, 'name' | 'type' | 'size'> & {
 
 type Block = { key: string; content: ReactNode };
 
+/** Marks media Telegram fetches from its address, which the bubble shows. */
+const sourceIcons = {
+  image: Image02Icon,
+  video: Video01Icon,
+  audio: MusicNote01Icon,
+} satisfies Partial<Record<ContentKind, typeof Image02Icon>>;
+
 /**
  * Splits a message into the paragraphs Telegram shows, following the same
  * rules as `compose`: the note first, then the content, then the hashtag.
@@ -210,7 +218,9 @@ function messageParts(
   delivery: Settings['delivery'],
   linked: boolean
 ) {
-  const { kind, pageUrl, pageTitle, tag } = message;
+  const { pageUrl, pageTitle, tag } = message;
+  // A video or song Telegram can't fetch went as its page.
+  const kind = sendsPageInstead(message) ? 'page' : message.kind;
   const note = message.note?.trim();
   // A caption under a file has no link preview, so the title goes in the text.
   const withTitle = !delivery.linkPreview || message.attachment !== undefined;
@@ -225,7 +235,7 @@ function messageParts(
     });
   }
 
-  if ((kind === 'link' || kind === 'image') && message.url) {
+  if (kind !== 'selection' && kind !== 'page' && message.url) {
     const url = isHttpUrl(message.url) ? (
       <UrlText url={message.url} linked={linked}>
         {displayUrl(message.url)}
@@ -237,18 +247,18 @@ function messageParts(
     blocks.push({
       key: 'url',
       content:
-        kind === 'image' ? (
+        kind === 'link' ? (
+          url
+        ) : (
           <span className="flex items-start gap-1.5">
             <HugeiconsIcon
-              icon={Image02Icon}
+              icon={sourceIcons[kind]}
               strokeWidth={1.8}
               aria-hidden
               className="mt-0.5 size-4 shrink-0 text-bubble-muted"
             />
             {url}
           </span>
-        ) : (
-          url
         ),
     });
   }
