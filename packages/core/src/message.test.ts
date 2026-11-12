@@ -7,6 +7,7 @@ import {
   deliverAlbum,
   isTopicUnavailable,
   outgoingMessageSchema,
+  PartlySent,
   splitFormatted,
   splitText,
 } from './message.ts';
@@ -87,6 +88,46 @@ describe('deliver', () => {
     expect(calls[1]?.params).toHaveProperty('reply_markup');
     // Every part, so all of them can be deleted later.
     expect(delivery).toMatchObject({ messageId: 2, messageIds: [1, 2] });
+  });
+
+  it('says which parts of a long text went before one failed', async () => {
+    let calls = 0;
+    const limited = new TelegramError(429, 'Too Many Requests', 30);
+
+    const bot: BotClient = {
+      async call() {
+        calls += 1;
+
+        if (calls === 2) throw limited;
+
+        // SAFETY: only sendMessage is called, which returns a message.
+        return { message_id: calls, chat: { id: 1, type: 'private' } } as never;
+      },
+    };
+
+    const text = `${'a'.repeat(4000)}\n\n${'b'.repeat(200)}`;
+    const message = { kind: 'text', text, linkPreview: false, silent: true };
+
+    const failure = deliver(bot, 42, { ...message, kind: 'text' });
+
+    // Still the rate limit to callers that only know TelegramError.
+    await expect(failure).rejects.toBeInstanceOf(PartlySent);
+    await expect(failure).rejects.toMatchObject({
+      code: 429,
+      retryAfter: 30,
+      messageIds: [1],
+    });
+
+    const rest = await deliver(
+      bot,
+      42,
+      { ...message, kind: 'text' },
+      undefined,
+      1
+    );
+
+    expect(calls).toBe(3);
+    expect(rest.messageIds).toEqual([3]);
   });
 
   it('falls back from photo to document to link', async () => {

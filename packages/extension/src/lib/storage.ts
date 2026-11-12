@@ -87,6 +87,34 @@ export function sealKey(key: string) {
   rewriters.add(() => rewriteKey(key));
 }
 
+/** The changes under way in this context, by key. */
+const changing = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs one change of a key at a time. A change reads, then writes; two at
+ * once would both read the old value, and the later write would drop the
+ * earlier one's change: a sent message missing from history, or a message
+ * sent from the queue still looking unsent and going again. Web Locks order
+ * the changes across the popup, the pages and the worker; where there are
+ * none, a context still orders its own.
+ */
+function oneAtATime<T>(key: string, change: () => Promise<T>): Promise<T> {
+  const before = changing.get(key) ?? Promise.resolve();
+
+  const run = before.then(() => {
+    const locks = globalThis.navigator?.locks;
+
+    return locks ? locks.request(`store:${key}`, change) : change();
+  });
+
+  changing.set(
+    key,
+    run.catch(() => undefined)
+  );
+
+  return run;
+}
+
 export function defineStore<S extends z.ZodType>(
   key: string,
   schema: S,
@@ -215,12 +243,14 @@ export function defineStore<S extends z.ZodType>(
     key,
     get,
     set,
-    async update(change) {
-      const next = change(await get());
+    update(change) {
+      return oneAtATime(key, async () => {
+        const next = change(await get());
 
-      await set(next);
+        await set(next);
 
-      return next;
+        return next;
+      });
     },
     snapshot() {
       if (cached !== undefined) return cached;

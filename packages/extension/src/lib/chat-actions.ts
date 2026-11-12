@@ -135,8 +135,9 @@ export type TelegramDeletion =
   | { can: false; why: 'too_old' | 'no_chat' | 'kept' };
 
 /**
- * Whether a sent message can be deleted in Telegram too. Entries kept before
- * their IDs were, and failed ones, can only be removed here.
+ * Whether a sent message can be deleted in Telegram too, or the parts of a
+ * failed long text that went. Entries kept before their IDs were, and failed
+ * ones that never reached Telegram, can only be removed here.
  */
 export function telegramDeletion(
   entry: HistoryEntry,
@@ -145,7 +146,7 @@ export function telegramDeletion(
 ): TelegramDeletion {
   const ref = entry.telegram;
 
-  if (entry.status !== 'sent' || !ref) return { can: false, why: 'kept' };
+  if (!ref) return { can: false, why: 'kept' };
 
   if (now - entry.sentAt >= TELEGRAM_DELETE_FOR - DELETE_MARGIN) {
     return { can: false, why: 'too_old' };

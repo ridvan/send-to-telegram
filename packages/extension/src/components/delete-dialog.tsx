@@ -15,7 +15,18 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { plural } from '@/lib/format';
 
-function describe(count: number, deletable: number, inTelegram: boolean) {
+function describe(
+  count: number,
+  deletable: number,
+  inTelegram: boolean,
+  partly: boolean
+) {
+  if (partly && count === 1) {
+    return inTelegram && deletable > 0
+      ? 'It’s removed here, and the parts that went are deleted for everyone in the chat.'
+      : 'It’s removed from this browser only. The parts that went stay in Telegram.';
+  }
+
   if (!inTelegram || deletable === 0) {
     return count === 1
       ? 'It’s removed from this browser only. The message stays in Telegram.'
@@ -40,12 +51,15 @@ export function DeleteDialog({
   onOpenChange,
   count,
   deletable,
+  partly = false,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   count: number;
   deletable: number;
+  /** One long text that failed after some of its parts went. */
+  partly?: boolean;
   /** Resolves once done; the dialog waits for it, then closes. */
   onConfirm: (inTelegram: boolean) => Promise<void>;
 }) {
@@ -89,7 +103,7 @@ export function DeleteDialog({
                 })}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {describe(count, deletable, inTelegram)}
+            {describe(count, deletable, inTelegram, partly)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {deletable > 0 ? (

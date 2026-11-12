@@ -17,11 +17,15 @@ import { saveAttachment } from '@/lib/attachments';
 import { isHttpUrl } from '@/lib/compose';
 import { migrateStoredLegacyData } from '@/lib/legacy';
 import { parseMenuId, rebuildMenus } from '@/lib/menus';
+import { scheduleWakeUp } from '@/lib/queue';
 import {
   clearFailureBadge,
+  onQueueAlarm,
+  pruneQueue,
   pruneUnsentFiles,
   recordUnsent,
   send,
+  sendQueued,
   type SendRequest,
   sendRequestSchema,
   showBadge,
@@ -31,6 +35,7 @@ import { attachmentInfo, captureFailure, captureTab } from '@/lib/screenshot';
 import {
   type ContentKind,
   defaultSettings,
+  historyStore,
   settingsStore,
 } from '@/lib/settings';
 import { activeTab, pageUrlOf, readSelection } from '@/lib/tabs';
@@ -247,6 +252,13 @@ async function selectAreaForPopup(request: SelectAreaRequest) {
   }
 }
 
+/** Tries the sends waiting in the queue that are due; see `sendQueued`. */
+function runQueue(early = false) {
+  void sendQueued({ early }).catch((cause: unknown) =>
+    console.error('Could not send queued messages', cause)
+  );
+}
+
 /** Sends from the menu or a shortcut, where no page shows the outcome. */
 async function sendFromBrowser(request: SendRequest) {
   const outcome = await send(request);
@@ -265,6 +277,29 @@ async function sendFromBrowser(request: SendRequest) {
 export default defineBackground({
   type: 'module',
   main() {
+    // Firefox drops alarms when it quits, and Chrome when the extension
+    // updates, so each start sets the next one again.
+    void scheduleWakeUp().catch((cause: unknown) =>
+      console.error('Could not schedule queued messages', cause)
+    );
+
+    browser.alarms.onAlarm.addListener((alarm) => {
+      void onQueueAlarm(alarm).catch((cause: unknown) =>
+        console.error('Could not send queued messages', cause)
+      );
+    });
+
+    // Only heard while the worker runs; the alarm looks again every minute
+    // while offline otherwise.
+    globalThis.addEventListener('online', () => runQueue(true));
+
+    // A queued message deleted or sent from a page leaves the queue.
+    historyStore.subscribe(() => {
+      void pruneQueue().catch((cause: unknown) =>
+        console.error('Could not tidy the queue', cause)
+      );
+    });
+
     async function refreshMenus() {
       const settings = await settingsStore.get().catch((cause: unknown) => {
         // Locked menus have no chats or hashtags: their names are sealed too.
@@ -290,6 +325,8 @@ export default defineBackground({
             url: browser.runtime.getURL('/welcome.html'),
           });
         }
+
+        runQueue();
       }
     );
 
@@ -299,6 +336,7 @@ export default defineBackground({
       await migrateStoredLegacyData(undefined);
       await refreshMenus();
       await pruneUnsentFiles();
+      runQueue(true);
     });
 
     settingsStore.subscribe((settings) => void rebuildMenus(settings));
@@ -317,7 +355,11 @@ export default defineBackground({
           lock = next;
           await refreshMenus();
 
-          if (next !== 'locked') await sendPending();
+          if (next !== 'locked') {
+            await sendPending();
+            // Waiting messages were sealed too; they go on from here.
+            runQueue();
+          }
         })
         .catch((cause: unknown) =>
           console.error('Could not follow the lock', cause)
@@ -441,7 +483,10 @@ export default defineBackground({
     });
 
     browser.runtime.onConnect.addListener((port) => {
-      if (port.name === 'popup') void clearFailureBadge();
+      if (port.name !== 'popup') return;
+
+      void clearFailureBadge();
+      runQueue();
     });
   },
 });

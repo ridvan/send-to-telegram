@@ -284,6 +284,18 @@ export const historyEntrySchema = z.object({
    * this version can't read is dropped, not the whole entry.
    */
   telegram: telegramRefSchema.optional().catch(undefined),
+  /**
+   * How many parts of a long text went before the rest failed, whose IDs are
+   * in `telegram`. Sending it again leaves them out. Added later; versions
+   * without it send the whole text again.
+   */
+  partsSent: z.number().int().positive().optional().catch(undefined),
+  /**
+   * A fingerprint of the text `partsSent` counts parts of. When settings make
+   * the text differ, its parts would too, so it isn't resumed. Kept with
+   * content only; an entry without it isn't resumed either.
+   */
+  partsOf: z.number().int().nonnegative().optional().catch(undefined),
   /** Present only when history is set to keep content. */
   content: z
     .object({
@@ -332,6 +344,39 @@ export const historyStore = defineStore(
   listOf(historyEntrySchema),
   () => [],
   { sealed: true }
+);
+
+/**
+ * A failed send that is tried again later. The message itself stays in its
+ * failed history entry, which is still `failed` there, so a version without
+ * the queue reads it as one to send again by hand.
+ */
+export const queuedSendSchema = z.object({
+  entryId: z.string(),
+  /** Tries so far, the first send included. */
+  attempts: z.number().int().positive(),
+  /** When the first try failed; it's given up a day later. */
+  since: z.number(),
+  nextAt: z.number(),
+  /** The earliest Telegram allows, after it asked to wait; going online doesn't skip it. */
+  notBefore: z.number().optional(),
+  /**
+   * Set while a try is under way. Found on waking, the worker stopped
+   * mid-try, so whether it went is unknown, and it isn't tried again.
+   */
+  tryingSince: z.number().optional(),
+});
+
+export type QueuedSend = z.infer<typeof queuedSendSchema>;
+
+/**
+ * IDs and times only, so it isn't sealed: the badge and the wake-up alarm
+ * follow it while locked, when nothing is tried.
+ */
+export const sendQueueStore = defineStore(
+  'sendQueue',
+  listOf(queuedSendSchema),
+  () => []
 );
 
 /** A message someone sent to your own bot in a chat, shown in the popup. */

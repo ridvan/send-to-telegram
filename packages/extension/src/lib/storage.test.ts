@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { z } from 'zod';
 
 import { historyStore, inboxStore } from './settings.ts';
-import { loadStores } from './storage.ts';
+import { defineStore, loadStores } from './storage.ts';
 
 describe('loadStores', () => {
   beforeEach(() => fakeBrowser.reset());
@@ -29,5 +30,21 @@ describe('loadStores', () => {
 
     expect(inboxStore.snapshot()).toEqual([received]);
     expect(historyStore.snapshot()).toEqual([sent]);
+  });
+});
+
+describe('update', () => {
+  it('applies changes made at the same time one after another, losing none', async () => {
+    fakeBrowser.reset();
+
+    const list = defineStore('concurrent', z.array(z.string()), () => []);
+
+    await Promise.all(
+      ['a', 'b', 'c', 'd'].map((item) =>
+        list.update((items) => [...items, item])
+      )
+    );
+
+    expect([...(await list.get())].toSorted()).toEqual(['a', 'b', 'c', 'd']);
   });
 });

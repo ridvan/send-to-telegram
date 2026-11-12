@@ -228,6 +228,16 @@ describe('telegramDeletion', () => {
     });
   });
 
+  it('offers the parts of a failed long text that went', () => {
+    const partly: HistoryEntry = { ...recent, status: 'failed', partsSent: 2 };
+
+    expect(telegramDeletion(partly, [chat], now)).toEqual({
+      can: true,
+      destination: chat,
+      ref: recent.telegram,
+    });
+  });
+
   it('only removes here what Telegram can’t delete', () => {
     const { telegram: _, ...legacy } = recent;
     const otherBot = { ...chat, token: '999:other' };
@@ -237,7 +247,7 @@ describe('telegramDeletion', () => {
       why: 'kept',
     });
     expect(
-      telegramDeletion({ ...recent, status: 'failed' }, [chat], now)
+      telegramDeletion({ ...legacy, status: 'failed' }, [chat], now)
     ).toEqual({ can: false, why: 'kept' });
     expect(telegramDeletion(tooOld, [chat], now)).toEqual({
       can: false,

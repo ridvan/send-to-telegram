@@ -268,33 +268,58 @@ function targetOf(chatId: ChatId, topic: number | undefined): Target {
     : { chat_id: chatId, message_thread_id: topic };
 }
 
+/**
+ * A long text failed part of the way: these parts went, in order, before
+ * Telegram's error stopped the rest. It reads as that error, so callers that
+ * only know `TelegramError` handle it as before; sending again can skip them.
+ */
+export class PartlySent extends TelegramError {
+  readonly messageIds: number[];
+
+  constructor(messageIds: number[], error: TelegramError) {
+    super(error.code, error.message, error.retryAfter, { cause: error });
+    this.name = 'PartlySent';
+    this.messageIds = messageIds;
+  }
+}
+
 async function sendText(
   bot: BotClient,
   target: Target,
-  message: Extract<OutgoingMessage, { kind: 'text' }>
+  message: Extract<OutgoingMessage, { kind: 'text' }>,
+  /** Parts that went in an earlier send, which this one leaves out. */
+  skip = 0
 ): Promise<number[]> {
   const parts = splitFormatted(message.text, message.entities ?? []);
   const ids: number[] = [];
 
   // Each part falls back on its own, so one already sent isn't sent again.
   for (const [index, { text, entities }] of parts.entries()) {
+    if (index < skip) continue;
+
     const isLast = index === parts.length - 1;
     const sourceUrl = isLast ? message.sourceUrl : undefined;
 
-    const sent = await withFallbacks({ entities, sourceUrl }, (extras) => {
-      const keyboard = sourceKeyboard(extras.sourceUrl);
+    try {
+      const sent = await withFallbacks({ entities, sourceUrl }, (extras) => {
+        const keyboard = sourceKeyboard(extras.sourceUrl);
 
-      return bot.call('sendMessage', {
-        ...target,
-        text,
-        ...(extras.entities.length > 0 && { entities: extras.entities }),
-        disable_notification: message.silent,
-        link_preview_options: { is_disabled: !message.linkPreview },
-        ...(keyboard && { reply_markup: keyboard }),
+        return bot.call('sendMessage', {
+          ...target,
+          text,
+          ...(extras.entities.length > 0 && { entities: extras.entities }),
+          disable_notification: message.silent,
+          link_preview_options: { is_disabled: !message.linkPreview },
+          ...(keyboard && { reply_markup: keyboard }),
+        });
       });
-    });
 
-    ids.push(sent.message_id);
+      ids.push(sent.message_id);
+    } catch (error) {
+      if (ids.length === 0 || !(error instanceof TelegramError)) throw error;
+
+      throw new PartlySent(ids, error);
+    }
   }
 
   return ids;
@@ -336,12 +361,17 @@ export async function deliver(
   chatId: ChatId,
   message: OutgoingMessage | UploadMessage,
   /** A forum topic's `message_thread_id`; absent posts to General. */
-  topic?: number
+  topic?: number,
+  /** For a text: how many of its parts went before, which are left out. */
+  skipParts = 0
 ): Promise<Delivery> {
   const target = targetOf(chatId, topic);
 
   if (message.kind === 'text') {
-    return textDelivery(await sendText(bot, target, message), 'text');
+    return textDelivery(
+      await sendText(bot, target, message, skipParts),
+      'text'
+    );
   }
 
   const { caption } = message;

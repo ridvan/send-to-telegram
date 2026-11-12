@@ -13,12 +13,15 @@ import { formatCount } from '@/lib/format';
 export function SelectionBar({
   count,
   deletable,
+  partly,
   onCancel,
   onDelete,
 }: {
   count: number;
   /** How many of them Telegram would delete too. */
   deletable: number;
+  /** Just one, a long text that failed after some of its parts went. */
+  partly: boolean;
   onCancel: () => void;
   onDelete: (inTelegram: boolean) => Promise<void>;
 }) {
@@ -54,6 +57,7 @@ export function SelectionBar({
         onOpenChange={setAsking}
         count={count}
         deletable={deletable}
+        partly={partly}
         onConfirm={onDelete}
       />
     </>
